@@ -1,0 +1,13 @@
+version: '3'
+services:
+  devcontainer:
+    image: embed-dev:latest
+    network_mode: host
+    privileged: true
+    # environment:
+      # - HTTPS_PROXY=http://192.168.1.22:7890
+    volumes:
+      - ../../.vscode-server:/root/.vscode-server
+      - ..:/workspaces:cached      
+    working_dir: /workspaces
+    command: sleep infinity

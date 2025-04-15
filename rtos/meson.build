@@ -1,0 +1,98 @@
+# 包含目录
+
+rtos_incdirs = include_directories(
+  'port',
+  'rt-thread/components/drivers/include',
+  'rt-thread/components/finsh',
+  'rt-thread/components/libc/compilers/common/include',
+  # 'rt-thread/components/libc/compilers/common/extension',
+
+  'rt-thread/components/libc/compilers/picolibc',
+  'rt-thread/libcpu/arm/cortex-m4',
+  'rt-thread/include',
+)
+
+# 源文件
+
+rtos_sources = files(
+  'rt-thread/components/drivers/core/device.c',
+  'rt-thread/components/drivers/pin/dev_pin.c',
+  'rt-thread/components/drivers/serial/dev_serial.c',
+  'rt-thread/components/drivers/ipc/completion_comm.c',
+  'rt-thread/components/drivers/ipc/completion_up.c',
+  'rt-thread/components/drivers/ipc/condvar.c',
+  'rt-thread/components/drivers/ipc/dataqueue.c',
+  'rt-thread/components/drivers/ipc/pipe.c',
+  'rt-thread/components/drivers/ipc/ringblk_buf.c',
+  'rt-thread/components/drivers/ipc/ringbuffer.c',
+  'rt-thread/components/drivers/ipc/waitqueue.c',
+  'rt-thread/components/drivers/ipc/workqueue.c',
+  'rt-thread/components/finsh/cmd.c',
+  'rt-thread/components/finsh/msh.c',
+  'rt-thread/components/finsh/msh_parse.c',
+  'rt-thread/components/finsh/shell.c',
+  'rt-thread/components/libc/compilers/common/cctype.c',
+  'rt-thread/components/libc/compilers/common/cstdlib.c',
+  'rt-thread/components/libc/compilers/common/cstring.c',
+  'rt-thread/components/libc/compilers/common/ctime.c',
+  'rt-thread/components/libc/compilers/common/cunistd.c',
+  'rt-thread/components/libc/compilers/common/cwchar.c',
+  'rt-thread/libcpu/arm/common/div0.c',
+  'rt-thread/libcpu/arm/common/showmem.c',
+  'rt-thread/libcpu/arm/cortex-m4/context_gcc.S',
+  'rt-thread/libcpu/arm/cortex-m4/context_gcc.S',
+  'rt-thread/libcpu/arm/cortex-m4/cpuport.c',
+  'rt-thread/src/clock.c',
+  'rt-thread/src/components.c',
+  'rt-thread/src/cpu_up.c',
+  'rt-thread/src/defunct.c',
+  'rt-thread/src/idle.c',
+  'rt-thread/src/ipc.c',
+  'rt-thread/src/irq.c',
+  'rt-thread/src/klibc/kerrno.c',
+  'rt-thread/src/klibc/kstdio.c',
+  'rt-thread/src/klibc/kstring.c',
+  'rt-thread/src/klibc/rt_vsnprintf_tiny.c',
+  'rt-thread/src/kservice.c',
+  'rt-thread/src/mem.c',
+  'rt-thread/src/memheap.c',
+  'rt-thread/src/mempool.c',
+  'rt-thread/src/object.c',
+  'rt-thread/src/scheduler_comm.c',
+  'rt-thread/src/scheduler_up.c',
+  'rt-thread/src/thread.c',
+  'rt-thread/src/timer.c',
+)
+
+rtos_c_args = [
+  '-D__RTTHREAD__',
+  '-D__RT_KERNEL_SOURCE__',
+  '-Wstack-usage=4096',
+  '-Wunused',
+  '-Wformat',
+  '-Wformat-security',
+  '-Warray-bounds',
+  '-Wuninitialized',
+  '-Wreturn-type',
+  '-Wcomment',
+  '-Wswitch',
+  '-Wparentheses',
+  '-Wlogical-op',
+  '-Wmissing-declarations',
+  '-Wmissing-prototypes',
+  '-Wstrict-prototypes',
+  '-Wimplicit-fallthrough',
+  '-Wduplicated-cond',
+  '-Wduplicated-branches',
+  '-Wl,--gc-sections,--print-memory-usage',
+]
+
+# 编译为静态库
+
+rtos_lib = static_library(
+  'rtos',
+  sources: rtos_sources,
+  include_directories: rtos_incdirs,
+  c_args: c_args + rtos_c_args,
+  pic: false,
+)

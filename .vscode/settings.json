@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "*.json5": "jsonc",
+        "*.inc": "shellscript",
+        "stdio.h": "c",
+        "rthw.h": "c",
+        "rtthread.h": "c"
+    }
+}
