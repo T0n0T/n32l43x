@@ -1,3 +1,0 @@
-[submodule "subprojects/picolibc"]
-	path = subprojects/picolibc
-	url = https://github.com/picolibc/picolibc
