@@ -12,6 +12,8 @@ drivers_sources = files(
   'drv_gpio.c',
 #   'drv_hwtimer.c',
 #   'drv_i2c.c',
+  'drv_lpuart.c',
+  'drv_pm.c',
 #   'drv_rtc.c',
 #   'drv_spi.c',
   'drv_usart.c',

@@ -18,7 +18,7 @@
 #define RT_HOOK_USING_FUNC_PTR
 #define RT_USING_IDLE_HOOK
 #define RT_IDLE_HOOK_LIST_SIZE 4
-#define IDLE_THREAD_STACK_SIZE 256
+#define IDLE_THREAD_STACK_SIZE 512
 
 /* kservice optimization */
 
@@ -70,8 +70,6 @@
 #define FINSH_ARG_MAX 10
 #define FINSH_USING_OPTION_COMPLETION
 
-/* DFS: device virtual file system */
-
 
 /* Device Drivers */
 
@@ -80,6 +78,7 @@
 #define RT_USING_SYSTEM_WORKQUEUE
 #define RT_SYSTEM_WORKQUEUE_STACKSIZE 2048
 #define RT_SYSTEM_WORKQUEUE_PRIORITY 23
+#define RT_USING_PM
 #define RT_USING_SERIAL
 #define RT_USING_SERIAL_V1
 #define RT_SERIAL_USING_DMA
@@ -95,169 +94,13 @@
 #define RT_USING_PIN
 #define RT_USING_HWTIMER
 
-/* Using USB */
-
-
-/* C/C++ and POSIX layer */
-
-/* ISO-ANSI C layer */
 
 /* Timezone and Daylight Saving Time */
-
 #define RT_LIBC_USING_LIGHT_TZ_DST
 #define RT_LIBC_TZ_DEFAULT_HOUR 8
 #define RT_LIBC_TZ_DEFAULT_MIN 0
 #define RT_LIBC_TZ_DEFAULT_SEC 0
 
-/* POSIX (Portable Operating System Interface) layer */
-
-
-/* Interprocess Communication (IPC) */
-
-
-/* Socket is in the 'Network' category */
-
-
-/* Network */
-
-
-/* Memory protection */
-
-
-/* Utilities */
-
-
-/* RT-Thread Utestcases */
-
-
-/* RT-Thread online packages */
-
-/* IoT - internet of things */
-
-
-/* Wi-Fi */
-
-/* Marvell WiFi */
-
-
-/* Wiced WiFi */
-
-
-/* CYW43012 WiFi */
-
-
-/* BL808 WiFi */
-
-
-/* CYW43439 WiFi */
-
-
-/* IoT Cloud */
-
-
-/* security packages */
-
-
-/* language packages */
-
-/* JSON: JavaScript Object Notation, a lightweight data-interchange format */
-
-
-/* XML: Extensible Markup Language */
-
-
-/* multimedia packages */
-
-/* LVGL: powerful and easy-to-use embedded GUI library */
-
-
-/* u8g2: a monochrome graphic library */
-
-
-/* tools packages */
-
-
-/* system packages */
-
-/* enhanced kernel services */
-
-
-/* acceleration: Assembly language or algorithmic acceleration packages */
-
-
-/* CMSIS: ARM Cortex-M Microcontroller Software Interface Standard */
-
-
-/* Micrium: Micrium software products porting for RT-Thread */
-
-
-/* peripheral libraries and drivers */
-
-/* HAL & SDK Drivers */
-
-/* STM32 HAL & SDK Drivers */
-
-
-/* Kendryte SDK */
-
-
-/* sensors drivers */
-
-
-/* touch drivers */
-
-
-/* AI packages */
-
-
-/* Signal Processing and Control Algorithm Packages */
-
-
-/* miscellaneous packages */
-
-/* project laboratory */
-
-/* samples: kernel and components samples */
-
-
-/* entertainment: terminal games and other interesting software packages */
-
-
-/* Arduino libraries */
-
-
-/* Projects and Demos */
-
-
-/* Sensors */
-
-
-/* Display */
-
-
-/* Timing */
-
-
-/* Data Processing */
-
-
-/* Data Storage */
-
-/* Communication */
-
-
-/* Device Control */
-
-
-/* Other */
-
-
-/* Signal IO */
-
-
-/* Uncategorized */
-
-/* Hardware Drivers Config */
 
 #define SOC_SERIES_N32L43X
 #define SOC_N32L43X
@@ -268,7 +111,9 @@
 
 #define BSP_USING_GPIO
 #define BSP_USING_UART
+#define BSP_USING_LPUART
 #define BSP_USING_USART1
+#define BSP_USING_LPTIMER
 
 /* Board extended module Drivers */
 

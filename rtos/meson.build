@@ -27,6 +27,8 @@ rtos_sources = files(
   'rt-thread/components/drivers/ipc/ringbuffer.c',
   'rt-thread/components/drivers/ipc/waitqueue.c',
   'rt-thread/components/drivers/ipc/workqueue.c',
+  'rt-thread/components/drivers/pm/lptimer.c',
+  'rt-thread/components/drivers/pm/pm.c',
   'rt-thread/components/finsh/cmd.c',
   'rt-thread/components/finsh/msh.c',
   'rt-thread/components/finsh/msh_parse.c',

@@ -4,6 +4,14 @@
         "*.inc": "shellscript",
         "stdio.h": "c",
         "rthw.h": "c",
-        "rtthread.h": "c"
+        "rtthread.h": "c",
+        "drv_lpuart.h": "c",
+        "cstdint": "c",
+        "n32l43x.h": "c",
+        "condition_variable": "c",
+        "chrono": "c",
+        "text_encoding": "c",
+        "typeinfo": "c",
+        "n32l43x_lpuart.h": "c"
     }
 }

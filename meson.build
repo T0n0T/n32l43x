@@ -30,7 +30,7 @@ link_args = [
   '-mfpu=fpv4-sp-d16',
   '-mfloat-abi=hard',
   '-Wl,--gc-sections',
-  '-specs=picolibc.specs',
+  # '-specs=picolibc.specs',
   '-Xlinker',
   '-Map=' + meson.current_build_dir() + '/n32l43x.map',
   '-T', meson.current_source_dir() + '/n32l43x.ld',
