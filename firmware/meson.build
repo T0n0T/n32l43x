@@ -26,30 +26,30 @@ endif
 firmware_sources = files(
   'CMSIS/device/system_' + TARGET_PLATFORM + '.c',
   TARGET_PLATFORM + '_std_periph_driver/src/misc.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_adc.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_can.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_comp.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_crc.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_dac.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_dbg.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_dma.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_exti.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_flash.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_gpio.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_i2c.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_iwdg.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_lcd.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_lprcnt.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_lptim.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_lpuart.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_opamp.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_pwr.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_rcc.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_rtc.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_spi.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_tim.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_usart.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/n32l43x_wwdg.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_adc.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_can.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_comp.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_crc.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_dac.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_dbg.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_dma.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_exti.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_flash.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_gpio.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_i2c.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_iwdg.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_lcd.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_lprcnt.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_lptim.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_lpuart.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_opamp.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_pwr.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_rcc.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_rtc.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_spi.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_tim.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_usart.c',
+  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_wwdg.c',
   'CMSIS/device/startup/startup_' + TARGET_PLATFORM + '_gcc.s',
 )
 
@@ -66,15 +66,15 @@ endif
 
 # 链接预编译的静态库
 prebuilt_libs = [
-  'n32l43x_periph_lib/lib/RCC_MSI_Trimming.lib',
+  TARGET_PLATFORM + '_periph_lib/lib/RCC_MSI_Trimming.lib',
 ]
 
 if get_option('N32_ALGO_LIB')
-  prebuilt_libs += 'n32l43x_algo_lib/lib/n32l43x_aes.lib'
-  prebuilt_libs += 'n32l43x_algo_lib/lib/n32l43x_algo_common.lib'
-  prebuilt_libs += 'n32l43x_algo_lib/lib/n32l43x_des.lib'
-  prebuilt_libs += 'n32l43x_algo_lib/lib/n32l43x_hash.lib'
-  prebuilt_libs += 'n32l43x_algo_lib/lib/n32l43x_rng.lib'
+  prebuilt_libs += TARGET_PLATFORM + '_algo_lib/lib/' + TARGET_PLATFORM + '_aes.lib'
+  prebuilt_libs += TARGET_PLATFORM + '_algo_lib/lib/' + TARGET_PLATFORM + '_algo_common.lib'
+  prebuilt_libs += TARGET_PLATFORM + '_algo_lib/lib/' + TARGET_PLATFORM + '_des.lib'
+  prebuilt_libs += TARGET_PLATFORM + '_algo_lib/lib/' + TARGET_PLATFORM + '_hash.lib'
+  prebuilt_libs += TARGET_PLATFORM + '_algo_lib/lib/' + TARGET_PLATFORM + '_rng.lib'
 endif
 
 # 编译为静态库(包含源码和预编译库)
