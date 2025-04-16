@@ -1,8 +1,8 @@
 /**************************************************************************//**
  * @file     cmsis_version.h
  * @brief    CMSIS Core(M) Version definitions
- * @version  V1.2.2
- * @date     09. August 2022
+ * @version  V5.0.2
+ * @date     19. April 2017
  ******************************************************************************/
 /*
  * Copyright (c) 2009-2017 ARM Limited. All rights reserved.

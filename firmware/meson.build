@@ -1,6 +1,6 @@
 # 固件特定编译选项
 firmware_c_args = [
-  '-DN32L43X',
+  '-DN32L40X',
   '-DUSE_STDPERIPH_DRIVER',
 ]
 
@@ -39,7 +39,6 @@ firmware_sources = files(
   TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_i2c.c',
   TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_iwdg.c',
   TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_lcd.c',
-  TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_lprcnt.c',
   TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_lptim.c',
   TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_lpuart.c',
   TARGET_PLATFORM + '_std_periph_driver/src/' + TARGET_PLATFORM + '_opamp.c',

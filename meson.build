@@ -1,4 +1,4 @@
-project('n32l43x_bin', 'c',
+project('n32l40x_bin', 'c',
   version: '1.0.0',
   default_options: [
     'buildtype=debugoptimized',
@@ -32,8 +32,8 @@ link_args = [
   '-Wl,--gc-sections',
   # '-specs=picolibc.specs',
   '-Xlinker',
-  '-Map=' + meson.current_build_dir() + '/n32l43x.map',
-  '-T', meson.current_source_dir() + '/n32l43x.ld',
+  '-Map=' + meson.current_build_dir() + '/n32l40x.map',
+  '-T', meson.current_source_dir() + '/n32l40x.ld',
 ]
 
 # 包含子目录构建脚本
@@ -43,7 +43,7 @@ subdir('applications')
 subdir('drivers')
 
 # 创建最终可执行文件
-executable('n32l43x',
+executable('n32l40x',
   sources: [ 
     applications_sources,
     drivers_sources,

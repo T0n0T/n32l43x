@@ -1,6 +1,6 @@
 option('TARGET_PLATFORM',
   type: 'string',
-  value: 'n32l43x',
+  value: 'n32l40x',
   description: 'Target platform name')
 
 option('N32_ALGO_LIB',

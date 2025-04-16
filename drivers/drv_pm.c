@@ -360,6 +360,8 @@ int rt_pm_hw_init(void)
     LPTIMNVIC_Config(ENABLE);
     RCC_ConfigLPTIMClk(RCC_LPTIMCLK_SRC_LSI);
     RCC_EnableRETPeriphClk(RCC_RET_PERIPH_LPTIM, ENABLE);
+
+    return 0;
 }
 
 INIT_CORE_EXPORT(rt_pm_hw_init);

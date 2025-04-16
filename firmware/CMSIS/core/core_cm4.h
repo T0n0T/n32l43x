@@ -1,8 +1,8 @@
 /**************************************************************************//**
  * @file     core_cm4.h
  * @brief    CMSIS Cortex-M4 Core Peripheral Access Layer Header File
- * @version  V1.2.2
- * @date     09. August 2022
+ * @version  V5.0.8
+ * @date     04. June 2018
  ******************************************************************************/
 /*
  * Copyright (c) 2009-2018 Arm Limited. All rights reserved.

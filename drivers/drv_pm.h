@@ -4,7 +4,7 @@
 #include <rthw.h>
 #include <rtthread.h>
 #include "board.h"
-#include <n32l43x_lptim.h>
+#include <n32l40x_lptim.h>
 
 #ifdef __cplusplus
 extern "C" {

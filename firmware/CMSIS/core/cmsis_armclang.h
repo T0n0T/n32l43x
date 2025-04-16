@@ -1,8 +1,8 @@
 /**************************************************************************//**
  * @file     cmsis_armclang.h
  * @brief    CMSIS compiler armclang (Arm Compiler 6) header file
- * @version  V1.2.2
- * @date     09. August 2022
+ * @version  V5.0.4
+ * @date     10. January 2018
  ******************************************************************************/
 /*
  * Copyright (c) 2009-2018 Arm Limited. All rights reserved.
