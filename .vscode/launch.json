@@ -1,0 +1,32 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "N32L40x Launch",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "jlink",
+            "cwd": "${workspaceRoot}",
+            "executable": "${workspaceRoot}/build/n32l40x.elf",
+            "device": "N32L406RB",
+            "interface": "swd",
+            "svdFile": "${workspaceRoot}/tools/svd/N32L406.svd",
+            "runToEntryPoint": "Reset_Handler",
+        },
+        {
+            "name": "N32L40x Attach",
+            "type": "cortex-debug",
+            "request": "attach",
+            "servertype": "jlink",
+            "cwd": "${workspaceRoot}",
+            "executable": "${workspaceRoot}/build/n32l40x.elf",
+            "device": "N32L406RB",
+            "interface": "swd",
+            "svdFile": "${workspaceRoot}/tools/svd/N32L406.svd",
+            "runToEntryPoint": "Reset_Handler",
+        }
+    ]
+}

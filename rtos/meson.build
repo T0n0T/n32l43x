@@ -5,8 +5,6 @@ rtos_incdirs = include_directories(
   'rt-thread/components/drivers/include',
   'rt-thread/components/finsh',
   'rt-thread/components/libc/compilers/common/include',
-  # 'rt-thread/components/libc/compilers/common/extension',
-
   'rt-thread/components/libc/compilers/picolibc',
   'rt-thread/libcpu/arm/cortex-m4',
   'rt-thread/include',
@@ -39,6 +37,9 @@ rtos_sources = files(
   'rt-thread/components/libc/compilers/common/ctime.c',
   'rt-thread/components/libc/compilers/common/cunistd.c',
   'rt-thread/components/libc/compilers/common/cwchar.c',
+  'rt-thread/components/libc/compilers/picolibc/exit.c',
+  'rt-thread/components/libc/compilers/picolibc/iob.c',
+  'rt-thread/components/libc/compilers/picolibc/syscall.c',
   'rt-thread/libcpu/arm/common/div0.c',
   'rt-thread/libcpu/arm/common/showmem.c',
   'rt-thread/libcpu/arm/cortex-m4/context_gcc.S',
@@ -69,6 +70,7 @@ rtos_sources = files(
 rtos_c_args = [
   '-D__RTTHREAD__',
   '-D__RT_KERNEL_SOURCE__',
+  '-D__PICOLIBC_ERRNO_FUNCTION=pico_get_errno',
   '-Wstack-usage=4096',
   '-Wunused',
   '-Wformat',

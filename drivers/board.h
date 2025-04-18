@@ -37,14 +37,14 @@
 
 #include "n32l40x.h"
 
+extern int __bss_end;
 //  <i>Default: 24
-#define N32L40X_SRAM_SIZE           24
-#define N32L40X_SRAM_START          (0x20000000 + N32L40X_SRAM_SIZE/2 * 1024)
-#define N32L40X_SRAM_END            (0x20000000 + N32L40X_SRAM_SIZE * 1024)
+#define N32L40X_SRAM_SIZE  24
+#define N32L40X_SRAM_START (&__bss_end)
+#define N32L40X_SRAM_END   (0x20000000 + N32L40X_SRAM_SIZE * 1024)
 
 void rt_hw_board_init(void);
 
 #define PRINT_RCC_FREQ_INFO
 
 #endif /* __BOARD_H__ */
-

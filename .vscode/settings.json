@@ -12,6 +12,12 @@
         "chrono": "c",
         "text_encoding": "c",
         "typeinfo": "c",
-        "n32l43x_lpuart.h": "c"
-    }
+        "n32l43x_lpuart.h": "c",
+        "drv_i2c.h": "c",
+        "dev_pin.h": "c",
+        "board.h": "c",
+        "types.h": "c",
+        "rtdevice.h": "c"
+    },
+    "mesonbuild.configureOnOpen": false
 }

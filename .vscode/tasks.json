@@ -1,0 +1,58 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "meson compile -C build",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": {
+                "owner": "cpp",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
+        },
+        {
+            "label": "flash",
+            "type": "shell",
+            "command": "meson compile -C build flash",
+            "group": "build",
+            "dependsOn": ["build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "start-gdbserver",
+            "type": "shell",
+            "command": "JLinkGDBServerCL.exe",
+            "args": [
+                "-device", "N32L406RB",
+                "-if", "SWD",
+                "-speed", "4000",
+                "-port", "2331"
+            ],
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^(Error)",
+                    "file": 1,
+                    "message": 1
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*SEGGER J-Link GDB Server.*",
+                    "endsPattern": "^.*Waiting for GDB connection.*"
+                }
+            }
+        }
+    ]
+}

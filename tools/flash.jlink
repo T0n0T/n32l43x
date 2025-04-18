@@ -1,0 +1,4 @@
+h
+loadfile n32l40x.hex
+r
+q

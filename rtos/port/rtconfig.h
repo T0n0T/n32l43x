@@ -3,7 +3,8 @@
 
 /* Automatically generated file; DO NOT EDIT. */
 /* RT-Thread Configuration */
-#define RT_USING_PICOLIBC 1
+#define RT_USING_LIBC
+#define RT_USING_PICOLIBC
 
 /* RT-Thread Kernel */
 
@@ -45,7 +46,7 @@
 #define RT_USING_DEVICE
 #define RT_USING_CONSOLE
 #define RT_CONSOLEBUF_SIZE 128
-#define RT_CONSOLE_DEVICE_NAME "usart1"
+#define RT_CONSOLE_DEVICE_NAME "lpuart"
 #define RT_VER_NUM 0x50100
 #define RT_BACKTRACE_LEVEL_MAX_NR 32
 
@@ -110,9 +111,8 @@
 /* On-chip Peripheral Drivers */
 
 #define BSP_USING_GPIO
-#define BSP_USING_UART
 #define BSP_USING_LPUART
-#define BSP_USING_USART1
+// #define BSP_USING_USART1
 #define BSP_USING_LPTIMER
 
 /* Board extended module Drivers */

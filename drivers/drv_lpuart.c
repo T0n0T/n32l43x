@@ -6,15 +6,14 @@
 
 struct n32_lpuart {
     uint32_t                 clk_src;
-    uint32_t                 gpio_clk;
+    uint32_t                 tx_gpio_clk;
     GPIO_Module*             tx_port;
+    uint32_t                 tx_af;
     uint16_t                 tx_pin;
+    uint32_t                 rx_gpio_clk;
     GPIO_Module*             rx_port;
+    uint32_t                 rx_af;
     uint16_t                 rx_pin;
-    GPIO_Module*             cts_port;
-    uint16_t                 cts_pin;
-    GPIO_Module*             rts_port;
-    uint16_t                 rts_pin;
     struct rt_serial_device* serial;
     char*                    device_name;
 };
@@ -25,17 +24,16 @@ struct rt_serial_device serial0;
 
 static struct n32_lpuart _lpuart = {
     RCC_LPUARTCLK_SRC_LSE,
-    RCC_APB2_PERIPH_GPIOB, // gpio clk
+    RCC_APB2_PERIPH_GPIOA, // gpio clk
     GPIOA,
-    GPIO_PIN_9, // tx port, tx alternate, tx pin
+    GPIO_AF6_LPUART,
+    GPIO_PIN_0, // tx port, tx alternate, tx pin
+    RCC_APB2_PERIPH_GPIOA,
     GPIOA,
-    GPIO_PIN_10, // rx port, rx alternate, rx pin
-    GPIOA,
-    GPIO_PIN_11, // cts port, cts alternate, cts pin
-    GPIOA,
-    GPIO_PIN_12, // rts port, rts alternate, rts pin
+    GPIO_AF6_LPUART,
+    GPIO_PIN_1, // rx port, rx alternate, rx pin
     &serial0,
-    "usart0",
+    "lpuart",
 };
 
 void LPUART_IRQHandler(void)
@@ -57,6 +55,7 @@ static rt_err_t n32_lpuart_configure(struct rt_serial_device* serial, struct ser
 
     RT_ASSERT(serial != RT_NULL);
     RT_ASSERT(cfg != RT_NULL);
+    RT_ASSERT(cfg->baud_rate <= 9600);
 
     lpuart = (struct n32_lpuart*)serial->parent.user_data;
 
@@ -88,20 +87,21 @@ static rt_err_t n32_lpuart_configure(struct rt_serial_device* serial, struct ser
             RCC_ConfigLPUARTClk(RCC_LPUARTCLK_SRC_APB1);
         } break;
     }
-
     RCC_EnableRETPeriphClk(RCC_RET_PERIPH_LPUART, ENABLE);
-    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOB, ENABLE);
+    RCC_EnableAPB2PeriphClk(lpuart->rx_gpio_clk | lpuart->tx_gpio_clk, ENABLE);
 
     GPIO_InitStruct(&GPIO_InitStructure);
 
     /* connect port to USARTx_Tx */
     GPIO_InitStructure.Pin            = lpuart->tx_pin;
-    GPIO_InitStructure.GPIO_Alternate = GPIO_AF4_LPUART;
+    GPIO_InitStructure.GPIO_Mode      = GPIO_Mode_AF_PP;
+    GPIO_InitStructure.GPIO_Alternate = lpuart->tx_af;
     GPIO_InitPeripheral(lpuart->tx_port, &GPIO_InitStructure);
 
     /* connect port to USARTx_Rx */
     GPIO_InitStructure.Pin            = lpuart->rx_pin;
-    GPIO_InitStructure.GPIO_Alternate = GPIO_AF4_LPUART;
+    GPIO_InitStructure.GPIO_Pull      = GPIO_Pull_Up;
+    GPIO_InitStructure.GPIO_Alternate = lpuart->rx_af;
     GPIO_InitPeripheral(lpuart->rx_port, &GPIO_InitStructure);
 
     LPUART_DeInit();
@@ -111,13 +111,13 @@ static rt_err_t n32_lpuart_configure(struct rt_serial_device* serial, struct ser
 
     switch (cfg->parity) {
         case PARITY_ODD:
-            LPUART_InitStructure.Parity = USART_PE_ODD;
+            LPUART_InitStructure.Parity = LPUART_PE_ODD;
             break;
         case PARITY_EVEN:
-            LPUART_InitStructure.Parity = USART_PE_EVEN;
+            LPUART_InitStructure.Parity = LPUART_PE_EVEN;
             break;
         case PARITY_NONE:
-            LPUART_InitStructure.Parity = USART_PE_NO;
+            LPUART_InitStructure.Parity = LPUART_PE_NO;
             break;
         default:
             break;
@@ -125,54 +125,53 @@ static rt_err_t n32_lpuart_configure(struct rt_serial_device* serial, struct ser
 
     switch (cfg->flowcontrol) {
         case RT_SERIAL_FLOWCONTROL_NONE:
-            LPUART_InitStructure.HardwareFlowControl = USART_HFCTRL_NONE;
+            LPUART_InitStructure.HardwareFlowControl = LPUART_HFCTRL_NONE;
             break;
 
         case RT_SERIAL_FLOWCONTROL_CTSRTS:
-            LPUART_InitStructure.HardwareFlowControl = USART_HFCTRL_RTS_CTS;
+            LPUART_InitStructure.HardwareFlowControl = LPUART_HFCTRL_RTS_CTS;
             break;
 
         default:
-            LPUART_InitStructure.HardwareFlowControl = USART_HFCTRL_NONE;
+            LPUART_InitStructure.HardwareFlowControl = LPUART_HFCTRL_NONE;
             break;
     }
 
-    LPUART_InitStructure.Mode = USART_MODE_TX | USART_MODE_RX;
-
+    LPUART_InitStructure.RtsThreshold = LPUART_RTSTH_FIFOFU;
+    LPUART_InitStructure.Mode         = LPUART_MODE_RX | LPUART_MODE_TX;
     /* Configure LPUART */
     LPUART_Init(&LPUART_InitStructure);
+
     return RT_EOK;
 }
 
 static rt_err_t n32_lpuart_control(struct rt_serial_device* serial, int cmd, void* arg)
 {
-    NVIC_InitType NVIC_InitStructure;
-
-    /* Configure the NVIC Preemption Priority Bits */
-    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
+    rt_ubase_t ctrl_arg = (rt_ubase_t)arg;
     switch (cmd) {
         case RT_DEVICE_CTRL_CLR_INT:
-            /* disable rx irq */
-            NVIC_InitStructure.NVIC_IRQChannel            = LPUART_IRQn;
-            NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-            NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-            NVIC_InitStructure.NVIC_IRQChannelCmd         = DISABLE;
-            NVIC_Init(&NVIC_InitStructure);
-
             /* disable interrupt */
-            LPUART_ConfigInt(LPUART_FLAG_FIFO_NE, DISABLE);
+            NVIC_DisableIRQ(LPUART_IRQn);
+            if (ctrl_arg == RT_DEVICE_FLAG_INT_RX) {
+                /* disable interrupt */
+                LPUART_ConfigInt(LPUART_INT_FIFO_NE, DISABLE);
+            } else if (ctrl_arg == RT_DEVICE_FLAG_INT_TX) {
+                /* disable interrupt */
+                LPUART_ConfigInt(LPUART_INT_TXC, DISABLE);
+            }
             break;
 
         case RT_DEVICE_CTRL_SET_INT:
-            /* enable rx irq */
-            NVIC_InitStructure.NVIC_IRQChannel                   = LPUART_IRQn;
-            NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-            NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 1;
-            NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
-            NVIC_Init(&NVIC_InitStructure);
-
             /* enable interrupt */
-            LPUART_ConfigInt(LPUART_FLAG_FIFO_NE, ENABLE);
+            NVIC_SetPriority(LPUART_IRQn, 0);
+            NVIC_EnableIRQ(LPUART_IRQn);
+            if (ctrl_arg == RT_DEVICE_FLAG_INT_RX) {
+                /* enable interrupt */
+                LPUART_ConfigInt(LPUART_INT_FIFO_NE, ENABLE);
+            } else if (ctrl_arg == RT_DEVICE_FLAG_INT_TX) {
+                /* enable interrupt */
+                LPUART_ConfigInt(LPUART_INT_TXC, ENABLE);
+            }
             break;
 
         default:
@@ -184,9 +183,9 @@ static rt_err_t n32_lpuart_control(struct rt_serial_device* serial, int cmd, voi
 
 static int n32_lpuart_putc(struct rt_serial_device* serial, char ch)
 {
+    LPUART_ClrIntPendingBit(LPUART_INT_TXC);
     LPUART_SendData(ch);
     while ((LPUART_GetFlagStatus(LPUART_FLAG_TXC) == RESET));
-
     return 1;
 }
 
@@ -195,23 +194,20 @@ static int n32_lpuart_getc(struct rt_serial_device* serial)
     int ch;
 
     ch = -1;
-    if (LPUART_GetFlagStatus(LPUART_FLAG_FIFO_NE) != RESET) {
+
+    if (LPUART_GetFlagStatus(LPUART_FLAG_FIFO_NE) != RESET) {        
         ch = LPUART_ReceiveData();
     }
-
     return ch;
 }
 
 static void uart_isr(struct rt_serial_device* serial)
 {
-    if (LPUART_GetIntStatus(LPUART_FLAG_FIFO_NE) != RESET &&
-        LPUART_GetFlagStatus(LPUART_FLAG_FIFO_NE) != RESET) {
+    if (LPUART_GetIntStatus(LPUART_INT_FIFO_NE) != RESET) {
         rt_hw_serial_isr(serial, RT_SERIAL_EVENT_RX_IND);
     }
 
-    if (LPUART_GetIntStatus(LPUART_FLAG_TXC) != RESET &&
-        LPUART_GetFlagStatus(LPUART_FLAG_TXC) != RESET) {
-        /* Write one byte to the transmit data register */
+    if (LPUART_GetIntStatus(LPUART_INT_TXC) != RESET) {
         rt_hw_serial_isr(serial, RT_SERIAL_EVENT_TX_DONE);
     }
 }
@@ -226,14 +222,14 @@ static const struct rt_uart_ops n32_lpuart_ops = {
 int rt_hw_lpuart_init(void)
 {
     struct serial_configure config = RT_SERIAL_CONFIG_DEFAULT;
-
-    _lpuart.serial->ops    = &n32_lpuart_ops;
-    _lpuart.serial->config = config;
+    config.baud_rate               = BAUD_RATE_9600;
+    _lpuart.serial->ops            = &n32_lpuart_ops;
+    _lpuart.serial->config         = config;
 
     /* register UART device */
     rt_hw_serial_register(_lpuart.serial,
                           _lpuart.device_name,
-                          RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_INT_RX,
+                          RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_INT_RX | RT_DEVICE_FLAG_INT_TX,                          
                           (void*)&_lpuart);
 
     return 0;
