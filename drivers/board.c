@@ -81,7 +81,7 @@ void rt_hw_board_init()
     
 #ifdef RT_USING_HEAP
     /* init memory system */
-    rt_system_heap_init((void *)N32L40X_SRAM_START, (void *)N32L40X_SRAM_END);
+    rt_system_heap_init((void*)HEAP_START, (void*)HEAP_END);
 #endif //RT_USING_HEAP
     
     /* Call components board initial (use INIT_BOARD_EXPORT()) */

@@ -11,6 +11,8 @@ cross_file = 'tools/arm-none-eabi-gcc.txt'
 
 # 全局编译参数
 c_args = [
+  '-D__FPU_PRESENT',
+  '-DDEBUG',
   '-mcpu=cortex-m4',
   '-mthumb',
   '-mfpu=fpv4-sp-d16',
@@ -19,7 +21,6 @@ c_args = [
   '-ffunction-sections',
   '-fdata-sections',
   '-specs=picolibc.specs',
-  '-D__FPU_PRESENT',
   '-O0',                    # 优化大小
   '-fdata-sections',
   '-ffunction-sections',
@@ -68,7 +69,15 @@ n32l40x_elf = executable('n32l40x',
 
 # 配置objcopy工具
 objcopy = find_program('arm-none-eabi-objcopy')
-jlink = find_program('JLink')
+# 根据操作系统选择JLink可执行文件名称
+message( host_machine.system())
+jlink_exe = 'JLinkExe'
+if host_machine.system() == 'windows'
+  jlink_exe = 'JLink'
+endif
+
+# 配置JLink工具
+jlink = find_program(jlink_exe)
 
 # 添加hex文件生成目标
 custom_target('hex',
@@ -79,13 +88,29 @@ custom_target('hex',
 )
 
 # 添加下载目标
-run_target('flash',
-  command: [
-    jlink,
-    '-device', 'N32L406RB',
-    '-if', 'SWD',
-    '-speed', '4000',
-    '-autoconnect', '1',
-    '-CommanderScript', meson.current_source_dir() + '/tools/flash.jlink'
-  ]
-)
+if get_option('JLINK_REMOTE') != 'disabled'
+  message('JLink remote debug enabled')
+  run_target('flash',
+    command: [
+      jlink,
+      '-ip', get_option('JLINK_REMOTE'),
+      '-device', 'N32L406RB',
+      '-if', 'SWD',
+      '-speed', '4000',
+      '-autoconnect', '1',
+      '-CommanderScript', meson.current_source_dir() + '/tools/flash.jlink'
+    ]
+  )
+else
+  run_target('flash',
+    command: [
+      jlink,
+      '-device', 'N32L406RB',
+      '-if', 'SWD',
+      '-speed', '4000',
+      '-autoconnect', '1',
+      '-CommanderScript', meson.current_source_dir() + '/tools/flash.jlink'
+    ]
+  )
+endif
+

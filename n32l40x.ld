@@ -7,7 +7,8 @@
 MEMORY
 {
     CODE (rx) : ORIGIN = 0x08000000, LENGTH = 128k /* 128KB flash */
-    DATA (rw) : ORIGIN = 0x20000000, LENGTH = 24k  /* 32KB sram */
+    SRAM1 (rw) : ORIGIN = 0x20000000, LENGTH = 16k  /* 16KB sram1 */
+    SRAM2 (rw) : ORIGIN = 0x20004000, LENGTH = 8k   /* 8KB sram2 */
 }
 ENTRY(Reset_Handler)
 _system_stack_size = 0x1500;
@@ -66,42 +67,44 @@ SECTIONS
     .data : AT (_sidata)
     {
         . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .data secion */
         _sdata = . ;
-
         *(.data)
         *(.data.*)
         *(.gnu.linkonce.d*)
-
         . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .data secion */
         _edata = . ;
-    } >DATA
+    } >SRAM1
 
+    /* 添加保持段到SRAM2 */
+    .retain_data : AT (_sidata + SIZEOF(.data))
+    {
+        . = ALIGN(4);
+        _sretain = .;
+        *(.retain_data)       /* 存放需要保持的数据 */
+        *(.retain_data.*)
+        . = ALIGN(4);
+        _eretain = .;
+    } >SRAM2
+
+    /* 栈放在SRAM1 */
     .stack :
     {
         . = . + _system_stack_size;
         . = ALIGN(4);
         _estack = .;
-    } >DATA
+    } >SRAM1
 
-    __bss_start = .;
+    /* BSS段放在SRAM1 */
     .bss :
     {
         . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .bss secion */
         _sbss = .;
-
         *(.bss)
         *(.bss.*)
         *(COMMON)
-
         . = ALIGN(4);
-        /* This is used by the startup in order to initialize the .bss secion */
         _ebss = . ;
-
-        *(.bss.init)
-    } > DATA
+    } >SRAM1
     __bss_end = .;
 
     _end = .;

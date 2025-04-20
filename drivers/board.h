@@ -38,10 +38,12 @@
 #include "n32l40x.h"
 
 extern int __bss_end;
-//  <i>Default: 24
-#define N32L40X_SRAM_SIZE  24
-#define N32L40X_SRAM_START (&__bss_end)
-#define N32L40X_SRAM_END   (0x20000000 + N32L40X_SRAM_SIZE * 1024)
+
+#define SRAM1_SIZE (16 * 1024)
+#define SRAM2_SIZE (8 * 1024)
+#define SRAM_SIZE  (SRAM1_SIZE + SRAM2_SIZE)
+#define HEAP_START (&__bss_end)
+#define HEAP_END   (0x20000000 + SRAM_SIZE)
 
 void rt_hw_board_init(void);
 

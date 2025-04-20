@@ -27,6 +27,17 @@
             "interface": "swd",
             "svdFile": "${workspaceRoot}/tools/svd/N32L406.svd",
             "runToEntryPoint": "Reset_Handler",
+        },
+        {
+            "name": "Remote Debug",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "external",
+            "gdbTarget": "localhost:2331",
+            "cwd": "${workspaceRoot}",
+            "executable": "${workspaceRoot}/build/n32l40x.elf",
+            "svdFile": "${workspaceRoot}/tools/svd/N32L406.svd",
+            "runToEntryPoint": "Reset_Handler",
         }
     ]
 }

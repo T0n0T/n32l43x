@@ -8,9 +8,9 @@
 #define LPTIM_REG_MAX_VALUE (0xFFFF)
 
 #define SRAM1_START_ADDR    (0x20000000)
-#define SRAM1_SIZE          (1024 * 24)
+#define SRAM1_SIZE          (1024 * 16)
 
-#define SRAM2_START_ADDR    (0x20006000)
+#define SRAM2_START_ADDR    (0x20004000)
 #define SRAM2_SIZE          (1024 * 8)
 
 rt_weak void n32_pm_device_run(struct rt_pm* pm, uint8_t mode)
@@ -239,7 +239,7 @@ static void sleep(struct rt_pm* pm, uint8_t mode)
             break;
 
         case PM_SLEEP_MODE_DEEP:
-            PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET);
+            PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
             /*Reset SRAM2 when wake up from stop2 mode*/
             sram2_reset();
             /*multiply System Clock Frequency*/

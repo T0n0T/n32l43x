@@ -7,6 +7,10 @@
 
 int main(void)
 {
+#ifdef DEBUG
+    #include <n32l40x_dbg.h>
+    DBG_ConfigPeriph(DBG_SLEEP | DBG_STOP | DBG_STDBY, ENABLE);
+#endif
     rt_pin_mode(RUN_LED, PIN_MODE_OUTPUT); // Set pin A8 as output
     rt_kprintf("Hello RT-Thread!\n");      // Print message to console
 
