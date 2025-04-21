@@ -47,6 +47,17 @@ extern int __bss_end;
 
 void rt_hw_board_init(void);
 
-#define PRINT_RCC_FREQ_INFO
+typedef enum {
+    SYSCLK_PLLSRC_HSI,
+    SYSCLK_PLLSRC_HSIDIV2,
+    SYSCLK_PLLSRC_HSI_PLLDIV2,
+    SYSCLK_PLLSRC_HSIDIV2_PLLDIV2,
+    SYSCLK_PLLSRC_HSE,
+    SYSCLK_PLLSRC_HSEDIV2,
+    SYSCLK_PLLSRC_HSE_PLLDIV2,
+    SYSCLK_PLLSRC_HSEDIV2_PLLDIV2,
+} SYSCLK_PLL_TYPE;
+
+extern void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src);
 
 #endif /* __BOARD_H__ */

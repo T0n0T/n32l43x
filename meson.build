@@ -70,9 +70,9 @@ n32l40x_elf = executable('n32l40x',
 # 配置objcopy工具
 objcopy = find_program('arm-none-eabi-objcopy')
 # 根据操作系统选择JLink可执行文件名称
-message( host_machine.system())
+
 jlink_exe = 'JLinkExe'
-if host_machine.system() == 'windows'
+if build_machine.system() == 'windows'
   jlink_exe = 'JLink'
 endif
 

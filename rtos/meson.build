@@ -16,6 +16,7 @@ rtos_sources = files(
   'rt-thread/components/drivers/core/device.c',
   'rt-thread/components/drivers/pin/dev_pin.c',
   'rt-thread/components/drivers/serial/dev_serial.c',
+  'rt-thread/components/drivers/hwtimer/hwtimer.c',
   'rt-thread/components/drivers/ipc/completion_comm.c',
   'rt-thread/components/drivers/ipc/completion_up.c',
   'rt-thread/components/drivers/ipc/condvar.c',
