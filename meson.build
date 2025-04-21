@@ -12,7 +12,6 @@ cross_file = 'tools/arm-none-eabi-gcc.txt'
 # 全局编译参数
 c_args = [
   '-D__FPU_PRESENT',
-  '-DDEBUG',
   '-mcpu=cortex-m4',
   '-mthumb',
   '-mfpu=fpv4-sp-d16',
@@ -45,18 +44,32 @@ subdir('firmware')
 subdir('rtos')
 subdir('applications')
 subdir('drivers')
+subdir('utilities/cm_backtrace')
+
+appdep_incdirs = []
+appdep_sources = []
+if get_option('buildtype').startswith('debug')
+  message('Use debug buildtype' + get_option('buildtype'))
+  appdep_sources += cmb_srcs
+  appdep_incdirs += cmb_incs
+  c_args += '-DCM_BACKTRACE_ENABLE'  # 添加编译宏以启用相关代码
+  c_args += '-DCMB_USER_CFG'
+  c_args += '-DDEBUG'
+endif
 
 # 创建最终可执行文件
 n32l40x_elf = executable('n32l40x',
   sources: [ 
     applications_sources,
     drivers_sources,
+    appdep_sources,
   ],
   include_directories: [
     applications_incdirs,
     drivers_incdirs,
     firmware_incdirs, 
     rtos_incdirs,
+    appdep_incdirs, 
   ],
   link_with: [
     firmware_lib,

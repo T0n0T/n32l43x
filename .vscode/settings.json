@@ -3,7 +3,6 @@
     "files.associations": {
         "*.json5": "jsonc",
         "*.inc": "shellscript",
-        "n32l40x_lptim.h": "c",
-        "n32l40x.h": "c"
+        "*.h": "c",
     }
 }

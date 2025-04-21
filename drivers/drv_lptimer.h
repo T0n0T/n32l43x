@@ -12,9 +12,9 @@ extern "C" {
 #endif
 
 struct n32_lptimer {
-    rt_hwtimer_t    time_device;  /* hwtimer device */
-    LPTIM_Module*   timer_periph; /* LPTIM peripheral base address */
-    LPTIM_InitType* timer_init;   /* LPTIM initialization structure */
+    rt_hwtimer_t   time_device;  /* hwtimer device */
+    LPTIM_Module*  timer_periph; /* LPTIM peripheral base address */
+    LPTIM_InitType timer_init;   /* LPTIM initialization structure */
 };
 
 #ifdef __cplusplus

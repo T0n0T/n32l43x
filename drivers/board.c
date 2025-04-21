@@ -35,7 +35,6 @@
 
 #include <rthw.h>
 #include <rtthread.h>
-
 #include "n32l40x.h"
 #include "board.h"
 
@@ -233,6 +232,28 @@ void SysTick_Handler(void)
     rt_interrupt_leave();
 }
 
+#ifdef DEBUG
+#include <cm_backtrace.h>
+#include <n32l40x_dbg.h>
+static rt_err_t exception_hook(void* context)
+{
+    extern long list_thread(void);
+    uint8_t     _continue = 1;
+
+    rt_enter_critical();
+
+#ifdef RT_USING_FINSH
+    list_thread();
+#endif
+
+    cm_backtrace_fault(*((uint32_t*)(cmb_get_sp() + sizeof(uint32_t) * 8)), cmb_get_sp() + sizeof(uint32_t) * 9);
+
+    while (_continue == 1);
+
+    return RT_EOK;
+}
+#endif
+
 /**
  * @brief This function will initial N32G45x board.
  */
@@ -242,6 +263,16 @@ void rt_hw_board_init()
     nvic_configuration();
 
     set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE);
+
+#ifdef DEBUG
+#define HARDWARE_VERSION "1.0.0"
+#define SOFTWARE_VERSION "1.0.0"
+    DBG_ConfigPeriph(DBG_SLEEP | DBG_STOP | DBG_STDBY, ENABLE);
+    rt_hw_exception_install(exception_hook);
+
+    /* Initialize backtrace */
+    cm_backtrace_init("n32l40x", HARDWARE_VERSION, SOFTWARE_VERSION);
+#endif
 
 #ifdef RT_USING_HEAP
     /* init memory system */
