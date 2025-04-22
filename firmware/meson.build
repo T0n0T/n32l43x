@@ -76,6 +76,19 @@ if get_option('N32_ALGO_LIB')
   prebuilt_libs += TARGET_PLATFORM + '_algo_lib/lib/' + TARGET_PLATFORM + '_rng.lib'
 endif
 
+# 创建预编译库的依赖
+firmware_deps = []
+foreach lib : prebuilt_libs
+    firmware_deps += declare_dependency(
+        link_args: ['-L' + meson.current_source_dir() / TARGET_PLATFORM + '_periph_lib/lib',
+                   '-l:' + lib.split('/')[-1]],
+        include_directories: firmware_incdirs
+    )
+endforeach
+
+# 导出变量供根目录使用
+meson.override_dependency('firmware', firmware_deps)
+
 # 编译为静态库(包含源码和预编译库)
 firmware_lib = static_library(
   'firmware',

@@ -4,7 +4,7 @@
 
 #if defined(BSP_USING_LPTIMER)
 #include <rtdevice.h>
-
+#include <drv_lptimer.h>
 #define LPTIM_REG_MAX_VALUE (0xFFFF)
 
 static rt_device_t timer = RT_NULL;
@@ -14,21 +14,16 @@ rt_weak void n32_pm_device_run(struct rt_pm* pm, uint8_t mode)
     /*todo add your code here*/
 }
 
-void sram2_reset(void)
-{
-    uint8_t* p_sram2 = (uint8_t*)(0x20000000 + SRAM1_SIZE);
-    uint32_t i       = 0;
-    for (i = 0; i < SRAM2_SIZE; i++) {
-        *(p_sram2 + i) = 0;
-    }
-}
-
 static rt_tick_t n32_os_tick_from_pm_tick(rt_uint32_t tick)
 {
     static rt_uint32_t os_tick_remain = 0;
     rt_tick_t          os_tick        = 0;
-    rt_uint32_t        freq           = 1000;
-
+    rt_uint32_t        freq           = 0;
+    rt_hwtimer_t*      hwtimer        = (rt_hwtimer_t*)timer;
+    RT_ASSERT(hwtimer != RT_NULL);
+    RT_ASSERT(hwtimer->ops != RT_NULL);
+    RT_ASSERT(hwtimer->ops->control != RT_NULL);
+    hwtimer->ops->control(hwtimer, DRV_HW_LPTIMER_CTRL_GET_FREQ, &freq);
     os_tick = (tick * RT_TICK_PER_SECOND + os_tick_remain) / freq;
 
     os_tick_remain += (tick * RT_TICK_PER_SECOND);
@@ -39,7 +34,12 @@ static rt_tick_t n32_os_tick_from_pm_tick(rt_uint32_t tick)
 
 static rt_tick_t n32_pm_tick_from_os_tick(rt_tick_t tick)
 {
-    rt_uint32_t freq = 1000;
+    rt_uint32_t freq = 0;
+    rt_hwtimer_t* hwtimer = (rt_hwtimer_t*)timer;
+    RT_ASSERT(hwtimer != RT_NULL);
+    RT_ASSERT(hwtimer->ops != RT_NULL);    
+    RT_ASSERT(hwtimer->ops->control != RT_NULL);
+    hwtimer->ops->control(hwtimer, DRV_HW_LPTIMER_CTRL_GET_FREQ, &freq);
     return (tick * freq / RT_TICK_PER_SECOND);
 }
 
@@ -59,7 +59,7 @@ static void sleep(struct rt_pm* pm, uint8_t mode)
         case PM_SLEEP_MODE_DEEP:
             PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
             /*Reset SRAM2 when wake up from stop2 mode*/
-            sram2_reset();
+
             /*multiply System Clock Frequency*/
             set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
             break;

@@ -3,12 +3,14 @@
 #ifdef RT_USING_HWTIMER
 #if defined(BSP_USING_LPTIMER)
 #include <rtdevice.h>
+#include <elog.h>
+#define LOG_TAG "drv.lptimer"
 
 struct n32_lptimer _lptimer = {0};
 
 static const struct rt_hwtimer_info n32_lptimer_info = {
-    1000000, /* the maximum count frequency can be set */
-    100,    /* the minimum count frequency can be set */
+    32768, /* the maximum count frequency can be set */
+    32768, /* the minimum count frequency can be set */
     0xFFFF,
     HWTIMER_CNTMODE_UP,
 };
@@ -16,11 +18,11 @@ static const struct rt_hwtimer_info n32_lptimer_info = {
 void LPTIM_WKUP_IRQHandler(void)
 {
     rt_interrupt_enter();
-    if (LPTIM_IsActiveFlag_CMPM(LPTIM) != RESET) {
-        LPTIM_ClearFLAG_CMPM(LPTIM);
-        EXTI_ClrITPendBit(EXTI_LINE24);        
+    if (LPTIM_IsActiveFlag_ARRM(LPTIM) != RESET) {
+        LPTIM_ClearFLAG_ARRM(LPTIM);
+        EXTI_ClrITPendBit(EXTI_LINE24);
+        rt_device_hwtimer_isr(&_lptimer.time_device);
     }
-    rt_device_hwtimer_isr(&_lptimer.time_device);
     rt_interrupt_leave();
 }
 
@@ -53,21 +55,15 @@ static void n32_lptimer_init(rt_hwtimer_t* timer, rt_uint32_t state)
     struct n32_lptimer* lptimer = (struct n32_lptimer*)timer;
 
     if (state) {
-        RCC_EnableLsi(ENABLE);
-        RCC_ConfigLPTIMClk(RCC_LPTIMCLK_SRC_LSI);
+        /* Enable LPTIM clock as 32.768KHz */
+        RCC_ConfigLPTIMClk(RCC_LPTIMCLK_SRC_LSE);
         RCC_EnableRETPeriphClk(RCC_RET_PERIPH_LPTIM, ENABLE);
 
-        /* Initialize LPTIM */        
-        LPTIM_StructInit(&lptimer->timer_init);
-        lptimer->timer_init.ClockSource = LPTIM_CLK_SOURCE_INTERNAL;
-        lptimer->timer_init.Prescaler   = LPTIM_PRESCALER_DIV1;
-        lptimer->timer_init.Waveform    = LPTIM_OUTPUT_WAVEFORM_PWM;
-        lptimer->timer_init.Polarity    = LPTIM_OUTPUT_POLARITY_REGULAR;
-
-        LPTIM_Init(lptimer->timer_periph, &lptimer->timer_init);
+        /* Initialize LPTIM */
         LPTIMNVIC_Config(ENABLE);
-        LPTIM_EnableIT_ARRM(lptimer->timer_periph);
-        LPTIM_Enable(lptimer->timer_periph);
+        LPTIM_StructInit(&lptimer->timer_init);
+        lptimer->timer_init.Prescaler = LPTIM_PRESCALER_DIV1;
+        LPTIM_Init(lptimer->timer_periph, &lptimer->timer_init);
     } else {
         LPTIM_DeInit(lptimer->timer_periph);
     }
@@ -76,9 +72,13 @@ static void n32_lptimer_init(rt_hwtimer_t* timer, rt_uint32_t state)
 static rt_err_t n32_lptimer_start(rt_hwtimer_t* timer, rt_uint32_t cnt, rt_hwtimer_mode_t mode)
 {
     struct n32_lptimer* lptimer = (struct n32_lptimer*)timer;
-
+    
+    LPTIM_EnableIT_ARRM(lptimer->timer_periph);
+    LPTIM_Enable(lptimer->timer_periph);
     /* Set autoreload value */
     LPTIM_SetAutoReload(lptimer->timer_periph, cnt - 1);
+    
+    log_d("LPTIM set autoreload value: %d", cnt - 1);
 
     /* Start timer in selected mode */
     if (mode == HWTIMER_MODE_ONESHOT) {
@@ -108,39 +108,12 @@ static rt_err_t n32_lptimer_control(rt_hwtimer_t* timer, rt_uint32_t cmd, void* 
     rt_bool_t           was_running = RT_FALSE;
 
     switch (cmd) {
-        case HWTIMER_CTRL_FREQ_SET:
-            /* Check if timer is running */
-            was_running = LPTIM_IsEnabled(lptimer->timer_periph);
-
-            /* Stop timer if running */
-            if (was_running) {
-                LPTIM_Disable(lptimer->timer_periph);
-            }
-
-            /* Set timer frequency */
-            {
-                // rt_uint32_t freq = *(rt_uint32_t *)args;
-                // rt_uint32_t prescaler = 0;
-
-                // /* Calculate prescaler value */
-                // if (freq <= 2000) prescaler = LPTIM_PRESCALER_DIV128;
-                // else if (freq <= 4000) prescaler = LPTIM_PRESCALER_DIV64;
-                // else if (freq <= 8000) prescaler = LPTIM_PRESCALER_DIV32;
-                // else if (freq <= 16000) prescaler = LPTIM_PRESCALER_DIV16;
-                // else if (freq <= 32000) prescaler = LPTIM_PRESCALER_DIV8;
-                // else if (freq <= 64000) prescaler = LPTIM_PRESCALER_DIV4;
-                // else if (freq <= 128000) prescaler = LPTIM_PRESCALER_DIV2;
-                // else prescaler = LPTIM_PRESCALER_DIV1;
-
-                
-            }
-
-            /* Restart timer if it was running */
-            if (was_running) {
-                LPTIM_Enable(lptimer->timer_periph);
+        case DRV_HW_LPTIMER_CTRL_GET_FREQ:
+            /* timer default frequency as 32768 Hz */
+            if (args != RT_NULL) {
+                *(rt_uint32_t*)args = 32768;
             }
             break;
-
         case HWTIMER_CTRL_STOP:
             /* Stop timer */
             LPTIM_Disable(lptimer->timer_periph);
@@ -168,8 +141,8 @@ static const struct rt_hwtimer_ops n32_lptimer_ops = {
 
 int rt_hw_lptimer_init(void)
 {
-    int result = RT_EOK;
-
+    int result                = RT_EOK;
+    _lptimer.timer_periph     = LPTIM;
     _lptimer.time_device.info = &n32_lptimer_info;
     _lptimer.time_device.ops  = &n32_lptimer_ops;
     rt_device_hwtimer_register(&_lptimer.time_device, "lptimer", NULL);
@@ -177,6 +150,25 @@ int rt_hw_lptimer_init(void)
     return result;
 }
 INIT_DEVICE_EXPORT(rt_hw_lptimer_init);
+
+int lptimer_test(void)
+{
+    rt_hwtimer_t* timer = (rt_hwtimer_t*)&_lptimer;
+    rt_uint32_t   cnt   = 40960;
+
+    /* Start timer */
+    timer->ops->init(timer, 1);
+    timer->ops->start(timer, cnt, HWTIMER_MODE_PERIOD);
+    log_d("LPTIM started with count: %d", cnt);
+
+    /* Wait for timer interrupt */
+    while (1) {
+        rt_thread_delay(1000);
+        log_d("LPTIM current count: %d", timer->ops->count_get(timer));
+    }
+    return 0;
+}
+MSH_CMD_EXPORT(lptimer_test, test);
 
 #endif /* defined(BSP_USING_HWTIMERx) */
 #endif /* RT_USING_HWTIMER */

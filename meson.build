@@ -4,7 +4,7 @@ project('n32l40x_bin', 'c',
     'buildtype=debugoptimized',
     'c_std=gnu11',
   ],
-  meson_version: '>=0.56.0')
+  meson_version: '>=0.60.0')
 
 # 设置交叉编译工具链配置文件
 cross_file = 'tools/arm-none-eabi-gcc.txt'
@@ -20,9 +20,9 @@ c_args = [
   '-ffunction-sections',
   '-fdata-sections',
   '-specs=picolibc.specs',
-  '-O0',                    # 优化大小
-  '-fdata-sections',
-  '-ffunction-sections',
+  '-O0',                    # 优化等级2
+  '-fdata-sections',        # 将数据放入独立段
+  '-ffunction-sections',    # 将函数放入独立段
 ]
 
 # 全局链接参数
@@ -36,7 +36,8 @@ link_args = [
   '-Xlinker',
   '-Map=' + meson.current_build_dir() + '/n32l40x.map',
   '-T', meson.current_source_dir() + '/n32l40x.ld',
-  '-Wl,--gc-sections',
+  '-Wl,--gc-sections',     # 删除未使用的段
+  '-Wl,--print-memory-usage', # 打印内存使用情况
 ]
 
 # 包含子目录构建脚本
@@ -44,10 +45,13 @@ subdir('firmware')
 subdir('rtos')
 subdir('applications')
 subdir('drivers')
-subdir('utilities/cm_backtrace')
+subdir('middlewares/cm_backtrace')
+subdir('middlewares/easylogger')
 
 appdep_incdirs = []
 appdep_sources = []
+appdep_incdirs += log_incs
+appdep_sources += log_srcs
 if get_option('buildtype').startswith('debug')
   message('Use debug buildtype' + get_option('buildtype'))
   appdep_sources += cmb_srcs
@@ -62,6 +66,7 @@ n32l40x_elf = executable('n32l40x',
   sources: [ 
     applications_sources,
     drivers_sources,
+    rtos_sources,
     appdep_sources,
   ],
   include_directories: [
@@ -72,10 +77,9 @@ n32l40x_elf = executable('n32l40x',
     appdep_incdirs, 
   ],
   link_with: [
-    firmware_lib,
-    rtos_lib,
+    firmware_lib,            # 链接firmware静态库
   ],
-  c_args: c_args,
+  c_args: c_args + rtos_c_args,
   link_args: link_args,
   name_suffix: 'elf'
 )

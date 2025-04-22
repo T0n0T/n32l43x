@@ -91,13 +91,3 @@ rtos_c_args = [
   '-Wduplicated-branches',
   '-Wl,--gc-sections,--print-memory-usage',
 ]
-
-# 编译为静态库
-
-rtos_lib = static_library(
-  'rtos',
-  sources: rtos_sources,
-  include_directories: rtos_incdirs,
-  c_args: c_args + rtos_c_args,
-  pic: false,
-)

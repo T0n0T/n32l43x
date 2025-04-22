@@ -35,6 +35,7 @@
 
 #include <rthw.h>
 #include <rtthread.h>
+#include <elog.h>
 #include "n32l40x.h"
 #include "board.h"
 
@@ -269,7 +270,6 @@ void rt_hw_board_init()
 #define SOFTWARE_VERSION "1.0.0"
     DBG_ConfigPeriph(DBG_SLEEP | DBG_STOP | DBG_STDBY, ENABLE);
     rt_hw_exception_install(exception_hook);
-
     /* Initialize backtrace */
     cm_backtrace_init("n32l40x", HARDWARE_VERSION, SOFTWARE_VERSION);
 #endif
@@ -283,6 +283,7 @@ void rt_hw_board_init()
 #ifdef RT_USING_COMPONENTS_INIT
     rt_components_board_init();
 #endif
+
 
 #ifdef RT_USING_CONSOLE
     rt_console_set_device(RT_CONSOLE_DEVICE_NAME);
