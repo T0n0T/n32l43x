@@ -95,7 +95,7 @@ static void pm_timer_start(struct rt_pm* pm, rt_uint32_t timeout)
         if (timeout > max_cnt) {
             timeout = max_cnt;
         }
-
+        // rt_kprintf("pm_timer_start: %d\n", timeout);
         hwtimer->ops->start(hwtimer, timeout, HWTIMER_MODE_ONESHOT);
     }
 }
@@ -158,8 +158,6 @@ int rt_pm_hw_init(void)
         return rt_device_init(timer);
     }
 }
-
 INIT_CORE_EXPORT(rt_pm_hw_init);
-
 #endif /* BSP_USING_LPTIMER */
 #endif /* RT_USING_PM */

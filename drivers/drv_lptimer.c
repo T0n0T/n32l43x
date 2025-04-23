@@ -77,8 +77,6 @@ static rt_err_t n32_lptimer_start(rt_hwtimer_t* timer, rt_uint32_t cnt, rt_hwtim
     LPTIM_Enable(lptimer->timer_periph);
     /* Set autoreload value */
     LPTIM_SetAutoReload(lptimer->timer_periph, cnt - 1);
-    
-    log_d("LPTIM set autoreload value: %d", cnt - 1);
 
     /* Start timer in selected mode */
     if (mode == HWTIMER_MODE_ONESHOT) {
@@ -149,7 +147,7 @@ int rt_hw_lptimer_init(void)
 
     return result;
 }
-INIT_DEVICE_EXPORT(rt_hw_lptimer_init);
+INIT_BOARD_EXPORT(rt_hw_lptimer_init);
 
 int lptimer_test(void)
 {

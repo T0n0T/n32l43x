@@ -104,6 +104,14 @@ static rt_err_t n32_lpuart_configure(struct rt_serial_device* serial, struct ser
     GPIO_InitStructure.GPIO_Alternate = lpuart->rx_af;
     GPIO_InitPeripheral(lpuart->rx_port, &GPIO_InitStructure);
 
+    EXTI_InitType EXTI_InitStructure;
+    EXTI_InitStruct(&EXTI_InitStructure);
+    EXTI_InitStructure.EXTI_Line    = EXTI_LINE23;
+    EXTI_InitStructure.EXTI_Mode    = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    EXTI_InitPeripheral(&EXTI_InitStructure);
+
     LPUART_DeInit();
     LPUART_StructInit(&LPUART_InitStructure);
 
@@ -195,7 +203,7 @@ static int n32_lpuart_getc(struct rt_serial_device* serial)
 
     ch = -1;
 
-    if (LPUART_GetFlagStatus(LPUART_FLAG_FIFO_NE) != RESET) {        
+    if (LPUART_GetFlagStatus(LPUART_FLAG_FIFO_NE) != RESET) {
         ch = LPUART_ReceiveData();
     }
     return ch;
@@ -219,6 +227,28 @@ static const struct rt_uart_ops n32_lpuart_ops = {
     n32_lpuart_getc,
 };
 
+rt_err_t n32_lpuart_suspend(const struct rt_device* device, rt_uint8_t mode)
+{
+    if (mode == PM_SLEEP_MODE_DEEP) {
+        LPUART_ConfigWakeUpMethod(LPUART_WUSTP_RXNE);
+        LPUART_ConfigInt(LPUART_INT_WUF, ENABLE);
+        LPUART_EnableWakeUpStop(ENABLE);
+    }
+}
+
+void n32_lpuart_resume(const struct rt_device* device, rt_uint8_t mode)
+{
+    if (mode == PM_SLEEP_MODE_DEEP) {
+        LPUART_EnableWakeUpStop(DISABLE);
+    }
+}
+
+static const struct rt_device_pm_ops n32_lpuart_pm_ops = {
+    n32_lpuart_suspend,
+    n32_lpuart_resume,
+    NULL,
+};
+
 int rt_hw_lpuart_init(void)
 {
     struct serial_configure config = RT_SERIAL_CONFIG_DEFAULT;
@@ -229,9 +259,9 @@ int rt_hw_lpuart_init(void)
     /* register UART device */
     rt_hw_serial_register(_lpuart.serial,
                           _lpuart.device_name,
-                          RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_INT_RX | RT_DEVICE_FLAG_INT_TX,                          
+                          RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_INT_RX | RT_DEVICE_FLAG_INT_TX,
                           (void*)&_lpuart);
-
+    rt_pm_device_register(&_lpuart.serial->parent, &n32_lpuart_pm_ops);
     return 0;
 }
 INIT_BOARD_EXPORT(rt_hw_lpuart_init);

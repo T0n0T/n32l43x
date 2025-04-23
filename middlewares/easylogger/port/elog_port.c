@@ -1,6 +1,7 @@
 #include <elog.h>
 #include <rthw.h>
 #include <rtthread.h>
+#include <rtdevice.h>
 
 static struct rt_semaphore output_lock;
 
@@ -122,6 +123,7 @@ static void async_output(void* arg)
     while (true) {
         /* waiting log */
         rt_sem_take(&output_notice, RT_WAITING_FOREVER);
+        rt_pm_request(PM_SLEEP_MODE_NONE);
         /* polling gets and outputs the log */
         while (true) {
 
@@ -137,6 +139,8 @@ static void async_output(void* arg)
                 break;
             }
         }
+        /* release pm request */
+        rt_pm_release(PM_SLEEP_MODE_NONE);
     }
 }
 #endif
