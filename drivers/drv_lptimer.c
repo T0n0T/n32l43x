@@ -3,7 +3,6 @@
 #ifdef RT_USING_HWTIMER
 #if defined(BSP_USING_LPTIMER)
 #include <rtdevice.h>
-#include <elog.h>
 #define LOG_TAG "drv.lptimer"
 
 struct n32_lptimer _lptimer = {0};
@@ -21,7 +20,7 @@ void LPTIM_WKUP_IRQHandler(void)
     if (LPTIM_IsActiveFlag_ARRM(LPTIM) != RESET) {
         LPTIM_ClearFLAG_ARRM(LPTIM);
         EXTI_ClrITPendBit(EXTI_LINE24);
-        rt_device_hwtimer_isr(&_lptimer.time_device);
+        LPTIM_Disable(LPTIM);
     }
     rt_interrupt_leave();
 }
@@ -56,13 +55,14 @@ static void n32_lptimer_init(rt_hwtimer_t* timer, rt_uint32_t state)
 
     if (state) {
         /* Enable LPTIM clock as 32.768KHz */
-        RCC_ConfigLPTIMClk(RCC_LPTIMCLK_SRC_LSE);
+        RCC_EnableLsi(ENABLE);
+        RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
+        RCC_ConfigLPTIMClk(RCC_LPTIMCLK_SRC_LSI);
         RCC_EnableRETPeriphClk(RCC_RET_PERIPH_LPTIM, ENABLE);
 
         /* Initialize LPTIM */
         LPTIMNVIC_Config(ENABLE);
-        LPTIM_StructInit(&lptimer->timer_init);
-        lptimer->timer_init.Prescaler = LPTIM_PRESCALER_DIV1;
+        LPTIM_SetPrescaler(LPTIM, LPTIM_PRESCALER_DIV1);
         LPTIM_Init(lptimer->timer_periph, &lptimer->timer_init);
     } else {
         LPTIM_DeInit(lptimer->timer_periph);
@@ -72,11 +72,12 @@ static void n32_lptimer_init(rt_hwtimer_t* timer, rt_uint32_t state)
 static rt_err_t n32_lptimer_start(rt_hwtimer_t* timer, rt_uint32_t cnt, rt_hwtimer_mode_t mode)
 {
     struct n32_lptimer* lptimer = (struct n32_lptimer*)timer;
-    
+
     LPTIM_EnableIT_ARRM(lptimer->timer_periph);
     LPTIM_Enable(lptimer->timer_periph);
+
     /* Set autoreload value */
-    LPTIM_SetAutoReload(lptimer->timer_periph, cnt - 1);
+    LPTIM_SetAutoReload(lptimer->timer_periph, cnt);
 
     /* Start timer in selected mode */
     if (mode == HWTIMER_MODE_ONESHOT) {
@@ -84,7 +85,6 @@ static rt_err_t n32_lptimer_start(rt_hwtimer_t* timer, rt_uint32_t cnt, rt_hwtim
     } else {
         LPTIM_StartCounter(lptimer->timer_periph, LPTIM_OPERATING_MODE_CONTINUOUS);
     }
-
     return RT_EOK;
 }
 
@@ -148,25 +148,6 @@ int rt_hw_lptimer_init(void)
     return result;
 }
 INIT_BOARD_EXPORT(rt_hw_lptimer_init);
-
-int lptimer_test(void)
-{
-    rt_hwtimer_t* timer = (rt_hwtimer_t*)&_lptimer;
-    rt_uint32_t   cnt   = 40960;
-
-    /* Start timer */
-    timer->ops->init(timer, 1);
-    timer->ops->start(timer, cnt, HWTIMER_MODE_PERIOD);
-    log_d("LPTIM started with count: %d", cnt);
-
-    /* Wait for timer interrupt */
-    while (1) {
-        rt_thread_delay(1000);
-        log_d("LPTIM current count: %d", timer->ops->count_get(timer));
-    }
-    return 0;
-}
-MSH_CMD_EXPORT(lptimer_test, test);
 
 #endif /* defined(BSP_USING_HWTIMERx) */
 #endif /* RT_USING_HWTIMER */

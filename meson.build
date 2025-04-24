@@ -7,7 +7,7 @@ project('n32l40x_bin', 'c',
   meson_version: '>=0.60.0')
 
 # 设置交叉编译工具链配置文件
-cross_file = 'tools/arm-none-eabi-gcc.txt'
+cross_file = 'tools/toolchains/arm-none-eabi-gcc.txt'
 
 # 全局编译参数
 c_args = [
@@ -50,8 +50,8 @@ subdir('middlewares/easylogger')
 
 appdep_incdirs = []
 appdep_sources = []
-appdep_incdirs += log_incs
-appdep_sources += log_srcs
+# appdep_incdirs += log_incs
+# appdep_sources += log_srcs
 if get_option('buildtype').startswith('debug')
   message('Use debug buildtype' + get_option('buildtype'))
   appdep_sources += cmb_srcs

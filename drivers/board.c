@@ -1,41 +1,5 @@
-/*****************************************************************************
- * Copyright (c) 2022, Nations Technologies Inc.
- *
- * All rights reserved.
- * ****************************************************************************
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * - Redistributions of source code must retain the above copyright notice,
- * this list of conditions and the disclaimer below.
- *
- * Nations' name may not be used to endorse or promote products derived from
- * this software without specific prior written permission.
- *
- * DISCLAIMER: THIS SOFTWARE IS PROVIDED BY NATIONS "AS IS" AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT ARE
- * DISCLAIMED. IN NO EVENT SHALL NATIONS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
- * OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
- * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
- * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * ****************************************************************************/
-
-/**
- * @file board.c
- * @author Nations
- * @version V1.2.2
- *
- * @copyright Copyright (c) 2022, Nations Technologies Inc. All rights reserved.
- */
-
 #include <rthw.h>
 #include <rtthread.h>
-#include <elog.h>
 #include "n32l40x.h"
 #include "board.h"
 
@@ -234,25 +198,7 @@ void SysTick_Handler(void)
 }
 
 #ifdef DEBUG
-#include <cm_backtrace.h>
 #include <n32l40x_dbg.h>
-static rt_err_t exception_hook(void* context)
-{
-    extern long list_thread(void);
-    uint8_t     _continue = 1;
-
-    rt_enter_critical();
-
-#ifdef RT_USING_FINSH
-    list_thread();
-#endif
-
-    cm_backtrace_fault(*((uint32_t*)(cmb_get_sp() + sizeof(uint32_t) * 8)), cmb_get_sp() + sizeof(uint32_t) * 9);
-
-    while (_continue == 1);
-
-    return RT_EOK;
-}
 #endif
 
 /**
@@ -263,30 +209,38 @@ void rt_hw_board_init()
     /* NVIC Configuration */
     nvic_configuration();
 
-    set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE);
+    set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSIDIV2);
 
 #ifdef DEBUG
-#define HARDWARE_VERSION "1.0.0"
-#define SOFTWARE_VERSION "1.0.0"
     DBG_ConfigPeriph(DBG_SLEEP | DBG_STOP | DBG_STDBY, ENABLE);
-    rt_hw_exception_install(exception_hook);
-    /* Initialize backtrace */
-    cm_backtrace_init("n32l40x", HARDWARE_VERSION, SOFTWARE_VERSION);
+#endif
+
+#ifdef RT_USING_PIN
+    extern int rt_hw_pin_init(void);
+    rt_hw_pin_init();
+#endif
+
+#ifdef RT_USING_SERIAL
+#if defined(BSP_USING_LPUART)
+    extern int rt_hw_lpuart_init(void);
+    rt_hw_lpuart_init();
+#elif defined(BSP_USING_USART1)
+    extern int rt_hw_usart_init(void);
+    rt_hw_usart_init();
+#endif
 #endif
 
 #ifdef RT_USING_HEAP
-    /* init memory system */
     rt_system_heap_init((void*)HEAP_START, (void*)HEAP_END);
-#endif // RT_USING_HEAP
+#endif
+
+#ifdef RT_USING_CONSOLE
+    rt_console_set_device(RT_CONSOLE_DEVICE_NAME);
+#endif
 
     /* Call components board initial (use INIT_BOARD_EXPORT()) */
 #ifdef RT_USING_COMPONENTS_INIT
     rt_components_board_init();
-#endif
-
-
-#ifdef RT_USING_CONSOLE
-    rt_console_set_device(RT_CONSOLE_DEVICE_NAME);
 #endif
 }
 

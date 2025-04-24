@@ -149,7 +149,9 @@ static rt_err_t n32_lpuart_configure(struct rt_serial_device* serial, struct ser
     LPUART_InitStructure.Mode         = LPUART_MODE_RX | LPUART_MODE_TX;
     /* Configure LPUART */
     LPUART_Init(&LPUART_InitStructure);
-
+    LPUART_ConfigWakeUpMethod(LPUART_WUSTP_RXNE);
+    LPUART_ConfigInt(LPUART_INT_WUF, ENABLE);
+    LPUART_EnableWakeUpStop(ENABLE);
     return RT_EOK;
 }
 
@@ -218,6 +220,10 @@ static void uart_isr(struct rt_serial_device* serial)
     if (LPUART_GetIntStatus(LPUART_INT_TXC) != RESET) {
         rt_hw_serial_isr(serial, RT_SERIAL_EVENT_TX_DONE);
     }
+
+    if (LPUART_GetIntStatus(LPUART_INT_WUF) != RESET) {
+        LPUART_ClrIntPendingBit(LPUART_INT_WUF);
+    }   
 }
 
 static const struct rt_uart_ops n32_lpuart_ops = {
@@ -225,28 +231,6 @@ static const struct rt_uart_ops n32_lpuart_ops = {
     n32_lpuart_control,
     n32_lpuart_putc,
     n32_lpuart_getc,
-};
-
-rt_err_t n32_lpuart_suspend(const struct rt_device* device, rt_uint8_t mode)
-{
-    if (mode == PM_SLEEP_MODE_DEEP) {
-        LPUART_ConfigWakeUpMethod(LPUART_WUSTP_RXNE);
-        LPUART_ConfigInt(LPUART_INT_WUF, ENABLE);
-        LPUART_EnableWakeUpStop(ENABLE);
-    }
-}
-
-void n32_lpuart_resume(const struct rt_device* device, rt_uint8_t mode)
-{
-    if (mode == PM_SLEEP_MODE_DEEP) {
-        LPUART_EnableWakeUpStop(DISABLE);
-    }
-}
-
-static const struct rt_device_pm_ops n32_lpuart_pm_ops = {
-    n32_lpuart_suspend,
-    n32_lpuart_resume,
-    NULL,
 };
 
 int rt_hw_lpuart_init(void)
@@ -261,10 +245,8 @@ int rt_hw_lpuart_init(void)
                           _lpuart.device_name,
                           RT_DEVICE_FLAG_RDWR | RT_DEVICE_FLAG_INT_RX | RT_DEVICE_FLAG_INT_TX,
                           (void*)&_lpuart);
-    rt_pm_device_register(&_lpuart.serial->parent, &n32_lpuart_pm_ops);
     return 0;
 }
-INIT_BOARD_EXPORT(rt_hw_lpuart_init);
 
 #endif /* BSP_USING_LPUART */
 

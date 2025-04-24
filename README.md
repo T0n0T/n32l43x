@@ -12,6 +12,13 @@
 - `utilities/` - 实用工具和库。
 - `tools/` - 开发工具和脚本。
 
+## 使用
+```sh
+meson setup build --cross-file tools/toolchains/arm-none-eabi-gcc.txt # 配置项目
+meson compile -C build # 编译默认目标
+meson compile -C build flash #执行烧录动作
+```
+
 ## 许可证
 
 该项目遵循 [许可证名称]。

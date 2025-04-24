@@ -27,6 +27,7 @@
             "interface": "swd",
             "svdFile": "${workspaceRoot}/tools/svd/N32L406.svd",
             "runToEntryPoint": "Reset_Handler",
+            "showDevDebugOutput": "raw"
         },
         {
             "name": "Remote Debug",

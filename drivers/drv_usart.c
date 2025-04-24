@@ -617,7 +617,6 @@ int rt_hw_usart_init(void)
 
     return 0;
 }
-INIT_BOARD_EXPORT(rt_hw_usart_init);
 
 #endif /* defined(BSP_USING_USARTx) */
 #endif  /* BSP_USING_SERIAL */

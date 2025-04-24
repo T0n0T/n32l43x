@@ -9,6 +9,6 @@ cmb_incs = include_directories(
 
 cmb_srcs = files(
   'cm_backtrace.c',
-#   'fault_handler/gcc/cmb_fault.S',
+  'cmb_port.c',
 )
 

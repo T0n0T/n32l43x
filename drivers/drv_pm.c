@@ -58,8 +58,6 @@ static void sleep(struct rt_pm* pm, uint8_t mode)
 
         case PM_SLEEP_MODE_DEEP:
             PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
-            /*Reset SRAM2 when wake up from stop2 mode*/
-
             /*multiply System Clock Frequency*/
             set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
             break;
@@ -95,7 +93,7 @@ static void pm_timer_start(struct rt_pm* pm, rt_uint32_t timeout)
         if (timeout > max_cnt) {
             timeout = max_cnt;
         }
-        // rt_kprintf("pm_timer_start: %d\n", timeout);
+
         hwtimer->ops->start(hwtimer, timeout, HWTIMER_MODE_ONESHOT);
     }
 }
@@ -145,6 +143,7 @@ int rt_pm_hw_init(void)
 
     /* initialize timer mask */
     timer_mask = 1UL << PM_SLEEP_MODE_DEEP;
+    // timer_mask |= 1UL << PM_SLEEP_MODE_LIGHT;
 
     /* initialize system pm module */
     rt_system_pm_init(&_ops, timer_mask, RT_NULL);

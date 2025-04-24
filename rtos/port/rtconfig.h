@@ -45,8 +45,8 @@
 #define RT_USING_HEAP
 #define RT_USING_DEVICE
 #define RT_USING_CONSOLE
-#define RT_CONSOLEBUF_SIZE 128
-#define RT_CONSOLE_DEVICE_NAME "lpuart"
+#define RT_CONSOLEBUF_SIZE 256
+#define RT_CONSOLE_DEVICE_NAME "usart1"
 #define RT_VER_NUM 0x50100
 #define RT_BACKTRACE_LEVEL_MAX_NR 32
 
@@ -80,6 +80,7 @@
 #define RT_SYSTEM_WORKQUEUE_STACKSIZE 2048
 #define RT_SYSTEM_WORKQUEUE_PRIORITY 23
 #define RT_USING_PM
+// #define RT_PM_DEFAULT_SLEEP_MODE PM_SLEEP_MODE_DEEP
 #define RT_USING_SERIAL
 #define RT_USING_SERIAL_V1
 #define RT_SERIAL_USING_DMA
@@ -111,8 +112,8 @@
 /* On-chip Peripheral Drivers */
 
 #define BSP_USING_GPIO
-#define BSP_USING_LPUART
-// #define BSP_USING_USART1
+// #define BSP_USING_LPUART
+#define BSP_USING_USART1
 #define BSP_USING_LPTIMER
 
 /* Board extended module Drivers */

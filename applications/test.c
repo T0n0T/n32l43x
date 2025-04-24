@@ -1,84 +1,68 @@
-/*
- * Copyright (c) 2006-2022, RT-Thread Development Team
- *
- * SPDX-License-Identifier: Apache-2.0
- *
- * Change Logs:
- * Date           Author       Notes
- * 2018-11-30     misonyo      first implementation.
- */
-/*
- * 程序清单：这是一个 hwtimer 设备使用例程
- * 例程导出了 hwtimer_sample 命令到控制终端
- * 命令调用格式：hwtimer_sample
- * 程序功能：硬件定时器超时回调函数周期性的打印当前tick值，2次tick值之差换算为时间等同于定时时间值。
- */
-
+#include <board.h>
 #include <rtthread.h>
 #include <rtdevice.h>
+#include <stdio.h>
 
-#define HWTIMER_DEV_NAME "lptimer" /* 定时器名称 */
-
-/* 定时器超时回调函数 */
-static rt_err_t timeout_cb(rt_device_t dev, rt_size_t size)
+void wakup_pin(void)
 {
-    rt_kprintf("tick is :%d !\n", rt_tick_get());
-
-    return 0;
+    GPIO_InitType GPIO_InitStructure;
+    GPIO_InitStruct(&GPIO_InitStructure);
+    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOA, ENABLE);
+    GPIO_InitStructure.Pin       = GPIO_PIN_0;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Input;
+    GPIO_InitStructure.GPIO_Pull = GPIO_Pull_Down;
+    GPIO_InitPeripheral(GPIOA, &GPIO_InitStructure);    
+    PWR_WakeUpPinEnable(WAKEUP_PIN1, ENABLE);
 }
 
-static int hwtimer_sample(int argc, char* argv[])
+void flag_led(void)
 {
-    rt_err_t          ret = RT_EOK;
-    rt_hwtimerval_t   timeout_s;        /* 定时器超时值 */
-    rt_device_t       hw_dev = RT_NULL; /* 定时器设备句柄 */
-    rt_hwtimer_mode_t mode;             /* 定时器模式 */
-
-    /* 查找定时器设备 */
-    hw_dev = rt_device_find(HWTIMER_DEV_NAME);
-    if (hw_dev == RT_NULL) {
-        rt_kprintf("hwtimer sample run failed! can't find %s device!\n", HWTIMER_DEV_NAME);
-        return RT_ERROR;
-    }
-
-    /* 以读写方式打开设备 */
-    ret = rt_device_open(hw_dev, RT_DEVICE_OFLAG_RDWR);
-    if (ret != RT_EOK) {
-        rt_kprintf("open %s device failed!\n", HWTIMER_DEV_NAME);
-        return ret;
-    }
-
-    /* 设置超时回调函数 */
-    rt_device_set_rx_indicate(hw_dev, timeout_cb);
-
-    // rt_hwtimer_t* timer = (rt_hwtimer_t*)hw_dev;
-    // timer->ops->start(timer, 40960, HWTIMER_MODE_PERIOD);
-
-    /* 设置模式为周期性定时器 */
-    mode = HWTIMER_MODE_PERIOD;
-    ret  = rt_device_control(hw_dev, HWTIMER_CTRL_MODE_SET, &mode);
-    if (ret != RT_EOK) {
-        rt_kprintf("set mode failed! ret is :%d\n", ret);
-        return ret;
-    }
-
-    /* 设置定时器超时值为5s并启动定时器 */
-    timeout_s.sec  = 5; /* 秒 */
-    timeout_s.usec = 0; /* 微秒 */
-
-    if (rt_device_write(hw_dev, 0, &timeout_s, sizeof(timeout_s)) != sizeof(timeout_s)) {        
-        ("set timeout value failed\n");
-        return RT_ERROR;
-    }
-
-    // /* 延时3500ms */
-    // rt_thread_mdelay(3500);
-
-    // /* 读取定时器当前值 */
-    // rt_device_read(hw_dev, 0, &timeout_s, sizeof(timeout_s));
-    // rt_kprintf("Read: Sec = %d, Usec = %d\n", timeout_s.sec, timeout_s.usec);
-    // rt_device_close(hw_dev); /* 关闭设备 */
-    return ret;
+    GPIO_InitType GPIO_InitStructure;
+    GPIO_InitStruct(&GPIO_InitStructure);
+    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOA, ENABLE);
+    GPIO_InitStructure.Pin       = GPIO_PIN_8;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Pull = GPIO_No_Pull;
+    GPIO_InitPeripheral(GPIOA, &GPIO_InitStructure);
+    GPIO_WriteBit(GPIOA, GPIO_PIN_8, Bit_SET);
 }
-/* 导出到 msh 命令列表中 */
-MSH_CMD_EXPORT(hwtimer_sample, hwtimer sample);
+
+void standby_with_wakup1(void)
+{
+    wakup_pin();
+    flag_led();
+    if (PWR_GetFlagStatus(1, PWR_STBY_FLAG) != RESET) {
+        /* Clear Wake Up flag */
+        PWR_ClearFlag(PWR_STBY_FLAG);
+    }
+    /* Check if the Wake-Up flag is set */
+    if (PWR_GetFlagStatus(1, PWR_WKUP1_FLAG) != RESET) {
+        /* Clear Wake Up flag */
+        PWR_ClearFlag(PWR_WKUP1_FLAG);
+    }
+    PWR_EnterSTANDBYMode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM2RET);
+}
+MSH_CMD_EXPORT_ALIAS(standby_with_wakup1, test_standby, test);
+
+void stop2_with_lptimer(void)
+{
+    rt_device_t _lptimer = rt_device_find("lptimer");
+    rt_hwtimer_t* timer = (rt_hwtimer_t*)_lptimer;
+    rt_uint32_t   cnt   = 65535;
+
+    wakup_pin();
+
+    /* Start timer */
+    timer->ops->init(timer, 1);
+    timer->ops->start(timer, cnt, HWTIMER_MODE_ONESHOT);
+    PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
+
+    // set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
+
+    // extern int rt_hw_lpuart_init(void);
+    // rt_hw_lpuart_init();
+
+    // timer->ops->stop(timer);
+}
+MSH_CMD_EXPORT_ALIAS(stop2_with_lptimer, test_stop2, test);
+
