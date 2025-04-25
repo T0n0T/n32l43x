@@ -55,8 +55,12 @@ void stop2_with_lptimer(void)
     /* Start timer */
     timer->ops->init(timer, 1);
     timer->ops->start(timer, cnt, HWTIMER_MODE_ONESHOT);
-    PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
 
+    // LPUART_ConfigWakeUpMethod(LPUART_WUSTP_STARTBIT);
+    // LPUART_ConfigInt(LPUART_INT_WUF, ENABLE);
+    // LPUART_EnableWakeUpStop(ENABLE);
+    PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
+    // LPUART_EnableWakeUpStop(DISABLE);
     set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
 
     // timer->ops->stop(timer);

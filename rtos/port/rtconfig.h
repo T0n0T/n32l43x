@@ -79,7 +79,7 @@
 #define RT_SYSTEM_WORKQUEUE_STACKSIZE 2048
 #define RT_SYSTEM_WORKQUEUE_PRIORITY 23
 #define RT_USING_PM
-#define RT_PM_DEFAULT_SLEEP_MODE PM_SLEEP_MODE_LIGHT
+#define RT_PM_DEFAULT_SLEEP_MODE PM_SLEEP_MODE_DEEP
 #define RT_USING_SERIAL
 #define RT_USING_SERIAL_V1
 #define RT_SERIAL_USING_DMA
@@ -111,8 +111,8 @@
 /* On-chip Peripheral Drivers */
 
 #define BSP_USING_GPIO
-// #define BSP_USING_LPUART
-#define BSP_USING_USART1
+#define BSP_USING_LPUART
+// #define BSP_USING_USART1
 #define BSP_USING_LPTIMER
 
 /* Board extended module Drivers */

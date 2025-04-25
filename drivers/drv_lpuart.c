@@ -160,7 +160,7 @@ static rt_err_t n32_lpuart_configure(struct rt_serial_device* serial, struct ser
     LPUART_Init(&LPUART_InitStructure);
     LPUART_ConfigWakeUpMethod(LPUART_WUSTP_STARTBIT);
     LPUART_ConfigInt(LPUART_INT_WUF, ENABLE);
-
+    LPUART_EnableWakeUpStop(ENABLE);
     return RT_EOK;
 }
 
@@ -232,7 +232,29 @@ static void uart_isr(struct rt_serial_device* serial)
 
     if (LPUART_GetIntStatus(LPUART_INT_WUF) != RESET) {
         LPUART_ClrIntPendingBit(LPUART_INT_WUF);
-    }   
+    }
+}
+
+rt_err_t n32_suspend(const struct rt_device* device, rt_uint8_t mode)
+{
+    struct n32_lpuart* lpuart = (struct n32_lpuart*)device->user_data;
+    if (mode == PM_SLEEP_MODE_DEEP) {
+        LPUART_ConfigWakeUpMethod(LPUART_WUSTP_STARTBIT);
+        LPUART_ConfigInt(LPUART_INT_WUF, ENABLE);
+        LPUART_EnableWakeUpStop(ENABLE);
+    }
+
+    return 0;
+}
+
+void n32_resume(const struct rt_device* device, rt_uint8_t mode)
+{
+    LPUART_EnableWakeUpStop(DISABLE);
+}
+
+rt_err_t n32_frequency_change(const struct rt_device* device, rt_uint8_t mode)
+{
+    return 0;
 }
 
 static const struct rt_uart_ops n32_lpuart_ops = {
@@ -240,6 +262,12 @@ static const struct rt_uart_ops n32_lpuart_ops = {
     n32_lpuart_control,
     n32_lpuart_putc,
     n32_lpuart_getc,
+};
+
+static const struct rt_device_pm_ops n32_lpuart_pm_ops = {
+    n32_suspend,
+    n32_resume,
+    n32_frequency_change,
 };
 
 int rt_hw_lpuart_init(void)

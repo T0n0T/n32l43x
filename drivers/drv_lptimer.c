@@ -21,7 +21,7 @@ void LPTIM_WKUP_IRQHandler(void)
         LPTIM_ClearFLAG_ARRM(LPTIM);
         EXTI_ClrITPendBit(EXTI_LINE24);
         LPTIM_Disable(LPTIM);
-        rt_kprintf("LPTIM wakeup interrupt\r\n");
+        // rt_kprintf("LPTIM wakeup interrupt\r\n");
     }
     rt_interrupt_leave();
 }
