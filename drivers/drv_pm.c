@@ -34,10 +34,10 @@ static rt_tick_t n32_os_tick_from_pm_tick(rt_uint32_t tick)
 
 static rt_tick_t n32_pm_tick_from_os_tick(rt_tick_t tick)
 {
-    rt_uint32_t freq = 0;
+    rt_uint32_t   freq    = 0;
     rt_hwtimer_t* hwtimer = (rt_hwtimer_t*)timer;
     RT_ASSERT(hwtimer != RT_NULL);
-    RT_ASSERT(hwtimer->ops != RT_NULL);    
+    RT_ASSERT(hwtimer->ops != RT_NULL);
     RT_ASSERT(hwtimer->ops->control != RT_NULL);
     hwtimer->ops->control(hwtimer, DRV_HW_LPTIMER_CTRL_GET_FREQ, &freq);
     return (tick * freq / RT_TICK_PER_SECOND);
@@ -58,8 +58,10 @@ static void sleep(struct rt_pm* pm, uint8_t mode)
 
         case PM_SLEEP_MODE_DEEP:
             PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
+#ifdef DEBUG
             /*multiply System Clock Frequency*/
             set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
+#endif
             break;
 
         case PM_SLEEP_MODE_STANDBY:
@@ -143,7 +145,7 @@ int rt_pm_hw_init(void)
 
     /* initialize timer mask */
     timer_mask = 1UL << PM_SLEEP_MODE_DEEP;
-    // timer_mask |= 1UL << PM_SLEEP_MODE_LIGHT;
+    timer_mask |= 1UL << PM_SLEEP_MODE_LIGHT;
 
     /* initialize system pm module */
     rt_system_pm_init(&_ops, timer_mask, RT_NULL);

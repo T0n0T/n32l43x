@@ -8,6 +8,7 @@
 int main(void)
 {
     rt_pin_mode(RUN_LED, PIN_MODE_OUTPUT);
+    rt_pin_write(RUN_LED, PIN_LOW);
     printf("Hello RT-Thread!\n"); 
 
     while (1) {

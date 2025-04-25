@@ -24,14 +24,14 @@ struct rt_serial_device serial0;
 
 static struct n32_lpuart _lpuart = {
     RCC_LPUARTCLK_SRC_LSE,
-    RCC_APB2_PERIPH_GPIOA, // gpio clk
-    GPIOA,
-    GPIO_AF6_LPUART,
-    GPIO_PIN_0, // tx port, tx alternate, tx pin
-    RCC_APB2_PERIPH_GPIOA,
-    GPIOA,
-    GPIO_AF6_LPUART,
-    GPIO_PIN_1, // rx port, rx alternate, rx pin
+    RCC_APB2_PERIPH_GPIOC, // gpio clk
+    GPIOC,
+    GPIO_AF0_LPUART,
+    GPIO_PIN_10, // tx port, tx alternate, tx pin
+    RCC_APB2_PERIPH_GPIOC,
+    GPIOC,
+    GPIO_AF0_LPUART,
+    GPIO_PIN_11, // rx port, rx alternate, rx pin
     &serial0,
     "lpuart",
 };
@@ -45,6 +45,12 @@ void LPUART_IRQHandler(void)
 
     /* leave interrupt */
     rt_interrupt_leave();
+}
+
+void LPUART_WKUP_IRQHandler(void)
+{
+    /* Clear EXTI Line23 Pending Bit */
+    EXTI_ClrITPendBit(EXTI_LINE23);
 }
 
 static rt_err_t n32_lpuart_configure(struct rt_serial_device* serial, struct serial_configure* cfg)
@@ -104,6 +110,9 @@ static rt_err_t n32_lpuart_configure(struct rt_serial_device* serial, struct ser
     GPIO_InitStructure.GPIO_Alternate = lpuart->rx_af;
     GPIO_InitPeripheral(lpuart->rx_port, &GPIO_InitStructure);
 
+    NVIC_SetPriority(LPUART_WKUP_IRQn, 1);
+    NVIC_EnableIRQ(LPUART_WKUP_IRQn);
+
     EXTI_InitType EXTI_InitStructure;
     EXTI_InitStruct(&EXTI_InitStructure);
     EXTI_InitStructure.EXTI_Line    = EXTI_LINE23;
@@ -149,9 +158,9 @@ static rt_err_t n32_lpuart_configure(struct rt_serial_device* serial, struct ser
     LPUART_InitStructure.Mode         = LPUART_MODE_RX | LPUART_MODE_TX;
     /* Configure LPUART */
     LPUART_Init(&LPUART_InitStructure);
-    LPUART_ConfigWakeUpMethod(LPUART_WUSTP_RXNE);
+    LPUART_ConfigWakeUpMethod(LPUART_WUSTP_STARTBIT);
     LPUART_ConfigInt(LPUART_INT_WUF, ENABLE);
-    LPUART_EnableWakeUpStop(ENABLE);
+
     return RT_EOK;
 }
 

@@ -2,6 +2,7 @@
 #include <rtthread.h>
 #include <rtdevice.h>
 #include <stdio.h>
+#include "drv_gpio.h"
 
 void wakup_pin(void)
 {
@@ -29,8 +30,9 @@ void flag_led(void)
 
 void standby_with_wakup1(void)
 {
+    RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
     wakup_pin();
-    flag_led();
+    // flag_led();
     if (PWR_GetFlagStatus(1, PWR_STBY_FLAG) != RESET) {
         /* Clear Wake Up flag */
         PWR_ClearFlag(PWR_STBY_FLAG);
@@ -50,17 +52,12 @@ void stop2_with_lptimer(void)
     rt_hwtimer_t* timer = (rt_hwtimer_t*)_lptimer;
     rt_uint32_t   cnt   = 65535;
 
-    wakup_pin();
-
     /* Start timer */
     timer->ops->init(timer, 1);
     timer->ops->start(timer, cnt, HWTIMER_MODE_ONESHOT);
     PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
 
-    // set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
-
-    // extern int rt_hw_lpuart_init(void);
-    // rt_hw_lpuart_init();
+    set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
 
     // timer->ops->stop(timer);
 }

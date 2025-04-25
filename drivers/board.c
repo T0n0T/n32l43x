@@ -181,38 +181,32 @@ void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)
 
     /* Configure the SysTick */
     SysTick_Config(freq / RT_TICK_PER_SECOND); /* 1ms */
-}
 
-/**
- * @brief This is the timer interrupt service routine.
- */
-void SysTick_Handler(void)
-{
-    /* enter interrupt */
-    rt_interrupt_enter();
-
-    rt_tick_increase();
-
-    /* leave interrupt */
-    rt_interrupt_leave();
+    RCC_ClocksType RCC_ClockFreq;
+    RCC_GetClocksFreqValue(&RCC_ClockFreq);
+    // rt_kprintf("SYSCLK: %u\n", (unsigned int)RCC_ClockFreq.SysclkFreq);
+    // rt_kprintf("HCLK: %u\n", (unsigned int)RCC_ClockFreq.HclkFreq);
+    // rt_kprintf("PCLK1: %u\n", (unsigned int)RCC_ClockFreq.Pclk1Freq);
+    // rt_kprintf("PCLK2: %u\n", (unsigned int)RCC_ClockFreq.Pclk2Freq);
 }
 
 #ifdef DEBUG
 #include <n32l40x_dbg.h>
 #endif
 
-/**
- * @brief This function will initial N32G45x board.
- */
 void rt_hw_board_init()
 {
     /* NVIC Configuration */
     nvic_configuration();
-
-    set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSIDIV2);
+    RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
+    set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
 
 #ifdef DEBUG
     DBG_ConfigPeriph(DBG_SLEEP | DBG_STOP | DBG_STDBY, ENABLE);
+#endif
+
+#ifdef RT_USING_HEAP
+    rt_system_heap_init((void*)HEAP_START, (void*)HEAP_END);
 #endif
 
 #ifdef RT_USING_PIN
@@ -224,24 +218,31 @@ void rt_hw_board_init()
 #if defined(BSP_USING_LPUART)
     extern int rt_hw_lpuart_init(void);
     rt_hw_lpuart_init();
+#ifdef RT_USING_CONSOLE
+    rt_console_set_device("lpuart");
+#endif
 #elif defined(BSP_USING_USART1)
     extern int rt_hw_usart_init(void);
     rt_hw_usart_init();
-#endif
-#endif
-
-#ifdef RT_USING_HEAP
-    rt_system_heap_init((void*)HEAP_START, (void*)HEAP_END);
-#endif
-
 #ifdef RT_USING_CONSOLE
-    rt_console_set_device(RT_CONSOLE_DEVICE_NAME);
+    rt_console_set_device("usart1");
+#endif
+#endif
 #endif
 
-    /* Call components board initial (use INIT_BOARD_EXPORT()) */
+/* Call components board initial (use INIT_BOARD_EXPORT()) */
 #ifdef RT_USING_COMPONENTS_INIT
     rt_components_board_init();
 #endif
 }
 
-/*@}*/
+void SysTick_Handler(void)
+{
+    /* enter interrupt */
+    rt_interrupt_enter();
+
+    rt_tick_increase();
+
+    /* leave interrupt */
+    rt_interrupt_leave();
+}

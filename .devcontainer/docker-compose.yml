@@ -4,8 +4,8 @@ services:
     image: embed-dev:latest
     network_mode: host
     privileged: true
-    # environment:
-      # - HTTPS_PROXY=http://192.168.1.22:7890
+    environment:
+      - HTTPS_PROXY=http://192.168.1.8:4780
     volumes:
       - ../../.vscode-server:/root/.vscode-server
       - ..:/workspaces:cached      

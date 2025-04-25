@@ -8,8 +8,8 @@
 struct n32_lptimer _lptimer = {0};
 
 static const struct rt_hwtimer_info n32_lptimer_info = {
-    32768, /* the maximum count frequency can be set */
-    32768, /* the minimum count frequency can be set */
+    40000, /* the maximum count frequency can be set */
+    40000, /* the minimum count frequency can be set */
     0xFFFF,
     HWTIMER_CNTMODE_UP,
 };
@@ -21,6 +21,7 @@ void LPTIM_WKUP_IRQHandler(void)
         LPTIM_ClearFLAG_ARRM(LPTIM);
         EXTI_ClrITPendBit(EXTI_LINE24);
         LPTIM_Disable(LPTIM);
+        rt_kprintf("LPTIM wakeup interrupt\r\n");
     }
     rt_interrupt_leave();
 }
@@ -107,9 +108,9 @@ static rt_err_t n32_lptimer_control(rt_hwtimer_t* timer, rt_uint32_t cmd, void* 
 
     switch (cmd) {
         case DRV_HW_LPTIMER_CTRL_GET_FREQ:
-            /* timer default frequency as 32768 Hz */
+            /* timer default frequency as 40000 Hz */
             if (args != RT_NULL) {
-                *(rt_uint32_t*)args = 32768;
+                *(rt_uint32_t*)args = 40000;
             }
             break;
         case HWTIMER_CTRL_STOP:
