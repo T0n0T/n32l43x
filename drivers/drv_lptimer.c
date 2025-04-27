@@ -17,8 +17,8 @@ static const struct rt_hwtimer_info n32_lptimer_info = {
 void LPTIM_WKUP_IRQHandler(void)
 {
     rt_interrupt_enter();
-    if (LPTIM_IsActiveFlag_ARRM(LPTIM) != RESET) {
-        LPTIM_ClearFLAG_ARRM(LPTIM);
+    if (LPTIM_IsActiveFlag_CMPM(LPTIM) != RESET) {
+        LPTIM_ClearFLAG_CMPM(LPTIM);
         EXTI_ClrITPendBit(EXTI_LINE24);
         LPTIM_Disable(LPTIM);
         // rt_kprintf("LPTIM wakeup interrupt\r\n");
@@ -74,11 +74,12 @@ static rt_err_t n32_lptimer_start(rt_hwtimer_t* timer, rt_uint32_t cnt, rt_hwtim
 {
     struct n32_lptimer* lptimer = (struct n32_lptimer*)timer;
 
-    LPTIM_EnableIT_ARRM(lptimer->timer_periph);
+    LPTIM_EnableIT_CMPM(lptimer->timer_periph);
     LPTIM_Enable(lptimer->timer_periph);
-
-    /* Set autoreload value */
-    LPTIM_SetAutoReload(lptimer->timer_periph, cnt);
+    
+    /* Set compare value */
+    LPTIM_SetAutoReload(lptimer->timer_periph, 0xFFFF);
+    LPTIM_SetCompare(lptimer->timer_periph, cnt);
 
     /* Start timer in selected mode */
     if (mode == HWTIMER_MODE_ONESHOT) {
@@ -86,8 +87,8 @@ static rt_err_t n32_lptimer_start(rt_hwtimer_t* timer, rt_uint32_t cnt, rt_hwtim
     } else {
         LPTIM_StartCounter(lptimer->timer_periph, LPTIM_OPERATING_MODE_CONTINUOUS);
     }
-    __NOP();
-    __NOP();
+    // __NOP();
+    // __NOP();
 
     return RT_EOK;
 }
@@ -101,7 +102,7 @@ static void n32_lptimer_stop(rt_hwtimer_t* timer)
 static rt_uint32_t n32_lptimer_count_get(rt_hwtimer_t* timer)
 {
     struct n32_lptimer* lptimer = (struct n32_lptimer*)timer;
-    return LPTIM_GetAutoReload(lptimer->timer_periph);
+    return LPTIM_GetCounter(lptimer->timer_periph);
 }
 
 static rt_err_t n32_lptimer_control(rt_hwtimer_t* timer, rt_uint32_t cmd, void* args)
