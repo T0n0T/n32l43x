@@ -1,21 +1,15 @@
-#include <rtthread.h>
-#include <rtdevice.h>
-#include "drv_gpio.h"
-#include <stdio.h>
-
-#define RUN_LED GET_PIN(B, 4)
+#include "board.h"
+#include "led.h"
 
 int main(void)
 {
-    rt_pin_mode(RUN_LED, PIN_MODE_OUTPUT);
-    rt_pin_write(RUN_LED, PIN_LOW);
-
+    board_init();
+    led_init();
     while (1) {
-        rt_pin_write(RUN_LED, PIN_HIGH);
-        rt_thread_mdelay(1000);
-        rt_pin_write(RUN_LED, PIN_LOW);
-        rt_thread_mdelay(1000); 
+        led_toggle(LED_RUN);
+        for (volatile int i = 0; i < SystemCoreClock / 50; i++)
+            __NOP();
     }
+
     return 0;
 }
-

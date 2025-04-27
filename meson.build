@@ -17,9 +17,9 @@ c_args = [
   '-mfpu=fpv4-sp-d16',
   '-mfloat-abi=hard',
   '-Wall',
+  '-specs=picolibc.specs',
   '-ffunction-sections',
   '-fdata-sections',
-  '-specs=picolibc.specs',
   '-O0',                    # 优化等级2
   '-fdata-sections',        # 将数据放入独立段
   '-ffunction-sections',    # 将函数放入独立段
@@ -42,7 +42,6 @@ link_args = [
 
 # 包含子目录构建脚本
 subdir('firmware')
-subdir('rtos')
 subdir('applications')
 subdir('drivers')
 subdir('middlewares/cm_backtrace')
@@ -50,8 +49,8 @@ subdir('middlewares/easylogger')
 
 appdep_incdirs = []
 appdep_sources = []
-# appdep_incdirs += log_incs
-# appdep_sources += log_srcs
+appdep_incdirs += log_incs
+appdep_sources += log_srcs
 if get_option('buildtype').startswith('debug')
   message('Use debug buildtype' + get_option('buildtype'))
   appdep_sources += cmb_srcs
@@ -66,20 +65,18 @@ n32l40x_elf = executable('n32l40x',
   sources: [ 
     applications_sources,
     drivers_sources,
-    rtos_sources,
     appdep_sources,
   ],
   include_directories: [
     applications_incdirs,
     drivers_incdirs,
     firmware_incdirs, 
-    rtos_incdirs,
     appdep_incdirs, 
   ],
   link_with: [
     firmware_lib,            # 链接firmware静态库
   ],
-  c_args: c_args + rtos_c_args,
+  c_args: c_args,
   link_args: link_args,
   name_suffix: 'elf'
 )

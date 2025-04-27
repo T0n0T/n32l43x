@@ -1,20 +1,14 @@
-#include <rthw.h>
-#include <rtthread.h>
-#include "n32l40x.h"
+#include <stdio.h>
+#include <stdint.h>
+#include <elog.h>
 #include "board.h"
+#include "n32l40x_lptim.h"
+#include "n32l40x_lpuart.h"
 
-/**
- * @brief  Configures Vector Table base location.
- */
-void nvic_configuration(void)
+void board_init(void)
 {
-#ifdef VECT_TAB_RAM
-    /* Set the Vector Table base location at 0x20000000 */
-    NVIC_SetVectorTable(NVIC_VectTab_RAM, 0x0);
-#else /* VECT_TAB_FLASH  */
-    /* Set the Vector Table base location at 0x08000000 */
-    NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0);
-#endif
+    RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
+    set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE);
 }
 
 void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)
@@ -180,77 +174,5 @@ void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)
     }
 
     /* Configure the SysTick */
-    SysTick_Config(freq / RT_TICK_PER_SECOND); /* 1ms */
+    SysTick_Config(freq / 1000); /* 1ms */
 }
-
-#ifdef DEBUG
-#include <n32l40x_dbg.h>
-#endif
-
-void rt_hw_board_init()
-{
-    /* NVIC Configuration */
-    nvic_configuration();
-    RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
-    set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
-
-#ifdef DEBUG
-    DBG_ConfigPeriph(DBG_SLEEP | DBG_STOP | DBG_STDBY, ENABLE);
-#endif
-
-#ifdef RT_USING_HEAP
-    rt_system_heap_init((void*)HEAP_START, (void*)HEAP_END);
-#endif
-
-#ifdef RT_USING_PIN
-    extern int rt_hw_pin_init(void);
-    rt_hw_pin_init();
-#endif
-
-#ifdef RT_USING_SERIAL
-#if defined(BSP_USING_LPUART)
-    extern int rt_hw_lpuart_init(void);
-    rt_hw_lpuart_init();
-#ifdef RT_USING_CONSOLE
-    rt_console_set_device("lpuart");
-#endif
-#elif defined(BSP_USING_USART1)
-    extern int rt_hw_usart_init(void);
-    rt_hw_usart_init();
-#ifdef RT_USING_CONSOLE
-    rt_console_set_device("usart1");
-#endif
-#endif
-#endif
-
-/* Call components board initial (use INIT_BOARD_EXPORT()) */
-#ifdef RT_USING_COMPONENTS_INIT
-    rt_components_board_init();
-#endif
-}
-
-void SysTick_Handler(void)
-{
-    /* enter interrupt */
-    rt_interrupt_enter();
-
-    rt_tick_increase();
-
-    /* leave interrupt */
-    rt_interrupt_leave();
-}
-
-#ifdef RT_USING_PM
-#include <drivers/pm.h>
-rt_tick_t pm_timer_next_timeout_tick(rt_uint8_t mode)
-{
-    switch (mode) {
-        case PM_SLEEP_MODE_LIGHT:
-        case PM_SLEEP_MODE_DEEP:
-            return rt_timer_next_timeout_tick();
-        case PM_SLEEP_MODE_STANDBY:
-    }
-
-    return RT_TICK_MAX;
-}
-#endif /* RT_USING_PM */

@@ -1,27 +1,34 @@
-#include <elog.h>
-#include <rthw.h>
-#include <rtthread.h>
-#include <rtdevice.h>
+/*
+ * This file is part of the EasyLogger Library.
+ *
+ * Copyright (c) 2015, Armink, <armink.ztl@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * 'Software'), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * Function: Portable interface for non-os stm32f10x.
+ * Created on: 2015-04-28
+ */
 
-static struct rt_semaphore output_lock;
-
-#ifdef ELOG_ASYNC_OUTPUT_ENABLE
-static struct rt_semaphore output_notice;
-
-static void async_output(void* arg);
-#endif
-
-int rt_elog_init(void)
-{
-    /* initialize EasyLogger */
-    elog_init();
-    /* set EasyLogger log format */
-    elog_set_fmt(ELOG_LVL_DEBUG, ELOG_FMT_ALL & ~ELOG_FMT_FUNC);
-    /* start EasyLogger */
-    elog_start();
-    return 0;
-}
-INIT_APP_EXPORT(rt_elog_init);
+#include "elog.h"
+#include <stdio.h>
+#include "n32l40x.h"
 
 /**
  * EasyLogger port initialize
@@ -32,18 +39,6 @@ ElogErrCode elog_port_init(void)
 {
     ElogErrCode result = ELOG_NO_ERR;
 
-    rt_sem_init(&output_lock, "elog lock", 1, RT_IPC_FLAG_PRIO);
-
-#ifdef ELOG_ASYNC_OUTPUT_ENABLE
-    rt_thread_t async_thread = NULL;
-
-    rt_sem_init(&output_notice, "elog async", 0, RT_IPC_FLAG_PRIO);
-
-    async_thread = rt_thread_create("elog_async", async_output, NULL, 1024, RT_THREAD_PRIORITY_MAX - 1, 10);
-    if (async_thread) {
-        rt_thread_startup(async_thread);
-    }
-#endif
     return result;
 }
 
@@ -56,9 +51,8 @@ ElogErrCode elog_port_init(void)
 void elog_port_output(const char* log, size_t size)
 {
     /* output to terminal */
-    rt_kprintf("%.*s", size, log);
-    /* output to flash */
-    // elog_flash_write(log, size);
+    printf("%.*s", size, log);
+    // TODO output to flash
 }
 
 /**
@@ -66,7 +60,7 @@ void elog_port_output(const char* log, size_t size)
  */
 void elog_port_output_lock(void)
 {
-    rt_sem_take(&output_lock, RT_WAITING_FOREVER);
+    __disable_irq();
 }
 
 /**
@@ -74,7 +68,7 @@ void elog_port_output_lock(void)
  */
 void elog_port_output_unlock(void)
 {
-    rt_sem_release(&output_lock);
+    __enable_irq();
 }
 
 /**
@@ -84,9 +78,7 @@ void elog_port_output_unlock(void)
  */
 const char* elog_port_get_time(void)
 {
-    static char cur_system_time[16] = {0};
-    rt_snprintf(cur_system_time, 16, "tick:%010d", rt_tick_get());
-    return cur_system_time;
+    return "10:08:12";
 }
 
 /**
@@ -96,7 +88,7 @@ const char* elog_port_get_time(void)
  */
 const char* elog_port_get_p_info(void)
 {
-    return "";
+    return "pid:1008";
 }
 
 /**
@@ -106,41 +98,5 @@ const char* elog_port_get_p_info(void)
  */
 const char* elog_port_get_t_info(void)
 {
-    return rt_thread_self()->parent.name;
+    return "tid:24";
 }
-
-#ifdef ELOG_ASYNC_OUTPUT_ENABLE
-void elog_async_output_notice(void)
-{
-    rt_sem_release(&output_notice);
-}
-
-static void async_output(void* arg)
-{
-    size_t      get_log_size = 0;
-    static char poll_get_buf[ELOG_LINE_BUF_SIZE - 4];
-
-    while (true) {
-        /* waiting log */
-        rt_sem_take(&output_notice, RT_WAITING_FOREVER);
-        rt_pm_request(PM_SLEEP_MODE_NONE);
-        /* polling gets and outputs the log */
-        while (true) {
-
-#ifdef ELOG_ASYNC_LINE_OUTPUT
-            get_log_size = elog_async_get_line_log(poll_get_buf, sizeof(poll_get_buf));
-#else
-            get_log_size = elog_async_get_log(poll_get_buf, sizeof(poll_get_buf));
-#endif
-
-            if (get_log_size) {
-                elog_port_output(poll_get_buf, get_log_size);
-            } else {
-                break;
-            }
-        }
-        /* release pm request */
-        rt_pm_release(PM_SLEEP_MODE_NONE);
-    }
-}
-#endif
