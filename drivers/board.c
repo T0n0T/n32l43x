@@ -181,13 +181,6 @@ void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)
 
     /* Configure the SysTick */
     SysTick_Config(freq / RT_TICK_PER_SECOND); /* 1ms */
-
-    RCC_ClocksType RCC_ClockFreq;
-    RCC_GetClocksFreqValue(&RCC_ClockFreq);
-    // rt_kprintf("SYSCLK: %u\n", (unsigned int)RCC_ClockFreq.SysclkFreq);
-    // rt_kprintf("HCLK: %u\n", (unsigned int)RCC_ClockFreq.HclkFreq);
-    // rt_kprintf("PCLK1: %u\n", (unsigned int)RCC_ClockFreq.Pclk1Freq);
-    // rt_kprintf("PCLK2: %u\n", (unsigned int)RCC_ClockFreq.Pclk2Freq);
 }
 
 #ifdef DEBUG
@@ -246,3 +239,18 @@ void SysTick_Handler(void)
     /* leave interrupt */
     rt_interrupt_leave();
 }
+
+#ifdef RT_USING_PM
+#include <drivers/pm.h>
+rt_tick_t pm_timer_next_timeout_tick(rt_uint8_t mode)
+{
+    switch (mode) {
+        case PM_SLEEP_MODE_LIGHT:
+        case PM_SLEEP_MODE_DEEP:
+            return rt_timer_next_timeout_tick();
+        case PM_SLEEP_MODE_STANDBY:
+    }
+
+    return RT_TICK_MAX;
+}
+#endif /* RT_USING_PM */

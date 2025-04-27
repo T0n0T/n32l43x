@@ -86,6 +86,9 @@ static rt_err_t n32_lptimer_start(rt_hwtimer_t* timer, rt_uint32_t cnt, rt_hwtim
     } else {
         LPTIM_StartCounter(lptimer->timer_periph, LPTIM_OPERATING_MODE_CONTINUOUS);
     }
+    __NOP();
+    __NOP();
+
     return RT_EOK;
 }
 
@@ -98,7 +101,7 @@ static void n32_lptimer_stop(rt_hwtimer_t* timer)
 static rt_uint32_t n32_lptimer_count_get(rt_hwtimer_t* timer)
 {
     struct n32_lptimer* lptimer = (struct n32_lptimer*)timer;
-    return LPTIM_GetCounter(lptimer->timer_periph);
+    return LPTIM_GetAutoReload(lptimer->timer_periph);
 }
 
 static rt_err_t n32_lptimer_control(rt_hwtimer_t* timer, rt_uint32_t cmd, void* args)

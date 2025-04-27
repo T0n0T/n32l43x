@@ -17,6 +17,6 @@ drivers_sources = files(
   'drv_pm.c',
 #   'drv_rtc.c',
 #   'drv_spi.c',
-  'drv_usart.c',
+  # 'drv_usart.c',
 #   'drv_wdt.c'
 )

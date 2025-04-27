@@ -9,16 +9,16 @@ int main(void)
 {
     rt_pin_mode(RUN_LED, PIN_MODE_OUTPUT);
     rt_pin_write(RUN_LED, PIN_LOW);
-    printf("Hello RT-Thread!\n"); 
+    // printf("Hello RT-Thread!\n"); 
 
     while (1) {
-        rt_pm_request(PM_SLEEP_MODE_NONE);
+        // rt_pm_request(PM_SLEEP_MODE_NONE);
         rt_pin_write(RUN_LED, PIN_HIGH);
-        rt_pm_release(PM_SLEEP_MODE_NONE);
+        // rt_pm_release(PM_SLEEP_MODE_NONE);
         rt_thread_mdelay(1000);
-        rt_pm_request(PM_SLEEP_MODE_NONE);
+        // rt_pm_request(PM_SLEEP_MODE_NONE);
         rt_pin_write(RUN_LED, PIN_LOW);
-        rt_pm_release(PM_SLEEP_MODE_NONE);
+        // rt_pm_release(PM_SLEEP_MODE_NONE);
         rt_thread_mdelay(1000); 
     }
     return 0;
