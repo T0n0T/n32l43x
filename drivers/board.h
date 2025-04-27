@@ -2,7 +2,9 @@
 #define __BOARD_H__
 
 #include <stddef.h>
+#include <stdio.h>
 #include "n32l40x.h"
+
 typedef enum {
     SYSCLK_PLLSRC_HSI,
     SYSCLK_PLLSRC_HSIDIV2,

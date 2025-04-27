@@ -15,6 +15,6 @@ typedef struct lpuart_struct {
     uint8_t clk_src;
 } lpuart_t;
 
-void uart_init(void);
+void lpuart_init(void);
 
 #endif /* __LPUART_H__ */

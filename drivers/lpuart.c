@@ -3,8 +3,8 @@
 static lpuart_t _lpuart = {
     .tx_port     = GPIOC,
     .rx_port     = GPIOC,
-    .tx_pin      = GPIO_PIN_11,
-    .rx_pin      = GPIO_PIN_10,
+    .tx_pin      = GPIO_PIN_10,
+    .rx_pin      = GPIO_PIN_11,
     .tx_gpio_clk = RCC_APB2_PERIPH_GPIOC,
     .rx_gpio_clk = RCC_APB2_PERIPH_GPIOC,
     .tx_af       = GPIO_AF0_LPUART,
@@ -50,13 +50,11 @@ void lpuart_init(void)
 
     GPIO_InitStruct(&GPIO_InitStructure);
 
-    /* connect port to USARTx_Tx */
     GPIO_InitStructure.Pin            = _lpuart.tx_pin;
     GPIO_InitStructure.GPIO_Mode      = GPIO_Mode_AF_PP;
     GPIO_InitStructure.GPIO_Alternate = _lpuart.tx_af;
     GPIO_InitPeripheral(_lpuart.tx_port, &GPIO_InitStructure);
 
-    /* connect port to USARTx_Rx */
     GPIO_InitStructure.Pin            = _lpuart.rx_pin;
     GPIO_InitStructure.GPIO_Pull      = GPIO_Pull_Up;
     GPIO_InitStructure.GPIO_Alternate = _lpuart.rx_af;
@@ -95,7 +93,7 @@ void lpuart_init(void)
 
 void LPUART_IRQHandler(void)
 {
-    if (LPUART_GetIntStatus(LPUART_INT_TXC) != RESET) {
+    if (LPUART_GetIntStatus(LPUART_INT_FIFO_NE) != RESET) {
     }
 
     if (LPUART_GetIntStatus(LPUART_INT_WUF) != RESET) {
@@ -128,6 +126,7 @@ STDIO_ALIAS(stderr);
 
 static int __fputc(char c, FILE* file)
 {
+    LPUART_ClrIntPendingBit(LPUART_INT_TXC);
     LPUART_SendData(c);
     while (LPUART_GetFlagStatus(LPUART_FLAG_TXC) == RESET);
     return c;
