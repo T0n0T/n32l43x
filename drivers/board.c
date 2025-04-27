@@ -172,7 +172,4 @@ void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)
         /* MSI oscillator OFF */
         RCC_ConfigMsi(RCC_MSI_DISABLE, RCC_MSI_RANGE_4M);
     }
-
-    /* Configure the SysTick */
-    SysTick_Config(freq / 1000); /* 1ms */
 }
