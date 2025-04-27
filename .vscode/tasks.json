@@ -29,6 +29,13 @@
             "group": "build",
             "dependsOn": ["build"],
             "problemMatcher": []
+        },
+        {
+            "label": "disasmbly",
+            "type": "shell",
+            "command": "meson compile -C build disasm",
+            "group": "build",
+            "problemMatcher": []
         }
     ]
 }

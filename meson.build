@@ -60,6 +60,8 @@ if get_option('buildtype').startswith('debug')
   c_args += '-DDEBUG'
 endif
 
+firmware_dep = dependency('firmware')
+
 # 创建最终可执行文件
 n32l40x_elf = executable('n32l40x',
   sources: [ 
@@ -73,8 +75,8 @@ n32l40x_elf = executable('n32l40x',
     firmware_incdirs, 
     appdep_incdirs, 
   ],
-  link_with: [
-    firmware_lib,            # 链接firmware静态库
+  dependencies: [
+    firmware_dep,
   ],
   c_args: c_args,
   link_args: link_args,
@@ -83,8 +85,9 @@ n32l40x_elf = executable('n32l40x',
 
 # 配置objcopy工具
 objcopy = find_program('arm-none-eabi-objcopy')
-# 根据操作系统选择JLink可执行文件名称
+objdump = find_program('arm-none-eabi-objdump')
 
+# 根据操作系统选择JLink可执行文件名称
 jlink_exe = 'JLinkExe'
 if build_machine.system() == 'windows'
   jlink_exe = 'JLink'
@@ -99,6 +102,14 @@ custom_target('hex',
   output: 'n32l40x.hex',
   command: [objcopy, '-O', 'ihex', '@INPUT@', '@OUTPUT@'],
   build_by_default: true
+)
+
+run_target('disasm',
+  command: [
+    'sh', '-c',
+    objdump.full_path() + ' -d -S -l -C ' + n32l40x_elf.full_path() + ' > ' + 
+    meson.current_build_dir() / 'n32l40x.dis'
+  ]
 )
 
 # 添加下载目标

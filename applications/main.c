@@ -7,7 +7,7 @@ int main(void)
     led_init();
     while (1) {
         led_toggle(LED_RUN);
-        for (volatile int i = 0; i < SystemCoreClock / 100; i++)
+        for (volatile int i = 0; i < SystemCoreClock / 8; i++)
             __NOP();
     }
 

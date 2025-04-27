@@ -86,15 +86,21 @@ foreach lib : prebuilt_libs
     )
 endforeach
 
-# 导出变量供根目录使用
-meson.override_dependency('firmware', firmware_deps)
-
-# 编译为静态库(包含源码和预编译库)
+# 编译为静态库
 firmware_lib = static_library(
-  'firmware',
-  sources: firmware_sources,
-  objects: prebuilt_libs,
-  include_directories: firmware_incdirs,
-  c_args: c_args + firmware_c_args,
-  pic: false,
+    'firmware',
+    sources: firmware_sources,
+    include_directories: firmware_incdirs,
+    c_args: c_args + firmware_c_args,
+    dependencies: firmware_deps,  # 使用dependencies而不是objects
+    pic: false,
+)
+
+# 导出变量供根目录使用
+meson.override_dependency('firmware', 
+    declare_dependency(
+        link_with: firmware_lib,
+        include_directories: firmware_incdirs,
+        dependencies: firmware_deps
+    )
 )
