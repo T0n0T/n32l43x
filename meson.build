@@ -46,11 +46,13 @@ subdir('applications')
 subdir('drivers')
 subdir('middlewares/cm_backtrace')
 subdir('middlewares/easylogger')
+subdir('middlewares/qpc')
+subdir('middlewares/multibutton')
 
 appdep_incdirs = []
 appdep_sources = []
-appdep_incdirs += log_incs
-appdep_sources += log_srcs
+appdep_incdirs += [log_incs, btn_incs]
+appdep_sources += [log_srcs, btn_srcs]
 if get_option('buildtype').startswith('debug')
   message('Use debug buildtype' + get_option('buildtype'))
   appdep_sources += cmb_srcs
@@ -66,11 +68,13 @@ firmware_dep = dependency('firmware')
 n32l40x_elf = executable('n32l40x',
   sources: [ 
     applications_sources,
+    qp_sources,
     drivers_sources,
     appdep_sources,
   ],
   include_directories: [
     applications_incdirs,
+    qpc_incdirs,
     drivers_incdirs,
     firmware_incdirs, 
     appdep_incdirs, 

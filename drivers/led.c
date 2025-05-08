@@ -6,8 +6,19 @@ static led_t leds[LED_MAX] = {
         .clk          = RCC_APB2_PERIPH_GPIOB,
         .pin          = GPIO_PIN_4,
         .active_level = Bit_RESET,
+    },
+    {
+        .port         = GPIOA,
+        .clk          = RCC_APB2_PERIPH_GPIOA,
+        .pin          = GPIO_PIN_8,
+        .active_level = Bit_RESET,
+    },
+    {
+        .port         = GPIOB,
+        .clk          = RCC_APB2_PERIPH_GPIOB,
+        .pin          = GPIO_PIN_5,
+        .active_level = Bit_RESET,
     }
-
 };
 
 void led_init(void)
