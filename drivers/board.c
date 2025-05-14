@@ -3,8 +3,8 @@
 #include "elog.h"
 #include "cm_backtrace.h"
 #include "board.h"
-#include "n32l40x_lptim.h"
-#include "n32l40x_lpuart.h"
+#include "n32l43x_lptim.h"
+#include "n32l43x_lpuart.h"
 
 void board_init(void)
 {

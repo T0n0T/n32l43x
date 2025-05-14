@@ -1,6 +1,6 @@
 option('TARGET_PLATFORM',
   type: 'string',
-  value: 'n32l40x',
+  value: 'n32l43x',
   description: 'Target platform name')
 
 option('TARGET_USE_LOG',

@@ -28,7 +28,7 @@
 
 #include "elog.h"
 #include <stdio.h>
-#include "n32l40x.h"
+#include "n32l43x.h"
 
 /**
  * EasyLogger port initialize

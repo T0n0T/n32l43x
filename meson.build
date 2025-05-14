@@ -34,8 +34,8 @@ link_args = [
   '-Wl,--gc-sections',
   '-specs=picolibc.specs',
   '-Xlinker',
-  '-Map=' + meson.current_build_dir() + '/n32l40x.map',
-  '-T', meson.current_source_dir() + '/n32l40x.ld',
+  '-Map=' + meson.current_build_dir() + '/n32l43x.map',
+  '-T', meson.current_source_dir() + '/n32l43x.ld',
   '-Wl,--gc-sections',     # 删除未使用的段
   '-Wl,--print-memory-usage', # 打印内存使用情况
 ]

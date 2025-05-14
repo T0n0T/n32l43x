@@ -1,6 +1,6 @@
 # 固件特定编译选项
 firmware_c_args = [
-  '-DN32L40X',
+  '-DN32L43X',
   '-DUSE_STDPERIPH_DRIVER',
 ]
 

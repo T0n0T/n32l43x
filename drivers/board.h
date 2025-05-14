@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
-#include "n32l40x.h"
+#include "n32l43x.h"
 
 typedef enum {
     SYSCLK_PLLSRC_HSI,
