@@ -1,14 +1,14 @@
 #include "lpuart.h"
 
 static lpuart_t _lpuart = {
-    .tx_port     = GPIOC,
-    .rx_port     = GPIOC,
-    .tx_pin      = GPIO_PIN_10,
-    .rx_pin      = GPIO_PIN_11,
-    .tx_gpio_clk = RCC_APB2_PERIPH_GPIOC,
-    .rx_gpio_clk = RCC_APB2_PERIPH_GPIOC,
-    .tx_af       = GPIO_AF0_LPUART,
-    .rx_af       = GPIO_AF0_LPUART,
+    .tx_port     = GPIOA,
+    .rx_port     = GPIOA,
+    .tx_pin      = GPIO_PIN_4,
+    .rx_pin      = GPIO_PIN_3,
+    .tx_gpio_clk = RCC_APB2_PERIPH_GPIOA,
+    .rx_gpio_clk = RCC_APB2_PERIPH_GPIOA,
+    .tx_af       = GPIO_AF6_LPUART,
+    .rx_af       = GPIO_AF6_LPUART,
     .clk_src     = RCC_LPUARTCLK_SRC_LSE,
 };
 
