@@ -10,7 +10,6 @@ void board_init(void)
 {
     RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
     set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE);
-    cm_backtrace_init("N32L40X", "V1.0", "V1.0");
 }
 
 void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)

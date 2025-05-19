@@ -8,4 +8,5 @@ drivers_sources = files(
     'board.c',
     'led.c',
     'lpuart.c',
+    'rtc.c',
 )

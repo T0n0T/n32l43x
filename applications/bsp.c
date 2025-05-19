@@ -7,6 +7,7 @@
 #include "blinky.h" /* Blinky Application interface */
 #include "led.h"
 #include "lpuart.h"
+#include "rtc.h"
 #include "cm_backtrace.h"
 
 #define BTN_SW1 (1U << 4)
@@ -35,32 +36,21 @@ void assert_failed(char const* const module, int_t const id)
     Q_onAssert(module, id);
 }
 
-/* ISRs  ===============================================*/
-void SysTick_Handler(void)
+void RTC_WKUP_IRQHandler(void)
 {
-    QTIMEEVT_TICK_X(0U, &l_SysTick_Handler); // time events at rate 0
-
-#ifdef Q_SPY
-    uint32_t volatile tmp = SysTick->CTRL; // clear CTRL_COUNTFLAG
-    QS_tickTime_ += QS_tickPeriod_;        // account for the clock rollover
-    Q_UNUSED_PAR(tmp);
-#endif
-
-    QV_ARM_ERRATUM_838869();
+    if (EXTI_GetITStatus(EXTI_LINE20)) {
+        EXTI_ClrITPendBit(EXTI_LINE20);
+        RTC_ClrIntPendingBit(RTC_INT_WUT);
+        QTIMEEVT_TICK_X(0, 0);
+    }
 }
 
 /*..........................................................................*/
 void QV_onIdle(void)
 {
-#ifdef NDEBUG
-    /* Put the CPU and peripherals to the low-power mode.
-     * you might need to customize the clock management for your application,
-     * see the datasheet for your particular Cortex-M MCU.
-     */
-    QV_CPU_SLEEP(); /* atomically go to sleep and enable interrupts */
-#else
-    QF_INT_ENABLE(); /* just enable interrupts */
-#endif
+    QF_INT_ENABLE();
+    PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFE, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
+    SystemCoreClockUpdate();
 }
 
 /* BSP functions ===========================================================*/
@@ -72,7 +62,7 @@ void BSP_init(void)
     SystemCoreClockUpdate();
     cm_backtrace_init("N32L4", "V1.0", "1.0.0");
     led_init();   /* initialize the LEDs */
-    lpuart_init(); /* initialize the LPUART */
+    rtc_init();
 }
 
 void BSP_start(void)
@@ -103,14 +93,10 @@ void QF_onStartup(void)
     /* set up the SysTick timer to fire at BSP_TICKS_PER_SEC rate
      * NOTE: do NOT call OS_CPU_SysTickInit() from uC/OS-II
      */
-    SysTick_Config(SystemCoreClock / BSP_TICKS_PER_SEC);
+    // SysTick_Config(SystemCoreClock / BSP_TICKS_PER_SEC);
 
-    /* set priorities of ALL ISRs used in the system, see NOTE1 */
-    NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + 1U);
-    /* ... */
-
-    /* enable IRQs in the NVIC... */
-    /* ... */
+    // /* set priorities of ALL ISRs used in the system, see NOTE1 */
+    // NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + 1U);
 }
 /*..........................................................................*/
 void QF_onCleanup(void)
@@ -127,27 +113,4 @@ void BSP_ledOn(void)
 void BSP_ledOff(void)
 {
     led_off(LED_1);
-}
-/*..........................................................................*/
-void BSP_ledBlueOn(void)
-{
-    led_on(LED_2);
-}
-
-/*..........................................................................*/
-void BSP_ledBlueOff(void)
-{
-    led_off(LED_2);
-}
-
-/*..........................................................................*/
-void BSP_ledGreenOn(void)
-{
-    led_on(LED_3);
-}
-
-/*..........................................................................*/
-void BSP_ledGreenOff(void)
-{
-    led_off(LED_3);
 }
