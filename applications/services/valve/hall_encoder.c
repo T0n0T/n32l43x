@@ -8,7 +8,7 @@
 #include "hall.h"
 
 // ============================== 硬件配置 ==============================
-#define TICKS_PER_ROTATION 12 // 每圈的跳变次数（6磁铁×2边沿）
+#define TICKS_PER_ROTATION 6 // 每圈的跳变次数（6磁铁×2边沿）
 
 // ======================== 方向映射表 ========================
 typedef struct {
@@ -48,7 +48,30 @@ static const TransitionRule rules[] = {
     {0x30, 0x21, +1},
     {0x21, 0x03, +1},
     // 反转序列（对称定义）
-
+    {0x02, 0x01, -1},
+    {0x04, 0x02, -1},
+    {0x08, 0x04, -1},
+    {0x10, 0x08, -1},
+    {0x20, 0x10, -1},
+    {0x01, 0x20, -1}, // 跨边界
+    {0x03, 0x01, -0},
+    {0x06, 0x02, -0},
+    {0x0C, 0x04, -0},
+    {0x18, 0x08, -0},
+    {0x30, 0x10, -0},
+    {0x21, 0x20, -0},
+    {0x02, 0x03, -1},
+    {0x04, 0x06, -1},
+    {0x08, 0x0C, -1},
+    {0x10, 0x18, -1},
+    {0x20, 0x30, -1},
+    {0x01, 0x21, -1},
+    {0x07, 0x03, -1},
+    {0x0E, 0x06, -1},
+    {0x18, 0x08, -1},
+    {0x30, 0x18, -1},
+    {0x21, 0x30, -1},
+    {0x03, 0x21, -1}
 };
 
 // ======================== 核心逻辑 ========================
@@ -107,15 +130,23 @@ static int8_t check_direction(uint8_t* old, uint8_t* new)
 // 更新旋转计数
 static void update_rotation_count(int8_t dir)
 {
-    static int32_t total_ticks = 0;
+    static int32_t total_ticks = 0; // 总的跳变计数
+    static int32_t rotations   = 0; // 完整圈数
+    static int32_t position    = 0; // 当前位置(0-5)
+
     total_ticks += dir;
 
-    if (abs(total_ticks) >= TICKS_PER_ROTATION) {
-        int32_t full_rotations = total_ticks / TICKS_PER_ROTATION;
-        total_ticks %= TICKS_PER_ROTATION;
-        // 处理完整圈数（如发送事件）
-    }
-    printf("Full rotations: %d\r\n", total_ticks);
+    // 更新位置计数
+    position = (total_ticks % TICKS_PER_ROTATION + TICKS_PER_ROTATION) % TICKS_PER_ROTATION;
+    // 更新圈数
+    rotations = total_ticks / TICKS_PER_ROTATION;
+
+    // 打印详细信息
+    printf("Position: %d/6 (%.1f°), Rotations: %d, Total Ticks: %d\r\n",
+           position,
+           (position * 360.0f / TICKS_PER_ROTATION),
+           rotations,
+           total_ticks);
 }
 
 // ======================== 公开接口 ========================
