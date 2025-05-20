@@ -31,10 +31,22 @@
 #include "bsp.h"    // Board Support Package
 
 //............................................................................
+// int main()
+// {
+//     QF_init();       // initialize the framework and the underlying RT kernel
+//     BSP_init();      // initialize the BSP
+//     BSP_start();     // start the AOs/Threads
+//     return QF_run(); // run the QF application
+// }
+
 int main()
 {
-    QF_init();       // initialize the framework and the underlying RT kernel
-    BSP_init();      // initialize the BSP
-    BSP_start();     // start the AOs/Threads
-    return QF_run(); // run the QF application
+    BSP_init();
+    while (1)
+    {
+        extern void rotary_encoder_update(void);
+        rotary_encoder_update();
+    }
+    
+    return 0;
 }

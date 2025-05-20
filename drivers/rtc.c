@@ -14,8 +14,8 @@ void rtc_init(void)
     RCC_EnableRtcClk(ENABLE);
     RTC_WaitForSynchro();
 
-    RTC_InitStructure.RTC_AsynchPrediv = 255;
-    RTC_InitStructure.RTC_SynchPrediv  = 127; //1hz
+    RTC_InitStructure.RTC_AsynchPrediv = 127;
+    RTC_InitStructure.RTC_SynchPrediv  = 255; //1hz
     RTC_InitStructure.RTC_HourFormat   = RTC_24HOUR_FORMAT;
     RTC_Init(&RTC_InitStructure);
 

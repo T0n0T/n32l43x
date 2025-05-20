@@ -3,6 +3,8 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include "n32l43x.h"
 
 typedef enum {

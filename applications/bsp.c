@@ -5,6 +5,7 @@
 #include "bsp.h"
 #include "board.h"
 #include "blinky.h" /* Blinky Application interface */
+#include "hall.h"
 #include "lcd.h"
 #include "led.h"
 #include "rtc.h"
@@ -23,9 +24,14 @@ Q_NORETURN Q_onAssert(char const* module, int_t id)
 }
 //............................................................................
 /* assert-handling function called by exception handlers in the startup code */
-void assert_failed(char const* const module, int_t const id)
+void assert_failed(const uint8_t* expr, const uint8_t* file, uint32_t line)
 {
-    Q_onAssert(module, id);
+    printf("ERROR in %s:%d\r\n", file, line);
+#ifndef NDEBUG /* debug build? */
+    cm_backtrace_assert(cmb_get_sp());
+    while (1); /* tie the CPU in this endless loop */
+#endif
+    NVIC_SystemReset(); /* reset the CPU */
 }
 
 /* ISRs  ===============================================*/
@@ -57,7 +63,9 @@ void BSP_init(void)
     RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
     led_init(); /* initialize the LEDs */
     uart_init();
-    rtc_init();
+    // rtc_init();
+    hall_init();
+    hall_set_ctr(ENABLE);
 }
 
 void BSP_start(void)
