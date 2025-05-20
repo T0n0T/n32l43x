@@ -29,8 +29,6 @@
 #ifndef BSP_H_
 #define BSP_H_
 
-#define BSP_TICKS_PER_SEC 100U
-
 void BSP_init(void);
 void BSP_start(void);
 void BSP_terminate(int16_t result);

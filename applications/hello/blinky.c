@@ -92,7 +92,7 @@ QState Blinky_initial(Blinky* const me, void const* const par)
     Q_UNUSED_PAR(par); // initialization parameter unused in this case
 
     // arm the time event to expire in half a second and every half second
-    QTimeEvt_armX(&me->timeEvt, BSP_TICKS_PER_SEC / 2U, BSP_TICKS_PER_SEC / 2U);
+    QTimeEvt_armX(&me->timeEvt, 5U, 5U);
 
     // QS software tracing instrumentation (active only when Q_SPY is defined)
     QS_OBJ_DICTIONARY(AO_Blinky);

@@ -9,7 +9,7 @@
 void board_init(void)
 {
     RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
-    set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE);
+    set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSI);
 }
 
 void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)

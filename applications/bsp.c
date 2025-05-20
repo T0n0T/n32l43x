@@ -5,62 +5,45 @@
 #include "bsp.h"
 #include "board.h"
 #include "blinky.h" /* Blinky Application interface */
+#include "lcd.h"
 #include "led.h"
-#include "lpuart.h"
+#include "rtc.h"
+#include "uart.h"
 #include "cm_backtrace.h"
-
-#define BTN_SW1 (1U << 4)
-#define BTN_SW2 (1U << 0)
 
 /* Assertion handler  ======================================================*/
 Q_NORETURN Q_onAssert(char const* module, int_t id)
 {
-    /* TBD: Perform corrective actions and damage control
-     * SPECIFIC to your particular system.
-     */
-    (void)module; /* unused parameter */
-    (void)id;     /* unused parameter */
-
+    printf("ERROR in %s:%d\r\n", module, id);
 #ifndef NDEBUG  /* debug build? */
-    while (1) { /* tie the CPU in this endless loop */
-    }
+    cm_backtrace_assert(cmb_get_sp());
+    while (1); /* tie the CPU in this endless loop */
 #endif
     NVIC_SystemReset(); /* reset the CPU */
 }
 //............................................................................
 /* assert-handling function called by exception handlers in the startup code */
-void assert_failed(char const* const module, int_t const id); // prototype
 void assert_failed(char const* const module, int_t const id)
 {
     Q_onAssert(module, id);
 }
 
 /* ISRs  ===============================================*/
-void SysTick_Handler(void)
+void RTC_WKUP_IRQHandler(void)
 {
-    QTIMEEVT_TICK_X(0U, &l_SysTick_Handler); // time events at rate 0
-
-#ifdef Q_SPY
-    uint32_t volatile tmp = SysTick->CTRL; // clear CTRL_COUNTFLAG
-    QS_tickTime_ += QS_tickPeriod_;        // account for the clock rollover
-    Q_UNUSED_PAR(tmp);
-#endif
-
+    if (EXTI_GetITStatus(EXTI_LINE20)) {
+        EXTI_ClrITPendBit(EXTI_LINE20);
+        RTC_ClrIntPendingBit(RTC_INT_WUT);
+        QTIMEEVT_TICK_X(0, 0);
+    }
     QV_ARM_ERRATUM_838869();
 }
 
 /*..........................................................................*/
 void QV_onIdle(void)
 {
-#ifdef NDEBUG
-    /* Put the CPU and peripherals to the low-power mode.
-     * you might need to customize the clock management for your application,
-     * see the datasheet for your particular Cortex-M MCU.
-     */
-    QV_CPU_SLEEP(); /* atomically go to sleep and enable interrupts */
-#else
-    QF_INT_ENABLE(); /* just enable interrupts */
-#endif
+    QF_INT_ENABLE();
+    // PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
 }
 
 /* BSP functions ===========================================================*/
@@ -71,8 +54,10 @@ void BSP_init(void)
      */
     SystemCoreClockUpdate();
     cm_backtrace_init("N32L4", "V1.0", "1.0.0");
-    led_init();   /* initialize the LEDs */
-    lpuart_init(); /* initialize the LPUART */
+    RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
+    led_init(); /* initialize the LEDs */
+    uart_init();
+    rtc_init();
 }
 
 void BSP_start(void)
@@ -100,17 +85,6 @@ void BSP_start(void)
 /*..........................................................................*/
 void QF_onStartup(void)
 {
-    /* set up the SysTick timer to fire at BSP_TICKS_PER_SEC rate
-     * NOTE: do NOT call OS_CPU_SysTickInit() from uC/OS-II
-     */
-    SysTick_Config(SystemCoreClock / BSP_TICKS_PER_SEC);
-
-    /* set priorities of ALL ISRs used in the system, see NOTE1 */
-    NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + 1U);
-    /* ... */
-
-    /* enable IRQs in the NVIC... */
-    /* ... */
 }
 /*..........................................................................*/
 void QF_onCleanup(void)
@@ -120,34 +94,13 @@ void QF_onCleanup(void)
 /*..........................................................................*/
 void BSP_ledOn(void)
 {
-    led_on(LED_1);
+    led_on(LED_3);
+    printf("LED ON\r\n");
 }
 
 /*..........................................................................*/
 void BSP_ledOff(void)
 {
-    led_off(LED_1);
-}
-/*..........................................................................*/
-void BSP_ledBlueOn(void)
-{
-    led_on(LED_2);
-}
-
-/*..........................................................................*/
-void BSP_ledBlueOff(void)
-{
-    led_off(LED_2);
-}
-
-/*..........................................................................*/
-void BSP_ledGreenOn(void)
-{
-    led_on(LED_3);
-}
-
-/*..........................................................................*/
-void BSP_ledGreenOff(void)
-{
     led_off(LED_3);
+    printf("LED OFF\r\n");
 }
