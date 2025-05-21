@@ -9,7 +9,7 @@
 typedef void (*lptimer_irq_callback_t)(void);
 
 void lptimer_init(void);
-void lptimer_start(uint32_t cnt);
+void lptimer_start(uint32_t cnt, lptimer_irq_callback_t cb);
 void lptimer_stop(void);
 
 #endif /* __LPTIMER_H__ */
