@@ -8,7 +8,7 @@
 #include "hall.h"
 
 // ============================== 硬件配置 ==============================
-#define TICKS_PER_ROTATION 6 // 每圈的跳变次数（6磁铁×2边沿）
+#define TICKS_PER_ROTATION 6 // 每圈的跳变次数（6磁铁）
 
 // ======================== 方向映射表 ========================
 typedef struct {
@@ -114,16 +114,13 @@ static bool is_valid_state(uint8_t* state)
 // 检查方向（允许1-bit误差）
 static int8_t check_direction(uint8_t* old, uint8_t* new)
 {
-    if (!is_valid_state(new)) return 0;
     // 遍历所有预定义规则
     printf("New State: %02X\r\n", *new);
     for (size_t i = 0; i < sizeof(rules) / sizeof(rules[0]); i++) {
         if (rules[i].from == *old && rules[i].to == *new) {
-            *old = *new; // 更新状态
             return rules[i].dir;
         }
     }
-    *old = *new; // 更新状态
     return 0; // 非法跳变
 }
 
@@ -155,12 +152,16 @@ void rotary_encoder_update(void)
     static uint8_t last_state = 0;
     uint8_t        new_state  = read_sensor_state();
 
-    if (new_state != last_state) {
-        int8_t dir = check_direction(&last_state, &new_state);
-        if (dir != 0) {
-            update_rotation_count(dir);
-        } else {
-            // 处理错误（如复位状态）
-        }
+    if (new_state != last_state && is_valid_state(&new_state)) {
+        // 检查方向并更新旋转计数
+        if (is_valid_state(&last_state)) {
+            int8_t dir = check_direction(&last_state, &new_state);
+            if (dir != 0) {
+                update_rotation_count(dir);
+            } else {
+                // 处理错误（如复位状态）
+            }
+        } 
+        last_state = new_state;        
     }
 }

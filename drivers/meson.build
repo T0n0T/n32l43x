@@ -9,6 +9,7 @@ drivers_sources = files(
     'hall.c',
     'lcd.c',
     'led.c',
+    'lptimer.c',
     'rtc.c',
     'uart.c',
 )
