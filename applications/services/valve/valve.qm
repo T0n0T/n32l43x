@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model version="7.0.1" links="0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.state-machine.com/qm/qm7.xsd">
+ <framework name="qpc"/>
+ <package name="Shared" stereotype="0x00">
+  <attribute name="AppSignals" type="enum_t" visibility="0x04" properties="0x00">
+   <code>{
+    LOCK_ON_SIG = Q_USER_SIG,
+    LOCK_OFF_SIG,
+    DATA_COME_SIG,
+    MAX_PUB_SIG,
+
+    TIMEOUT_SIG,
+    MAX_SIG,
+};</code>
+  </attribute>
+ </package>
+ <package name="AOs" stereotype="0x02">
+  <class name="ValveCounter" superclass="qpc::QActive">
+   <operation name="rotary_decode" type="void" visibility="0x00" properties="0x01">
+    <code>    static uint8_t last_state = 0;
+
+    if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
+        // 检查方向并更新旋转计数
+        if (is_valid_state(&amp;last_state)) {
+            int8_t dir = check_direction(&amp;last_state, &amp;new_state);
+            if (dir != 0) {
+                update_rotation_count(dir);
+            } else {
+                // 处理错误（如复位状态）
+            }
+        } 
+        last_state = new_state;        
+    }</code>
+   </operation>
+   <statechart properties="0x00">
+    <initial target="../1">
+     <action>QActive_subscribe(&amp;me-&gt;super, LOCK_ON_SIG);
+QActive_subscribe(&amp;me-&gt;super, LOCK_OFF_SIG);
+QActive_subscribe(&amp;me-&gt;super, DATA_COME_SIG);</action>
+     <initial_glyph conn="17,12,5,1,28,10,-2">
+      <action box="0,-2,10,2"/>
+     </initial_glyph>
+    </initial>
+    <state name="Wait">
+     <tran trig="LOCK_OFF" target="../../2">
+      <tran_glyph conn="18,26,3,1,28,18,-2">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="18,18,25,14"/>
+    </state>
+    <state name="Work">
+     <tran trig="LOCK_ON" target="../../1">
+      <tran_glyph conn="18,46,3,1,30,-22,-5">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <tran trig="DATA_COME">
+      <tran_glyph conn="18,50,3,-1,15">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="18,40,26,14"/>
+    </state>
+    <state_diagram size="147,84"/>
+   </statechart>
+  </class>
+  <class name="ValveShower" superclass="qpc::QActive">
+   <statechart properties="0x00">
+    <state_diagram size="80,50"/>
+   </statechart>
+  </class>
+ </package>
+</model>
