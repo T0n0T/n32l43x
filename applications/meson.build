@@ -13,5 +13,5 @@ applications_sources = files(
   'main.c',
   'bsp.c',
   'blinky/blinky.c',
-  'services/valve/hall_encoder.c'
+  'services/valve/valve_decoder.c'
 )
