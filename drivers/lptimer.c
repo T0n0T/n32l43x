@@ -39,9 +39,8 @@ void LPTIM_WKUP_IRQHandler(void)
 }
 
 void lptimer_init(void) {
-    /* Enable LPTIM clock as 40000KHz */
+    /* Enable LPTIM clock as 40000Hz */
     RCC_EnableLsi(ENABLE);
-    RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
     RCC_ConfigLPTIMClk(RCC_LPTIMCLK_SRC_LSI);
     RCC_EnableRETPeriphClk(RCC_RET_PERIPH_LPTIM, ENABLE);
 
@@ -59,7 +58,7 @@ void lptimer_start(uint32_t cnt, lptimer_irq_callback_t cb)
     lptimer_callback = cb;
     /* Set compare value */
     LPTIM_SetAutoReload(LPTIM, 0xFFFF);
-    LPTIM_SetCompare(LPTIM, cnt);
+    LPTIM_SetCompare(LPTIM, 1);
     LPTIM_StartCounter(LPTIM, LPTIM_OPERATING_MODE_CONTINUOUS);
 }
 

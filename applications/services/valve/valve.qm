@@ -6,59 +6,103 @@
    <code>{
     LOCK_ON_SIG = Q_USER_SIG,
     LOCK_OFF_SIG,
-    DATA_COME_SIG,
+    VALVE_UPDATE_SIG,
     MAX_PUB_SIG,
 
     TIMEOUT_SIG,
     MAX_SIG,
 };</code>
   </attribute>
+  <class name="ValveEvt" superclass="qpc::QEvt">
+   <attribute name="value" type="ValveVal*" visibility="0x00" properties="0x00"/>
+  </class>
+  <class name="ValveVal">
+   <attribute name="total_ticks" type="int32_t" visibility="0x00" properties="0x00"/>
+   <attribute name="rotations" type="int32_t" visibility="0x00" properties="0x00"/>
+   <attribute name="position" type="int32_t" visibility="0x00" properties="0x00"/>
+  </class>
+  <attribute name="Sleep_bits" type="uint32_t" visibility="0x00" properties="0x00"/>
+  <attribute name="Sleep_bit_slot" type="enum_t" visibility="0x04" properties="0x00">
+   <code>{
+    COUNTER_BIT = 1 &lt;&lt; 0,
+    SHOER_BIT   = 1 &lt;&lt; 1,
+};</code>
+  </attribute>
+  <operation name="Sleep_request" type="void" visibility="0x00" properties="0x02">
+   <parameter name="bit" type="uint32_t"/>
+   <code>Sleep_bits |= bit;</code>
+  </operation>
+  <operation name="Sleep_release" type="void" visibility="0x00" properties="0x02">
+   <parameter name="bit" type="uint32_t"/>
+   <code>Sleep_bits &amp;= ~bit;</code>
+  </operation>
  </package>
  <package name="AOs" stereotype="0x02">
   <class name="ValveCounter" superclass="qpc::QActive">
-   <operation name="rotary_decode" type="void" visibility="0x00" properties="0x01">
-    <code>static uint8_t last_state = 0;
+   <attribute name="timeEvt" type="QTimeEvt" visibility="0x02" properties="0x00"/>
+   <statechart properties="0x00">
+    <initial target="../1">
+     <action>QActive_subscribe(&amp;me-&gt;super, LOCK_ON_SIG);
+QActive_subscribe(&amp;me-&gt;super, LOCK_OFF_SIG);</action>
+     <initial_glyph conn="26,16,5,1,18,5,-2">
+      <action box="0,-2,10,2"/>
+     </initial_glyph>
+    </initial>
+    <state name="Wait">
+     <entry brief="set sleep bits 1">sleep_request(COUNTER_BIT);</entry>
+     <exit brief="set sleep bits 0">sleep_release(COUNTER_BIT);</exit>
+     <tran trig="LOCK_OFF" target="../../2">
+      <tran_glyph conn="42,25,1,1,2,13,-2">
+       <action box="2,0,10,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="28,17,14,10">
+      <entry box="0,3,4,2"/>
+      <exit box="0,5,4,2"/>
+     </state_glyph>
+    </state>
+    <state name="Work">
+     <entry brief="switch on hall sensors; start timer to handle sensor data;">hall_set_ctr(ENABLE);
+QTimeEvt_armX(&amp;me-&gt;timeEvt, 1, 1);</entry>
+     <exit brief="stop timer; switch off hall sensors;">QTimeEvt_disarm(&amp;me-&gt;timeEvt);
+hall_set_ctr(DISABLE);</exit>
+     <tran trig="LOCK_ON" target="../../1">
+      <tran_glyph conn="28,38,3,3,-2,-13,2">
+       <action box="-10,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <tran trig="TIMEOUT">
+      <action>static uint8_t last_state = 0;
+static ValveVal _val = {0};
+uint8_t        new_state  = read_sensor_state();
+
 if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
     // 检查方向并更新旋转计数
     if (is_valid_state(&amp;last_state)) {
         int8_t dir = check_direction(&amp;last_state, &amp;new_state);
         if (dir != 0) {
-            update_rotation_count(dir);
+            _val.total_ticks += dir;
+
+            // 更新位置计数
+            _val.position = (_val.total_ticks % TICKS_PER_ROTATION + TICKS_PER_ROTATION) % TICKS_PER_ROTATION;
+            // 更新圈数
+            _val.rotations = _val.total_ticks / TICKS_PER_ROTATION;
+            ValveEvt *pe = Q_NEW(ValveEvt, VALVE_UPDATE_SIG);
+            QACTIVE_PUBLISH(&amp;pe-&gt;super, &amp;me-&gt;super);
         } else {
             // 处理错误（如复位状态）
         }
     } 
     last_state = new_state;        
-}</code>
-   </operation>
-   <statechart properties="0x00">
-    <initial target="../1">
-     <action>QActive_subscribe(&amp;me-&gt;super, LOCK_ON_SIG);
-QActive_subscribe(&amp;me-&gt;super, LOCK_OFF_SIG);</action>
-     <initial_glyph conn="17,12,5,1,28,10,-2">
-      <action box="0,-2,10,2"/>
-     </initial_glyph>
-    </initial>
-    <state name="Wait">
-     <tran trig="LOCK_OFF" target="../../2">
-      <tran_glyph conn="18,26,3,1,28,18,-2">
+}</action>
+      <tran_glyph conn="28,42,3,-1,11">
        <action box="0,-2,10,2"/>
       </tran_glyph>
      </tran>
-     <state_glyph node="18,18,25,14"/>
-    </state>
-    <state name="Works">
-     <tran trig="LOCK_ON" target="../../1">
-      <tran_glyph conn="18,46,3,1,30,-22,-5">
-       <action box="0,-2,10,2"/>
-      </tran_glyph>
-     </tran>
-     <tran trig="DATA_COME">
-      <tran_glyph conn="18,50,3,-1,15">
-       <action box="0,-2,10,2"/>
-      </tran_glyph>
-     </tran>
-     <state_glyph node="18,40,26,14"/>
+     <state_glyph node="28,34,14,10">
+      <entry box="0,3,6,2"/>
+      <exit box="0,5,4,2"/>
+     </state_glyph>
     </state>
     <state_diagram size="147,84"/>
    </statechart>
@@ -73,6 +117,8 @@ QActive_subscribe(&amp;me-&gt;super, LOCK_OFF_SIG);</action>
   <file name="valve_counter.c">
    <text>#include &quot;qpc.h&quot; 
 #include &quot;board.h&quot;
+#include &quot;hall.h&quot;
+#include &quot;valve.h&quot;
 
 $declare ${AOs::ValveCounter}
 
@@ -85,6 +131,12 @@ $define ${AOs::ValveCounter}</text>
 $declare ${Shared}
 
 #endif // __VALVE_H__</text>
+  </file>
+  <file name="valve_public.c">
+   <text>#include &quot;qpc.h&quot; 
+#include &quot;valve.h&quot;
+
+$define ${Shared}</text>
   </file>
  </directory>
 </model>

@@ -8,6 +8,7 @@
 #include "hall.h"
 #include "lcd.h"
 #include "led.h"
+#include "lptimer.h"
 #include "rtc.h"
 #include "uart.h"
 #include "cm_backtrace.h"
@@ -45,6 +46,12 @@ void RTC_WKUP_IRQHandler(void)
     QV_ARM_ERRATUM_838869();
 }
 
+void SysTick_Handler(void)
+{
+    QTIMEEVT_TICK_X(0, 0);
+    QV_ARM_ERRATUM_838869();
+}
+
 /*..........................................................................*/
 void QV_onIdle(void)
 {
@@ -64,6 +71,7 @@ void BSP_init(void)
     led_init(); /* initialize the LEDs */
     uart_init();
     // rtc_init();
+
     hall_init();
     hall_set_ctr(ENABLE);
 }
@@ -93,6 +101,8 @@ void BSP_start(void)
 /*..........................................................................*/
 void QF_onStartup(void)
 {
+    SysTick_Config(SystemCoreClock / 100);
+    NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + 1U);
 }
 /*..........................................................................*/
 void QF_onCleanup(void)
@@ -103,12 +113,14 @@ void QF_onCleanup(void)
 void BSP_ledOn(void)
 {
     led_on(LED_3);
-    printf("LED ON\r\n");
+    extern void rotary_encoder_update(void);
+    rotary_encoder_update();
+    // printf("LED ON\r\n");
 }
 
 /*..........................................................................*/
 void BSP_ledOff(void)
 {
     led_off(LED_3);
-    printf("LED OFF\r\n");
+    // printf("LED OFF\r\n");
 }
