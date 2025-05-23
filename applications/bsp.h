@@ -29,10 +29,15 @@
 #ifndef BSP_H_
 #define BSP_H_
 
+#include "board.h"
+#include "hall.h"
+#include "lcd.h"
+#include "led.h"
+#include "lptimer.h"
+#include "rtc.h"
+#include "uart.h"
+
 void BSP_init(void);
 void BSP_start(void);
-
-void BSP_ledOn(void);
-void BSP_ledOff(void);
 
 #endif // BSP_H_

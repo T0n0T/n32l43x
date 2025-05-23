@@ -3,21 +3,17 @@
  *****************************************************************************/
 #include "qpc.h" /* QP/C API */
 #include "bsp.h"
-#include "board.h"
-#include "blinky.h" /* Blinky Application interface */
-#include "hall.h"
-#include "lcd.h"
-#include "led.h"
-#include "lptimer.h"
-#include "rtc.h"
-#include "uart.h"
+#include "valve.h"
 #include "cm_backtrace.h"
+
+/* Use for sleep judgement */
+uint32_t Sleep_bits;
 
 /* Assertion handler  ======================================================*/
 Q_NORETURN Q_onAssert(char const* module, int_t id)
 {
     printf("ERROR in %s:%d\r\n", module, id);
-#ifndef NDEBUG  /* debug build? */
+#ifndef NDEBUG /* debug build? */
     cm_backtrace_assert(cmb_get_sp());
     while (1); /* tie the CPU in this endless loop */
 #endif
@@ -52,6 +48,17 @@ void SysTick_Handler(void)
     QV_ARM_ERRATUM_838869();
 }
 
+static void wakeup_handle(uint8_t bit)
+{
+    if (bit == Bit_RESET) {
+        static QEvt const wakeEvt = QEVT_INITIALIZER(LOCK_ON_SIG);
+        QACTIVE_PUBLISH(&wakeEvt, &me->super);
+    } else {
+        static QEvt const wakeEvt = QEVT_INITIALIZER(LOCK_OFF_SIG);
+        QACTIVE_PUBLISH(&wakeEvt, &me->super);
+    }
+}
+
 /*..........................................................................*/
 void QV_onIdle(void)
 {
@@ -71,7 +78,7 @@ void BSP_init(void)
     led_init(); /* initialize the LEDs */
     uart_init();
     // rtc_init();
-
+    // wakeup_pin_init(wakeup_handle);
     hall_init();
     hall_set_ctr(ENABLE);
 }
@@ -88,14 +95,22 @@ void BSP_start(void)
 
     // instantiate and start AOs/threads...
 
-    static QEvtPtr blinkyQueueSto[10];
-    Blinky_ctor();
-    QActive_start(AO_Blinky,
-                  1U,                    // QP prio. of the AO
-                  blinkyQueueSto,        // event queue storage
-                  Q_DIM(blinkyQueueSto), // queue length [events]
-                  (void*)0, 0U,          // no stack storage
-                  (void*)0);             // no initialization param
+    static QEvtPtr valveCounterQueueSto[10];
+    ValveCounter_ctor();
+    QActive_start(AO_ValveCounter,
+                  1U,
+                  valveCounterQueueSto,
+                  Q_DIM(valveCounterQueueSto),
+                  (void*)0, 0U,
+                  (void*)0);
+    static QEvtPtr valveShowerQueueSto[10];
+    ValveShower_ctor();
+    QActive_start(AO_ValveShower,
+                  2U,
+                  valveShowerQueueSto,
+                  Q_DIM(valveShowerQueueSto),
+                  (void*)0, 0U,
+                  (void*)0);
 }
 
 /*..........................................................................*/
@@ -103,24 +118,10 @@ void QF_onStartup(void)
 {
     SysTick_Config(SystemCoreClock / 100);
     NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + 1U);
+    static QEvt const wakeEvt = QEVT_INITIALIZER(LOCK_OFF_SIG);
+    QACTIVE_PUBLISH(&wakeEvt, &me->super);
 }
 /*..........................................................................*/
 void QF_onCleanup(void)
 {
-}
-
-/*..........................................................................*/
-void BSP_ledOn(void)
-{
-    led_on(LED_3);
-    extern void rotary_encoder_update(void);
-    rotary_encoder_update();
-    // printf("LED ON\r\n");
-}
-
-/*..........................................................................*/
-void BSP_ledOff(void)
-{
-    led_off(LED_3);
-    // printf("LED OFF\r\n");
 }

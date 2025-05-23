@@ -174,3 +174,85 @@ void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)
         RCC_ConfigMsi(RCC_MSI_DISABLE, RCC_MSI_RANGE_4M);
     }
 }
+
+// void wakeup_pin_init(int wkup_pin, void (*cb)(void))
+// {
+//     uint32_t      clk   = 0;
+//     uint16_t      pin   = 0;
+//     GPIO_Module*  GPIOx = 0;
+//     GPIO_InitType GPIO_InitStructure;
+//     GPIO_InitStruct(&GPIO_InitStructure);
+//     switch ((WAKEUP_PINX)wkup_pin) {
+//         case WAKEUP_PIN0:
+//             pin   = GPIO_PIN_0;
+//             clk   = RCC_APB2_PERIPH_GPIOA;
+//             GPIOx = GPIOA;
+//             break;
+//         case WAKEUP_PIN1:
+//             pin = GPIO_PIN_8;
+//             clk = RCC_APB2_PERIPH_GPIOA;
+//             GPIOx = GPIOA;
+//             break;
+//         case WAKEUP_PIN2:
+//             pin = GPIO_PIN_13;
+//             clk = RCC_APB2_PERIPH_GPIOC;
+//             GPIOx = GPIOC;
+//             break;
+//         default:
+//             return;
+//     }
+//     GPIO_InitStructure.Pin       = pin;
+//     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Input;
+//     GPIO_InitStructure.GPIO_Pull = GPIO_Pull_Down;
+//     RCC_EnableAPB2PeriphClk(clk, ENABLE);
+//     GPIO_InitPeripheral(GPIOx, &GPIO_InitStructure);
+//     PWR_WakeUpPinEnable(wkup_pin, ENABLE);
+// }
+
+static wakeup_handle_func handler;
+
+void wakeup_pin_init(wakeup_handle_func h)
+{
+    GPIO_InitType GPIO_InitStructure;
+    EXTI_InitType EXTI_InitStructure;
+    NVIC_InitType NVIC_InitStructure;
+    GPIO_InitStruct(&GPIO_InitStructure);
+    EXTI_InitStruct(&EXTI_InitStructure);
+
+    /* Enable the GPIO Clock */
+    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOC, ENABLE);
+
+    /*Configure the GPIO pin as input floating*/
+    GPIO_InitStructure.Pin       = GPIO_PIN_13;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Input;
+    GPIO_InitStructure.GPIO_Pull = GPIO_No_Pull;
+    GPIO_InitPeripheral(GPIOC, &GPIO_InitStructure);
+
+    /*Configure key EXTI Line to key input  Pin*/
+    GPIO_ConfigEXTILine(GPIOC_PORT_SOURCE, GPIO_PIN_SOURCE13);
+
+    /*Configure key EXTI line*/
+    EXTI_InitStructure.EXTI_Line    = EXTI_LINE13;
+    EXTI_InitStructure.EXTI_Mode    = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    EXTI_InitPeripheral(&EXTI_InitStructure);
+
+    /*Set key input interrupt priority*/
+    NVIC_InitStructure.NVIC_IRQChannel                   = EXTI15_10_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 1;
+    NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
+
+    NVIC_Init(&NVIC_InitStructure);
+}
+
+void EXTI15_10_IRQHandler(void){
+    if (RESET != EXTI_GetITStatus(EXTI_LINE3)) {
+        uint8_t bit = GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13);
+        if (handler != NULL) {
+            handler(bit);
+        }
+        EXTI_ClrITPendBit(EXTI_LINE13);
+    }
+}

@@ -36,20 +36,30 @@
 //
 //$endhead${.::valve_counter.c} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #include "qpc.h"
-#include "board.h"
-#include "hall.h"
+#include "bsp.h"
 #include "valve.h"
+
+// ======================== 方向映射表 ========================
+typedef struct {
+    uint8_t from; // 起始状态
+    uint8_t to;   // 目标状态
+    int8_t  dir;  // 方向 (+1正转, -1反转)
+} TransitionRule;
 
 //$declare${AOs::ValveCounter} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 //${AOs::ValveCounter} .......................................................
-typedef struct {
+typedef struct ValveCounter {
 // protected:
     QActive super;
 
 // private:
     QTimeEvt timeEvt;
+
+// public:
 } ValveCounter;
+
+extern ValveCounter ValveCounter_inst;
 
 // protected:
 static QState ValveCounter_initial(ValveCounter * const me, void const * const par);
@@ -57,15 +67,119 @@ static QState ValveCounter_Wait(ValveCounter * const me, QEvt const * const e);
 static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e);
 //$enddecl${AOs::ValveCounter} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+// 方向映射表(64x64, 未定义部分置0)
+static const int8_t rules[64][64] = {
+    [0x01] = {
+        [0x02] = +1, [0x20] = -1, [0x03] = +0, [0x21] = -1
+    },
+    [0x02] = {
+        [0x04] = +1, [0x01] = -1, [0x06] = +0, [0x03] = -1
+    },
+    [0x04] = {
+        [0x08] = +1, [0x02] = -1, [0x0C] = +0, [0x06] = -1
+    },
+    [0x08] = {
+        [0x10] = +1, [0x04] = -1, [0x18] = +0, [0x0C] = -1
+    },
+    [0x10] = {
+        [0x20] = +1, [0x08] = -1, [0x30] = +0, [0x18] = -1
+    },
+    [0x20] = {
+        [0x01] = +1, [0x10] = -1, [0x21] = +0, [0x30] = -1
+    },
+    [0x03] = {
+        [0x02] = +1, [0x01] = -0, [0x07] = +1, [0x21] = -1
+    },
+    [0x06] = {
+        [0x04] = +1, [0x02] = -0, [0x0E] = +1, [0x03] = -1
+    },
+    [0x0C] = {
+        [0x08] = +1, [0x04] = -0, [0x18] = +1, [0x06] = -1
+    },
+    [0x18] = {
+        [0x10] = +1, [0x08] = -0, [0x30] = +1, [0x0C] = -1
+    },
+    [0x30] = {
+        [0x20] = +1, [0x10] = -0, [0x21] = +1, [0x18] = -1
+    },
+    [0x21] = {
+        [0x01] = +1, [0x20] = -0, [0x03] = +1, [0x30] = -1
+    },
+    [0x07] = {
+        [0x03] = -1
+    },
+    [0x0E] = {
+        [0x06] = -1
+    }
+};
+
+// ======================== 核心逻辑 ========================
+// 读取传感器状态（6-bit编码）
+static uint8_t read_sensor_state(void)
+{
+    uint8_t state = 0;
+    for (int i = 0; i < HALL_MAX; i++) {
+        if (hall_read(i) == true) {
+            state |= (1 << i);
+        }
+    }
+    return state;
+}
+
+// 检查是否为合法状态（单或双传感器触发）
+static bool is_valid_state(uint8_t* state)
+{
+    switch (*state) {
+        // 单传感器触发
+        case 0x01:
+        case 0x02:
+        case 0x04:
+        case 0x08:
+        case 0x10:
+        case 0x20:
+        // 双传感器触发（相邻两个）
+        case 0x03:
+        case 0x06:
+        case 0x0C:
+        case 0x18:
+        case 0x30:
+        case 0x21:
+            return true;
+        default:
+            return false; // 非法状态（如三个传感器同时触发）,无传感器触发
+    }
+}
+
+// 检查方向（允许1-bit误差）
+static int8_t check_direction(uint8_t* old, uint8_t* new)
+{
+    return rules[*old][*new]; // 直接访问映射表
+}
+
 //$skip${QP_VERSION} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 // Check for the minimum required QP version
 #if (QP_VERSION < 730U) || (QP_VERSION != ((QP_RELEASE^4294967295U)%0x2710U))
 #error qpc version 7.3.0 or higher required
 #endif
 //$endskip${QP_VERSION} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//$define${AOs::AO_ValveCounter} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+//${AOs::AO_ValveCounter} ....................................................
+QActive * const AO_ValveCounter = &ValveCounter_inst.super;
+//$enddef${AOs::AO_ValveCounter} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//$define${AOs::ValveCounter_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+//${AOs::ValveCounter_ctor} ..................................................
+void ValveCounter_ctor(void) {
+    ValveCounter * const me = &ValveCounter_inst;
+    QActive_ctor(&me->super, Q_STATE_CAST(&ValveCounter_initial));
+    QTimeEvt_ctorX(&me->timeEvt, &me->super, TIMEOUT_SIG, 0U);
+}
+//$enddef${AOs::ValveCounter_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$define${AOs::ValveCounter} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 //${AOs::ValveCounter} .......................................................
+ValveCounter ValveCounter_inst;
 
 //${AOs::ValveCounter::SM} ...................................................
 static QState ValveCounter_initial(ValveCounter * const me, void const * const par) {
@@ -81,13 +195,13 @@ static QState ValveCounter_Wait(ValveCounter * const me, QEvt const * const e) {
     switch (e->sig) {
         //${AOs::ValveCounter::SM::Wait}
         case Q_ENTRY_SIG: {
-            sleep_request(COUNTER_BIT);
+            Sleep_request(COUNTER_BIT);
             status_ = Q_HANDLED();
             break;
         }
         //${AOs::ValveCounter::SM::Wait}
         case Q_EXIT_SIG: {
-            sleep_release(COUNTER_BIT);
+            Sleep_release(COUNTER_BIT);
             status_ = Q_HANDLED();
             break;
         }
@@ -131,6 +245,7 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
         case TIMEOUT_SIG: {
             static uint8_t last_state = 0;
             static ValveVal _val = {0};
+            static ValveEvt _ve  = {0};
             uint8_t        new_state  = read_sensor_state();
 
             if (new_state != last_state && is_valid_state(&new_state)) {
@@ -144,8 +259,11 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
                         _val.position = (_val.total_ticks % TICKS_PER_ROTATION + TICKS_PER_ROTATION) % TICKS_PER_ROTATION;
                         // 更新圈数
                         _val.rotations = _val.total_ticks / TICKS_PER_ROTATION;
-                        ValveEvt *pe = Q_NEW(ValveEvt, VALVE_UPDATE_SIG);
-                        QACTIVE_PUBLISH(&pe->super, &me->super);
+
+                        QEvt const se  = QEVT_INITIALIZER(VALVE_UPDATE_SIG);
+                        _ve.super      = se;
+                        _ve.value      = &_val;
+                        QACTIVE_PUBLISH(&_ve.super, &me->super);
                     } else {
                         // 处理错误（如复位状态）
                     }

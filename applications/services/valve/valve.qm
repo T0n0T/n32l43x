@@ -2,7 +2,7 @@
 <model version="7.0.1" links="0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.state-machine.com/qm/qm7.xsd">
  <framework name="qpc"/>
  <package name="Shared" stereotype="0x00">
-  <attribute name="AppSignals" type="enum_t" visibility="0x04" properties="0x00">
+  <attribute name="AppSignals" type="enum" visibility="0x04" properties="0x00">
    <code>{
     LOCK_ON_SIG = Q_USER_SIG,
     LOCK_OFF_SIG,
@@ -13,19 +13,12 @@
     MAX_SIG,
 };</code>
   </attribute>
-  <class name="ValveEvt" superclass="qpc::QEvt">
-   <attribute name="value" type="ValveVal*" visibility="0x00" properties="0x00"/>
-  </class>
-  <class name="ValveVal">
-   <attribute name="total_ticks" type="int32_t" visibility="0x00" properties="0x00"/>
-   <attribute name="rotations" type="int32_t" visibility="0x00" properties="0x00"/>
-   <attribute name="position" type="int32_t" visibility="0x00" properties="0x00"/>
-  </class>
   <attribute name="Sleep_bits" type="uint32_t" visibility="0x00" properties="0x00"/>
-  <attribute name="Sleep_bit_slot" type="enum_t" visibility="0x04" properties="0x00">
+  <attribute name="Sleep_slotbit" type="enum" visibility="0x04" properties="0x00">
    <code>{
-    COUNTER_BIT = 1 &lt;&lt; 0,
-    SHOER_BIT   = 1 &lt;&lt; 1,
+    LOCK_BIT    = 1 &lt;&lt; 0,
+    COUNTER_BIT = 1 &lt;&lt; 1,
+    SHOWER_BIT  = 1 &lt;&lt; 2,
 };</code>
   </attribute>
   <operation name="Sleep_request" type="void" visibility="0x00" properties="0x02">
@@ -36,21 +29,30 @@
    <parameter name="bit" type="uint32_t"/>
    <code>Sleep_bits &amp;= ~bit;</code>
   </operation>
+  <class name="ValveVal">
+   <attribute name="total_ticks" type="int32_t" visibility="0x00" properties="0x00"/>
+   <attribute name="rotations" type="int32_t" visibility="0x00" properties="0x00"/>
+   <attribute name="position" type="int32_t" visibility="0x00" properties="0x00"/>
+  </class>
+  <class name="ValveEvt" superclass="qpc::QEvt">
+   <attribute name="value" type="ValveVal*" visibility="0x00" properties="0x00"/>
+  </class>
  </package>
  <package name="AOs" stereotype="0x02">
   <class name="ValveCounter" superclass="qpc::QActive">
    <attribute name="timeEvt" type="QTimeEvt" visibility="0x02" properties="0x00"/>
+   <attribute name="inst" type="ValveCounter" visibility="0x00" properties="0x01"/>
    <statechart properties="0x00">
     <initial target="../1">
      <action>QActive_subscribe(&amp;me-&gt;super, LOCK_ON_SIG);
 QActive_subscribe(&amp;me-&gt;super, LOCK_OFF_SIG);</action>
-     <initial_glyph conn="26,16,5,1,18,5,-2">
+     <initial_glyph conn="26,14,5,1,18,7,-2">
       <action box="0,-2,10,2"/>
      </initial_glyph>
     </initial>
     <state name="Wait">
-     <entry brief="set sleep bits 1">sleep_request(COUNTER_BIT);</entry>
-     <exit brief="set sleep bits 0">sleep_release(COUNTER_BIT);</exit>
+     <entry brief="set sleep bits 1">Sleep_request(COUNTER_BIT);</entry>
+     <exit brief="set sleep bits 0">Sleep_release(COUNTER_BIT);</exit>
      <tran trig="LOCK_OFF" target="../../2">
       <tran_glyph conn="42,25,1,1,2,13,-2">
        <action box="2,0,10,2"/>
@@ -74,6 +76,7 @@ hall_set_ctr(DISABLE);</exit>
      <tran trig="TIMEOUT">
       <action>static uint8_t last_state = 0;
 static ValveVal _val = {0};
+static ValveEvt _ve  = {0};
 uint8_t        new_state  = read_sensor_state();
 
 if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
@@ -87,8 +90,11 @@ if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
             _val.position = (_val.total_ticks % TICKS_PER_ROTATION + TICKS_PER_ROTATION) % TICKS_PER_ROTATION;
             // 更新圈数
             _val.rotations = _val.total_ticks / TICKS_PER_ROTATION;
-            ValveEvt *pe = Q_NEW(ValveEvt, VALVE_UPDATE_SIG);
-            QACTIVE_PUBLISH(&amp;pe-&gt;super, &amp;me-&gt;super);
+            
+            QEvt const se  = QEVT_INITIALIZER(VALVE_UPDATE_SIG);
+            _ve.super      = se;
+            _ve.value      = &amp;_val;
+            QACTIVE_PUBLISH(&amp;_ve.super, &amp;me-&gt;super);
         } else {
             // 处理错误（如复位状态）
         }
@@ -108,35 +114,199 @@ if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
    </statechart>
   </class>
   <class name="ValveShower" superclass="qpc::QActive">
+   <attribute name="inst" type="ValveShower" visibility="0x00" properties="0x01"/>
    <statechart properties="0x00">
-    <state_diagram size="80,50"/>
+    <initial target="../1">
+     <action>QActive_subscribe(&amp;me-&gt;super, LOCK_ON_SIG);
+QActive_subscribe(&amp;me-&gt;super, LOCK_OFF_SIG);
+QActive_subscribe(&amp;me-&gt;super, VALVE_UPDATE_SIG);</action>
+     <initial_glyph conn="25,12,5,1,19,7,-2">
+      <action box="0,-2,10,2"/>
+     </initial_glyph>
+    </initial>
+    <state name="Wait">
+     <entry>Sleep_request(SHOWER_BIT);</entry>
+     <exit>Sleep_release(SHOWER_BIT);</exit>
+     <tran trig="LOCK_OFF" target="../../2">
+      <tran_glyph conn="42,22,1,1,2,12,-2">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="26,16,16,10">
+      <entry box="0,3,6,2"/>
+      <exit box="0,5,6,2"/>
+     </state_glyph>
+    </state>
+    <state name="Handle">
+     <tran trig="LOCK_ON" target="../../1">
+      <tran_glyph conn="26,34,3,3,-2,-12,2">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <tran trig="VALVE_UPDATE">
+      <action>ValveEvt const *ve = (ValveEvt const *)e;
+printf(&quot;Position: %d/6 (%.1f°), Rotations: %d, Total Ticks: %d\r\n&quot;,
+       ve-&gt;value-&gt;position,
+       (ve-&gt;value-&gt;position * 360.0f / TICKS_PER_ROTATION),
+       ve-&gt;value-&gt;rotations,
+       ve-&gt;value-&gt;total_ticks);</action>
+      <tran_glyph conn="26,38,3,-1,12">
+       <action box="0,-2,13,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="26,30,16,10"/>
+    </state>
+    <state_diagram size="141,83"/>
    </statechart>
   </class>
+  <attribute name="AO_ValveCounter" type="QActive * const" visibility="0x00" properties="0x00">
+   <code>= &amp;ValveCounter_inst.super;</code>
+  </attribute>
+  <operation name="ValveCounter_ctor" type="void" visibility="0x00" properties="0x00">
+   <code>ValveCounter * const me = &amp;ValveCounter_inst;
+QActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveCounter_initial));
+QTimeEvt_ctorX(&amp;me-&gt;timeEvt, &amp;me-&gt;super, TIMEOUT_SIG, 0U);</code>
+  </operation>
+  <attribute name="AO_ValveShower" type="QActive * const" visibility="0x00" properties="0x00">
+   <code>= &amp;ValveShower_inst.super;</code>
+  </attribute>
+  <operation name="ValveShower_ctor" type="void" visibility="0x00" properties="0x00">
+   <code>ValveShower * const me = &amp;ValveShower_inst;
+QActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveShower_initial));</code>
+  </operation>
  </package>
  <directory name=".">
   <file name="valve_counter.c">
    <text>#include &quot;qpc.h&quot; 
-#include &quot;board.h&quot;
-#include &quot;hall.h&quot;
+#include &quot;bsp.h&quot;
 #include &quot;valve.h&quot;
+
+// ======================== 方向映射表 ========================
+typedef struct {
+    uint8_t from; // 起始状态
+    uint8_t to;   // 目标状态
+    int8_t  dir;  // 方向 (+1正转, -1反转)
+} TransitionRule;
 
 $declare ${AOs::ValveCounter}
 
+// 方向映射表(64x64, 未定义部分置0)
+static const int8_t rules[64][64] = {
+    [0x01] = {
+        [0x02] = +1, [0x20] = -1, [0x03] = +0, [0x21] = -1
+    },
+    [0x02] = {
+        [0x04] = +1, [0x01] = -1, [0x06] = +0, [0x03] = -1
+    },
+    [0x04] = {
+        [0x08] = +1, [0x02] = -1, [0x0C] = +0, [0x06] = -1
+    },
+    [0x08] = {
+        [0x10] = +1, [0x04] = -1, [0x18] = +0, [0x0C] = -1
+    },
+    [0x10] = {
+        [0x20] = +1, [0x08] = -1, [0x30] = +0, [0x18] = -1
+    },
+    [0x20] = {
+        [0x01] = +1, [0x10] = -1, [0x21] = +0, [0x30] = -1
+    },
+    [0x03] = {
+        [0x02] = +1, [0x01] = -0, [0x07] = +1, [0x21] = -1
+    },
+    [0x06] = {
+        [0x04] = +1, [0x02] = -0, [0x0E] = +1, [0x03] = -1
+    },
+    [0x0C] = {
+        [0x08] = +1, [0x04] = -0, [0x18] = +1, [0x06] = -1
+    },
+    [0x18] = {
+        [0x10] = +1, [0x08] = -0, [0x30] = +1, [0x0C] = -1
+    },
+    [0x30] = {
+        [0x20] = +1, [0x10] = -0, [0x21] = +1, [0x18] = -1
+    },
+    [0x21] = {
+        [0x01] = +1, [0x20] = -0, [0x03] = +1, [0x30] = -1
+    },
+    [0x07] = {
+        [0x03] = -1
+    },
+    [0x0E] = {
+        [0x06] = -1
+    }
+};
+
+// ======================== 核心逻辑 ========================
+// 读取传感器状态（6-bit编码）
+static uint8_t read_sensor_state(void)
+{
+    uint8_t state = 0;
+    for (int i = 0; i &lt; HALL_MAX; i++) {
+        if (hall_read(i) == true) {
+            state |= (1 &lt;&lt; i);
+        }
+    }
+    return state;
+}
+
+// 检查是否为合法状态（单或双传感器触发）
+static bool is_valid_state(uint8_t* state)
+{
+    switch (*state) {
+        // 单传感器触发
+        case 0x01:
+        case 0x02:
+        case 0x04:
+        case 0x08:
+        case 0x10:
+        case 0x20:
+        // 双传感器触发（相邻两个）
+        case 0x03:
+        case 0x06:
+        case 0x0C:
+        case 0x18:
+        case 0x30:
+        case 0x21:
+            return true;
+        default:
+            return false; // 非法状态（如三个传感器同时触发）,无传感器触发
+    }
+}
+
+// 检查方向（允许1-bit误差）
+static int8_t check_direction(uint8_t* old, uint8_t* new)
+{
+    return rules[*old][*new]; // 直接访问映射表
+}
+
+$define ${AOs::AO_ValveCounter}
+$define ${AOs::ValveCounter_ctor}
 $define ${AOs::ValveCounter}</text>
   </file>
   <file name="valve.h">
    <text>#ifndef __VALVE_H__
 #define __VALVE_H__
 
+#define TICKS_PER_ROTATION 6 // 每圈的跳变次数（6磁铁）
+
 $declare ${Shared}
+$declare ${AOs::AO_ValveCounter}
+$declare ${AOs::ValveCounter_ctor}
+$declare ${AOs::AO_ValveShower}
+$declare ${AOs::ValveShower_ctor}
 
 #endif // __VALVE_H__</text>
   </file>
-  <file name="valve_public.c">
-   <text>#include &quot;qpc.h&quot; 
+  <file name="valve_shower.c">
+   <text>#include &quot;qpc.h&quot;
+#include &quot;bsp.h&quot;
 #include &quot;valve.h&quot;
 
-$define ${Shared}</text>
+$declare ${AOs::ValveShower}
+
+$define ${AOs::AO_ValveShower}
+$define ${AOs::ValveShower_ctor}
+$define ${AOs::ValveShower}</text>
   </file>
  </directory>
 </model>

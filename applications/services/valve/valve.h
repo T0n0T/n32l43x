@@ -38,10 +38,12 @@
 #ifndef __VALVE_H__
 #define __VALVE_H__
 
+#define TICKS_PER_ROTATION 6 // 每圈的跳变次数（6磁铁）
+
 //$declare${Shared} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 //${Shared::AppSignals} ......................................................
-enum_t AppSignals {
+enum AppSignals {
     LOCK_ON_SIG = Q_USER_SIG,
     LOCK_OFF_SIG,
     VALVE_UPDATE_SIG,
@@ -51,30 +53,14 @@ enum_t AppSignals {
     MAX_SIG,
 };
 
-//${Shared::ValveEvt} ........................................................
-typedef struct {
-// protected:
-    QEvt super;
-
-// public:
-    ValveVal* value;
-} ValveEvt;
-
-//${Shared::ValveVal} ........................................................
-typedef struct {
-// public:
-    int32_t total_ticks;
-    int32_t rotations;
-    int32_t position;
-} ValveVal;
-
 //${Shared::Sleep_bits} ......................................................
 extern uint32_t Sleep_bits;
 
-//${Shared::Sleep_bit_slot} ..................................................
-enum_t Sleep_bit_slot {
-    COUNTER_BIT = 1 << 0,
-    SHOER_BIT   = 1 << 1,
+//${Shared::Sleep_slotbit} ...................................................
+enum Sleep_slotbit {
+    LOCK_BIT    = 1 << 0,
+    COUNTER_BIT = 1 << 1,
+    SHOWER_BIT  = 1 << 2,
 };
 
 //${Shared::Sleep_request} ...................................................
@@ -86,6 +72,43 @@ static inline void Sleep_request(uint32_t bit) {
 static inline void Sleep_release(uint32_t bit) {
     Sleep_bits &= ~bit;
 }
+
+//${Shared::ValveVal} ........................................................
+typedef struct {
+// public:
+    int32_t total_ticks;
+    int32_t rotations;
+    int32_t position;
+} ValveVal;
+
+//${Shared::ValveEvt} ........................................................
+typedef struct {
+// protected:
+    QEvt super;
+
+// public:
+    ValveVal* value;
+} ValveEvt;
 //$enddecl${Shared} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//$declare${AOs::AO_ValveCounter} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+//${AOs::AO_ValveCounter} ....................................................
+extern QActive * const AO_ValveCounter;
+//$enddecl${AOs::AO_ValveCounter} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//$declare${AOs::ValveCounter_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+//${AOs::ValveCounter_ctor} ..................................................
+void ValveCounter_ctor(void);
+//$enddecl${AOs::ValveCounter_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//$declare${AOs::AO_ValveShower} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+//${AOs::AO_ValveShower} .....................................................
+extern QActive * const AO_ValveShower;
+//$enddecl${AOs::AO_ValveShower} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//$declare${AOs::ValveShower_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+//${AOs::ValveShower_ctor} ...................................................
+void ValveShower_ctor(void);
+//$enddecl${AOs::ValveShower_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 #endif // __VALVE_H__

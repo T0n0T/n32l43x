@@ -1,7 +1,7 @@
 # 包含目录
 applications_incdirs = include_directories(
   '.',
-  'blinky',
+  'services/valve',
   # 'services',
   # 'services/cmd',
   # 'services/log',
@@ -12,6 +12,6 @@ applications_incdirs = include_directories(
 applications_sources = files(
   'main.c',
   'bsp.c',
-  'blinky/blinky.c',
-  'services/valve/valve_decoder.c'
+  'services/valve/valve_counter.c',
+  'services/valve/valve_shower.c',
 )
