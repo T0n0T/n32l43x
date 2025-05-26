@@ -11,5 +11,6 @@ drivers_sources = files(
     'led.c',
     'lptimer.c',
     'rtc.c',
+    'spi_flash.c',
     'uart.c',
 )
