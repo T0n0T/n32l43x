@@ -46,7 +46,11 @@
 enum AppSignals {
     LOCK_ON_SIG = Q_USER_SIG,
     LOCK_OFF_SIG,
+    VALVE_DAILY_SIG,
     VALVE_UPDATE_SIG,
+    VALVE_CONFIG_PARSE_SIG,
+    VALVE_CONFIG_WRITE_SIG,
+    VALVE_CONFIG_READ_SIG,
     MAX_PUB_SIG,
 
     TIMEOUT_SIG,
@@ -60,7 +64,8 @@ extern uint32_t Sleep_bits;
 enum Sleep_slotbit {
     LOCK_BIT    = 1 << 0,
     COUNTER_BIT = 1 << 1,
-    SHOWER_BIT  = 1 << 2,
+    HANDLER_BIT = 1 << 2,
+    CONFIG_BIT  = 1 << 3,
 };
 
 //${Shared::Sleep_request} ...................................................
@@ -81,14 +86,24 @@ typedef struct {
     int32_t position;
 } ValveVal;
 
+//${Shared::ValveConfig} .....................................................
+typedef struct {} ValveConfig;
+
 //${Shared::ValveEvt} ........................................................
 typedef struct {
 // protected:
     QEvt super;
 
 // public:
-    ValveVal* value;
+    void * msg;
+    ValveEvtType evtType;
 } ValveEvt;
+
+//${Shared::ValveEvtType} ....................................................
+enum ValveEvtType {
+    VALVE_VALUE,
+    VALVE_CONFIG,
+};
 //$enddecl${Shared} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$declare${AOs::AO_ValveCounter} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -100,15 +115,25 @@ extern QActive * const AO_ValveCounter;
 //${AOs::ValveCounter_ctor} ..................................................
 void ValveCounter_ctor(void);
 //$enddecl${AOs::ValveCounter_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//$declare${AOs::AO_ValveShower} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+//$declare${AOs::AO_ValveHandler} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-//${AOs::AO_ValveShower} .....................................................
-extern QActive * const AO_ValveShower;
-//$enddecl${AOs::AO_ValveShower} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//$declare${AOs::ValveShower_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+//${AOs::AO_ValveHandler} ....................................................
+extern QActive * const AO_ValveHandler;
+//$enddecl${AOs::AO_ValveHandler} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//$declare${AOs::ValveHandler_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-//${AOs::ValveShower_ctor} ...................................................
-void ValveShower_ctor(void);
-//$enddecl${AOs::ValveShower_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//${AOs::ValveHandler_ctor} ..................................................
+void ValveHandler_ctor(void);
+//$enddecl${AOs::ValveHandler_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//$declare${AOs::AO_ValveConf} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+//${AOs::AO_ValveConf} .......................................................
+extern QActive * const AO_ValveConf;
+//$enddecl${AOs::AO_ValveConf} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//$declare${AOs::ValveConf_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+//${AOs::ValveConf_ctor} .....................................................
+void ValveConf_ctor(void);
+//$enddecl${AOs::ValveConf_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 #endif // __VALVE_H__

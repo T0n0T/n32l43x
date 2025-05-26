@@ -63,7 +63,9 @@ static void wakeup_handle(uint8_t bit)
 void QV_onIdle(void)
 {
     QF_INT_ENABLE();
-    // PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
+    if (!Sleep_bits) {
+        // PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);        
+    }
 }
 
 /* BSP functions ===========================================================*/
@@ -103,12 +105,12 @@ void BSP_start(void)
                   Q_DIM(valveCounterQueueSto),
                   (void*)0, 0U,
                   (void*)0);
-    static QEvtPtr valveShowerQueueSto[10];
-    ValveShower_ctor();
-    QActive_start(AO_ValveShower,
+    static QEvtPtr valveHandlerQueueSto[10];
+    ValveHandler_ctor();
+    QActive_start(AO_ValveHandler,
                   2U,
-                  valveShowerQueueSto,
-                  Q_DIM(valveShowerQueueSto),
+                  valveHandlerQueueSto,
+                  Q_DIM(valveHandlerQueueSto),
                   (void*)0, 0U,
                   (void*)0);
 }

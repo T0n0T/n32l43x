@@ -246,7 +246,7 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
             static uint8_t last_state = 0;
             static ValveVal _val = {0};
             static ValveEvt _ve  = {0};
-            uint8_t        new_state  = read_sensor_state();
+            uint8_t new_state    = read_sensor_state();
 
             if (new_state != last_state && is_valid_state(&new_state)) {
                 // 检查方向并更新旋转计数
@@ -262,7 +262,8 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
 
                         QEvt const se  = QEVT_INITIALIZER(VALVE_UPDATE_SIG);
                         _ve.super      = se;
-                        _ve.value      = &_val;
+                        _ve.evtType    = VALVE_VALUE;
+                        _ve.msg        = &_val;
                         QACTIVE_PUBLISH(&_ve.super, &me->super);
                     } else {
                         // 处理错误（如复位状态）

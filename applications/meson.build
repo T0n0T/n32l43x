@@ -13,5 +13,6 @@ applications_sources = files(
   'main.c',
   'bsp.c',
   'services/valve/valve_counter.c',
-  'services/valve/valve_shower.c',
+  'services/valve/valve_handler.c',
+  'services/valve/valve_conf.c',
 )
