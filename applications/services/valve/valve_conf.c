@@ -93,19 +93,14 @@ static QState ValveConf_initial(ValveConf * const me, void const * const par) {
 static QState ValveConf_Active(ValveConf * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        //${AOs::ValveConf::SM::Active}
-        case Q_ENTRY_SIG: {
-            static int count = 0;
-            status_ = Q_HANDLED();
-            break;
-        }
         //${AOs::ValveConf::SM::Active::TIMEOUT}
         case TIMEOUT_SIG: {
-            count = 10;
+            static int count = 10;
             //blinky, toggle led
             count--;
             if(!count){
-                QTimeEvt_disarm(&me->timeEvt, 2000, 2000);
+                QTimeEvt_disarm(&me->timeEvt);
+                count = 0;
             }
             status_ = Q_HANDLED();
             break;

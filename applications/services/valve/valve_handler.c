@@ -47,6 +47,7 @@ typedef struct ValveHandler {
     QActive super;
 
 // public:
+    QTimeEvt timeEvt;
 } ValveHandler;
 
 extern ValveHandler ValveHandler_inst;
@@ -74,6 +75,7 @@ QActive * const AO_ValveHandler = &ValveHandler_inst.super;
 void ValveHandler_ctor(void) {
     ValveHandler * const me = &ValveHandler_inst;
     QActive_ctor(&me->super, Q_STATE_CAST(&ValveHandler_initial));
+    QTimeEvt_ctorX(&me->timeEvt, &me->super, TIMEOUT_SIG, 0U);
 }
 //$enddef${AOs::ValveHandler_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$define${AOs::ValveHandler} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -94,6 +96,14 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
 static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
+        //${AOs::ValveHandler::SM::Idle}
+        case Q_ENTRY_SIG: {
+            #ifdef USE_MODBUS
+            QTimeEvt_armX(&me->timeEvt, 1, 1);
+            #endif
+            status_ = Q_HANDLED();
+            break;
+        }
         //${AOs::ValveHandler::SM::Idle::LOCK_OFF}
         case LOCK_OFF_SIG: {
             status_ = Q_TRAN(&ValveHandler_Handle);
@@ -101,6 +111,14 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
         }
         //${AOs::ValveHandler::SM::Idle::VALVE_DAILY}
         case VALVE_DAILY_SIG: {
+            status_ = Q_HANDLED();
+            break;
+        }
+        //${AOs::ValveHandler::SM::Idle::TIMEOUT}
+        case TIMEOUT_SIG: {
+            #ifdef USE_MODBUS
+
+            #endif
             status_ = Q_HANDLED();
             break;
         }
@@ -136,11 +154,12 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_UPDATE}
         case VALVE_UPDATE_SIG: {
             ValveEvt const *ve = (ValveEvt const *)e;
+            ValveVal const *val = (ValveVal const *)ve->msg;
             printf("Position: %d/6 (%.1f°), Rotations: %d, Total Ticks: %d\r\n",
-                   ve->value->position,
-                   (ve->value->position * 360.0f / TICKS_PER_ROTATION),
-                   ve->value->rotations,
-                   ve->value->total_ticks);
+                val->position,
+                (val->position * 360.0f / TICKS_PER_ROTATION),
+                val->rotations,
+                val->total_ticks);
             status_ = Q_HANDLED();
             break;
         }

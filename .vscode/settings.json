@@ -4,6 +4,8 @@
         "*.json5": "jsonc",
         "*.inc": "shellscript",
         "*.h": "c",
+        "algorithm": "c",
+        "format": "c"
     },
     "cortex-debug.variableUseNaturalFormat": true
 }

@@ -89,6 +89,12 @@ typedef struct {
 //${Shared::ValveConfig} .....................................................
 typedef struct {} ValveConfig;
 
+//${Shared::ValveEvtType} ....................................................
+enum ValveEvtType {
+    VALVE_VALUE,
+    VALVE_CONFIG,
+};
+
 //${Shared::ValveEvt} ........................................................
 typedef struct {
 // protected:
@@ -96,14 +102,8 @@ typedef struct {
 
 // public:
     void * msg;
-    ValveEvtType evtType;
+    enum ValveEvtType evtType;
 } ValveEvt;
-
-//${Shared::ValveEvtType} ....................................................
-enum ValveEvtType {
-    VALVE_VALUE,
-    VALVE_CONFIG,
-};
 //$enddecl${Shared} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$declare${AOs::AO_ValveCounter} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 

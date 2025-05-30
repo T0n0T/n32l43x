@@ -40,16 +40,16 @@
    <attribute name="position" type="int32_t" visibility="0x00" properties="0x00"/>
   </class>
   <class name="ValveConfig"/>
-  <class name="ValveEvt" superclass="qpc::QEvt">
-   <attribute name="msg" type="void *" visibility="0x00" properties="0x00"/>
-   <attribute name="evtType" type="ValveEvtType" visibility="0x00" properties="0x00"/>
-  </class>
   <attribute name="ValveEvtType" type="enum" visibility="0x04" properties="0x00">
    <code>{
     VALVE_VALUE,
     VALVE_CONFIG,
 };</code>
   </attribute>
+  <class name="ValveEvt" superclass="qpc::QEvt">
+   <attribute name="msg" type="void *" visibility="0x00" properties="0x00"/>
+   <attribute name="evtType" type="enum ValveEvtType" visibility="0x00" properties="0x00"/>
+  </class>
  </package>
  <package name="AOs" stereotype="0x02">
   <class name="ValveCounter" superclass="qpc::QActive">
@@ -136,6 +136,7 @@ include:
 - led;
 - wireless;</documentation>
    <attribute name="inst" type="ValveHandler" visibility="0x00" properties="0x01"/>
+   <attribute name="timeEvt" type="QTimeEvt" visibility="0x00" properties="0x00"/>
    <statechart properties="0x00">
     <initial target="../1">
      <action>QActive_subscribe(&amp;me-&gt;super, LOCK_ON_SIG);
@@ -146,7 +147,10 @@ QActive_subscribe(&amp;me-&gt;super, VALVE_UPDATE_SIG);</action>
      </initial_glyph>
     </initial>
     <state name="Idle">
-     <tran trig="LOCK_OFF" target="../2">
+     <entry>#ifdef USE_MODBUS
+QTimeEvt_armX(&amp;me-&gt;timeEvt, 1, 1);
+#endif</entry>
+     <tran trig="LOCK_OFF" target="../3">
       <tran_glyph conn="50,34,1,1,-6">
        <action box="-8,-2,10,2"/>
       </tran_glyph>
@@ -154,6 +158,14 @@ QActive_subscribe(&amp;me-&gt;super, VALVE_UPDATE_SIG);</action>
      <tran trig="VALVE_DAILY">
       <action brief="read flash and publish the event with ValveVal"/>
       <tran_glyph conn="18,24,3,-1,20">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <tran trig="TIMEOUT">
+      <action>#ifdef USE_MODBUS
+
+#endif</action>
+      <tran_glyph conn="18,26,3,-1,20">
        <action box="0,-2,10,2"/>
       </tran_glyph>
      </tran>
@@ -167,11 +179,12 @@ QActive_subscribe(&amp;me-&gt;super, VALVE_UPDATE_SIG);</action>
       </tran>
       <tran trig="VALVE_UPDATE">
        <action brief="handle data write flash action and lcd refresh">ValveEvt const *ve = (ValveEvt const *)e;
+ValveVal const *val = (ValveVal const *)ve-&gt;msg;
 printf(&quot;Position: %d/6 (%.1f°), Rotations: %d, Total Ticks: %d\r\n&quot;,
-       ve-&gt;value-&gt;position,
-       (ve-&gt;value-&gt;position * 360.0f / TICKS_PER_ROTATION),
-       ve-&gt;value-&gt;rotations,
-       ve-&gt;value-&gt;total_ticks);</action>
+    val-&gt;position,
+    (val-&gt;position * 360.0f / TICKS_PER_ROTATION),
+    val-&gt;rotations,
+    val-&gt;total_ticks);</action>
        <tran_glyph conn="24,38,3,-1,14">
         <action box="0,-2,13,2"/>
        </tran_glyph>
@@ -192,7 +205,9 @@ printf(&quot;Position: %d/6 (%.1f°), Rotations: %d, Total Ticks: %d\r\n&quot;,
        <exit box="0,5,6,2"/>
       </state_glyph>
      </state>
-     <state_glyph node="18,16,32,30"/>
+     <state_glyph node="18,16,32,30">
+      <entry box="0,3,6,2"/>
+     </state_glyph>
     </state>
     <state_diagram size="141,83"/>
    </statechart>
@@ -210,13 +225,13 @@ printf(&quot;Position: %d/6 (%.1f°), Rotations: %d, Total Ticks: %d\r\n&quot;,
      </initial_glyph>
     </initial>
     <state name="Active">
-     <entry>static int count = 0;</entry>
      <tran trig="TIMEOUT">
-      <action>count = 10;
+      <action>static int count = 10;
 //blinky, toggle led
 count--;
 if(!count){
-    QTimeEvt_disarm(&amp;me-&gt;timeEvt, 2000, 2000);
+    QTimeEvt_disarm(&amp;me-&gt;timeEvt);
+    count = 0;
 }</action>
       <tran_glyph conn="20,42,3,-1,13">
        <action box="0,-2,10,2"/>
@@ -232,9 +247,7 @@ if(!count){
        <action box="0,-2,18,3"/>
       </tran_glyph>
      </tran>
-     <state_glyph node="20,34,18,14">
-      <entry box="0,3,6,2"/>
-     </state_glyph>
+     <state_glyph node="20,34,18,14"/>
     </state>
     <state name="Wait">
      <entry>Sleep_request(CONFIG_BIT);</entry>
@@ -265,7 +278,8 @@ QTimeEvt_ctorX(&amp;me-&gt;timeEvt, &amp;me-&gt;super, TIMEOUT_SIG, 0U);</code>
   </attribute>
   <operation name="ValveHandler_ctor" type="void" visibility="0x00" properties="0x00">
    <code>ValveHandler * const me = &amp;ValveHandler_inst;
-QActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveHandler_initial));</code>
+QActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveHandler_initial));
+QTimeEvt_ctorX(&amp;me-&gt;timeEvt, &amp;me-&gt;super, TIMEOUT_SIG, 0U);</code>
   </operation>
   <attribute name="AO_ValveConf" type="QActive * const" visibility="0x00" properties="0x00">
    <code>= &amp;ValveConf_inst.super;</code>
