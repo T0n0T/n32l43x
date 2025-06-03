@@ -247,7 +247,8 @@ void wakeup_pin_init(wakeup_handle_func h)
     NVIC_Init(&NVIC_InitStructure);
 }
 
-void EXTI15_10_IRQHandler(void){
+void EXTI15_10_IRQHandler(void)
+{
     if (RESET != EXTI_GetITStatus(EXTI_LINE3)) {
         uint8_t bit = GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13);
         if (handler != NULL) {
@@ -255,4 +256,19 @@ void EXTI15_10_IRQHandler(void){
         }
         EXTI_ClrITPendBit(EXTI_LINE13);
     }
+}
+
+void ble_pwr_pin(void)
+{
+#define BLE_PWR_PORT GPIOB
+#define BLE_PWR_CLK  RCC_APB2_PERIPH_GPIOB
+#define BLE_PWR_PIN  GPIO_PIN_6
+#define BLE_PWR_HIGH BLE_PWR_PORT->PBSC = BLE_PWR_PIN;
+#define BLE_PWR_LOW  BLE_PWR_PORT->PBC = BLE_PWR_PIN;
+    GPIO_InitType GPIO_InitStructure;
+    GPIO_InitStruct(&GPIO_InitStructure);
+    RCC_EnableAPB2PeriphClk(BLE_PWR_CLK, ENABLE);
+    GPIO_InitStructure.Pin       = BLE_PWR_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitPeripheral(BLE_PWR_CLK, &GPIO_InitStructure);
 }

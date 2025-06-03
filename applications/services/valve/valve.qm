@@ -150,6 +150,7 @@ QActive_subscribe(&amp;me-&gt;super, VALVE_CONFIG_READ_SIG);</action>
     </initial>
     <state name="Idle">
      <entry>#ifdef USE_MODBUS
+eMBInit(MB_RTU, 0x01, 1, 115200,  MB_PAR_EVEN);
 QTimeEvt_armX(&amp;me-&gt;timeEvt, 1, 1);
 #endif</entry>
      <tran trig="LOCK_OFF" target="../3">

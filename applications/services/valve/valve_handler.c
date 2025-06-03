@@ -101,6 +101,7 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
         //${AOs::ValveHandler::SM::Idle}
         case Q_ENTRY_SIG: {
             #ifdef USE_MODBUS
+            eMBInit(MB_RTU, 0x01, 1, 115200,  MB_PAR_EVEN);
             QTimeEvt_armX(&me->timeEvt, 1, 1);
             #endif
             status_ = Q_HANDLED();

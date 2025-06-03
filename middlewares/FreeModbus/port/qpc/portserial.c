@@ -31,7 +31,7 @@
 /* ----------------------- Static variables ---------------------------------*/
 static volatile BOOL modbus_rx_state = 0; // 0: receiving, 1: idle
 static volatile BOOL modbus_tx_state = 1; // 0: idle, 1: transmitting
-static char modbus_rx_char = 0;
+static char          modbus_rx_char  = 0;
 
 /* ----------------------- User defenitions ---------------------------------*/
 #define RS485_RTS_PORT          GPIOB
@@ -47,7 +47,8 @@ static void prvvUARTTxReadyISR(void);
 static void prvvUARTRxISR(void);
 
 /* ----------------------- Start implementation -----------------------------*/
-BOOL xMBPortSerialInit(UCHAR ucPORT, ULONG ulBaudRate, void* dHTIM)
+BOOL xMBPortSerialInit(UCHAR ucPort, ULONG ulBaudRate,
+                       UCHAR ucDataBits, eMBParity eParity)
 {
     GPIO_InitType GPIO_InitStructure;
     GPIO_InitStruct(&GPIO_InitStructure);

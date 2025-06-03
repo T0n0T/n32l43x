@@ -1,9 +1,9 @@
 # 包含目录
 applications_incdirs = include_directories(
   '.',
+  'services/cmd',
   'services/valve',
   # 'services',
-  # 'services/cmd',
   # 'services/log',
   # 'tasks',
 )
@@ -15,4 +15,5 @@ applications_sources = files(
   'services/valve/valve_counter.c',
   'services/valve/valve_handler.c',
   'services/valve/valve_conf.c',
+  'services/cmd/cmd_parse.c'
 )

@@ -18,7 +18,6 @@ modbus_srcs = files(
   './modbus/mb.c',
   './modbus/rtu/mbcrc.c',
   './modbus/rtu/mbrtu.c',
-  './port/qpc/port.c',
   './port/qpc/portevent.c',
   './port/qpc/portserial.c',
   './port/qpc/porttimer.c',
