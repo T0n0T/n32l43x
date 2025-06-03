@@ -86,6 +86,9 @@ ValveConf ValveConf_inst;
 //${AOs::ValveConf::SM} ......................................................
 static QState ValveConf_initial(ValveConf * const me, void const * const par) {
     //${AOs::ValveConf::SM::initial}
+    QActive_subscribe(&me->super, LOCK_ON_SIG);
+    QActive_subscribe(&me->super, LOCK_OFF_SIG);
+    QActive_subscribe(&me->super, VALVE_CONFIG_PARSE_SIG);
     return Q_TRAN(&ValveConf_Wait);
 }
 

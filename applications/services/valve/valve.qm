@@ -141,7 +141,9 @@ include:
     <initial target="../1">
      <action>QActive_subscribe(&amp;me-&gt;super, LOCK_ON_SIG);
 QActive_subscribe(&amp;me-&gt;super, LOCK_OFF_SIG);
-QActive_subscribe(&amp;me-&gt;super, VALVE_UPDATE_SIG);</action>
+QActive_subscribe(&amp;me-&gt;super, VALVE_UPDATE_SIG);
+QActive_subscribe(&amp;me-&gt;super, VALVE_CONFIG_WRITE_SIG);
+QActive_subscribe(&amp;me-&gt;super, VALVE_CONFIG_READ_SIG);</action>
      <initial_glyph conn="18,12,5,1,34,7,-2">
       <action box="0,-2,10,2"/>
      </initial_glyph>
@@ -163,7 +165,7 @@ QTimeEvt_armX(&amp;me-&gt;timeEvt, 1, 1);
      </tran>
      <tran trig="TIMEOUT">
       <action>#ifdef USE_MODBUS
-
+eMBPoll(); 
 #endif</action>
       <tran_glyph conn="18,26,3,-1,20">
        <action box="0,-2,10,2"/>
@@ -184,7 +186,10 @@ printf(&quot;Position: %d/6 (%.1f°), Rotations: %d, Total Ticks: %d\r\n&quot;,
     val-&gt;position,
     (val-&gt;position * 360.0f / TICKS_PER_ROTATION),
     val-&gt;rotations,
-    val-&gt;total_ticks);</action>
+    val-&gt;total_ticks);
+#ifdef USE_MODBUS
+//TODO: update modbus reg for valve count
+#endif</action>
        <tran_glyph conn="24,38,3,-1,14">
         <action box="0,-2,13,2"/>
        </tran_glyph>
@@ -220,6 +225,9 @@ printf(&quot;Position: %d/6 (%.1f°), Rotations: %d, Total Ticks: %d\r\n&quot;,
    <attribute name="timeEvt" type="QTimeEvt" visibility="0x00" properties="0x00"/>
    <statechart properties="0x00">
     <initial target="../2">
+     <action>QActive_subscribe(&amp;me-&gt;super, LOCK_ON_SIG);
+QActive_subscribe(&amp;me-&gt;super, LOCK_OFF_SIG);
+QActive_subscribe(&amp;me-&gt;super, VALVE_CONFIG_PARSE_SIG);</action>
      <initial_glyph conn="20,16,5,1,20,7,-2">
       <action box="0,-2,10,2"/>
      </initial_glyph>

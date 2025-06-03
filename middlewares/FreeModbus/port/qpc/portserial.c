@@ -1,6 +1,7 @@
 /*
- * FreeModbus Libary: RT-Thread Port
+ * FreeModbus Libary: QPC Port
  * Copyright (C) 2013 Armink <armink.ztl@gmail.com>
+ * Modified for QPC QV kernel
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -24,158 +25,133 @@
 /* ----------------------- Modbus includes ----------------------------------*/
 #include "mb.h"
 #include "mbport.h"
-#include "board.h"
-#include "ring_buffer.h"
-#include "app_log.h"
 
-#define UART_DATA_LEN      256
+#if MB_SLAVE_RTU_ENABLED > 0 || MB_SLAVE_ASCII_ENABLED > 0
 
-#define SLAVE_UART_TX_NEXT (1 << 0)
-#define SLAVE_UART_RX_COME (1 << 1)
-#define SLAVE_UART_ERR     (1 << 2)
+/* ----------------------- Static variables ---------------------------------*/
+static volatile BOOL modbus_rx_state = 0; // 0: receiving, 1: idle
+static volatile BOOL modbus_tx_state = 1; // 0: idle, 1: transmitting
+static char modbus_rx_char = 0;
 
-static uint8_t          buf;
-static osEventFlagsId_t slaveUartEvent;
-uart_regs_t*            slaveDev;
-uint8_t                 slaveTxRingBuf[UART_DATA_LEN] = {0};
-uint8_t                 slaveRxRingBuf[UART_DATA_LEN] = {0};
-static ring_buffer_t    slaveRxRingBufCB;
+/* ----------------------- User defenitions ---------------------------------*/
+#define RS485_RTS_PORT          GPIOB
+#define RS485_RTS_CLK           RCC_APB2_PERIPH_GPIOB
+#define RS485_RTS_PIN           GPIO_PIN_3
+#define RS485_RTS_HIGH          RS485_RTS_PORT->PBSC = RS485_RTS_PIN;
+#define RS485_RTS_LOW           RS485_RTS_PORT->PBC = RS485_RTS_PIN;
 
-app_uart_params_t slaveUartParams = {
-    .id      = APP_UART_ID_1,
-    .pin_cfg = {
-        .tx = {
-            .type = APP_UART1_TX_IO_TYPE,
-            .mux  = APP_UART1_TX_PINMUX,
-            .pin  = APP_UART1_TX_PIN,
-            .pull = APP_IO_PULLUP,
-        },
-        .rx = {
-            .type = APP_UART1_RX_IO_TYPE,
-            .mux  = APP_UART1_RX_PINMUX,
-            .pin  = APP_UART1_RX_PIN,
-            .pull = APP_IO_PULLUP,
-        },
-    },
-    .init = {
-        .baud_rate       = 9600,
-        .data_bits       = UART_DATABITS_8,
-        .stop_bits       = UART_STOPBITS_1,
-        .parity          = UART_PARITY_NONE,
-        .hw_flow_ctrl    = UART_HWCONTROL_NONE,
-        .rx_timeout_mode = UART_RECEIVER_TIMEOUT_ENABLE,
-    },
-};
+#define USART_MODBUS            USART3
+#define USART_MODBUS_IRQHandler USART3_IRQHandler
 
-void appSlaveUartCallback(app_uart_evt_t* p_evt)
+static void prvvUARTTxReadyISR(void);
+static void prvvUARTRxISR(void);
+
+/* ----------------------- Start implementation -----------------------------*/
+BOOL xMBPortSerialInit(UCHAR ucPORT, ULONG ulBaudRate, void* dHTIM)
 {
-    if (slaveUartEvent != NULL) {
-        if (p_evt->type == APP_UART_EVT_TX_CPLT) {
-            osEventFlagsSet(slaveUartEvent, SLAVE_UART_TX_NEXT);
-        }
-        if (p_evt->type == APP_UART_EVT_RX_DATA) {
-            ring_buffer_write(&slaveRxRingBufCB, &buf, 1);
-            app_uart_receive_async(slaveUartParams.id, &buf, 1);
-            osEventFlagsSet(slaveUartEvent, SLAVE_UART_RX_COME);
-        }
-        if (p_evt->type == APP_UART_EVT_ERROR) {
-            osEventFlagsSet(slaveUartEvent, SLAVE_UART_ERR);
-        }
-        return;
-    }
-}
+    GPIO_InitType GPIO_InitStructure;
+    GPIO_InitStruct(&GPIO_InitStructure);
+    RCC_EnableAPB2PeriphClk(RS485_RTS_CLK, ENABLE);
+    GPIO_InitStructure.Pin       = RS485_RTS_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitPeripheral(RS485_RTS_PORT, &GPIO_InitStructure);
 
-void slaveUartTask(void* p)
-{
-    uint32_t evRecv;
-    while (1) {
-        evRecv = osEventFlagsWait(slaveUartEvent,
-                                  SLAVE_UART_TX_NEXT | SLAVE_UART_RX_COME | SLAVE_UART_ERR,
-                                  osFlagsWaitAny | osFlagsNoClear,
-                                  osWaitForever);
-        if (evRecv & SLAVE_UART_TX_NEXT) {
-            pxMBFrameCBTransmitterEmpty();
-        }
-        if (evRecv & SLAVE_UART_RX_COME) {
-            pxMBFrameCBByteReceived();
-            osEventFlagsClear(slaveUartEvent, SLAVE_UART_RX_COME);
-        }
-        if (evRecv & SLAVE_UART_ERR) {
-            osEventFlagsClear(slaveUartEvent, SLAVE_UART_ERR);
-        }
-    }
-}
+    USART_ClrIntPendingBit(USART_MODBUS, USART_INT_RXDNE);
+    USART_ClrFlag(USART_MODBUS, USART_FLAG_RXDNE);
+    USART_ConfigInt(USART_MODBUS, USART_INT_RXDNE, ENABLE);
 
-BOOL xMBPortSerialInit(UCHAR ucPORT, ULONG ulBaudRate, UCHAR ucDataBits, eMBParity eParity)
-{
-    uint16_t          ret         = 0;
-    app_uart_tx_buf_t uart_buffer = {0};
-    uart_buffer.tx_buf            = slaveTxRingBuf;
-    uart_buffer.tx_buf_size       = sizeof(slaveTxRingBuf);
+    USART_ClrIntPendingBit(USART_MODBUS, USART_INT_TXC);
+    USART_ClrFlag(USART_MODBUS, USART_FLAG_TXC);
+    USART_ConfigInt(USART_MODBUS, USART_INT_TXC, ENABLE);
 
-    app_io_init_t io_init;
-
-    // RS485 使能引脚
-    io_init.pin  = APP_RS485_EN;
-    io_init.mode = APP_IO_MODE_OUTPUT;
-    io_init.pull = APP_IO_PULLUP;
-    io_init.mux  = APP_IO_MUX;
-    app_io_init(APP_RS485_TYPE, &io_init);
-    app_io_set_speed(APP_RS485_TYPE, APP_RS485_EN, APP_IO_SPPED_HIGH);
-    // 低电平为接收状态
-    app_io_write_pin(APP_RS485_TYPE, APP_RS485_EN, APP_IO_PIN_RESET);
-
-    /** please configure uart config at the head **/
-    ret = app_uart_init(&slaveUartParams, appSlaveUartCallback, &uart_buffer);
-    if (ret != APP_DRV_SUCCESS) {
-        return FALSE;
-    }
-
-    slaveDev = app_uart_get_handle(slaveUartParams.id)->p_instance;
-    ring_buffer_init(&slaveRxRingBufCB, slaveRxRingBuf, sizeof(slaveRxRingBuf));
-    slaveUartEvent = osEventFlagsNew(NULL);
-
-    osThreadAttr_t slaveUartTaskParams = {
-        .name       = "slaveUartTask",
-        .stack_size = 512,
-        .priority   = osPriorityRealtime,
-    };
-    osThreadNew((osThreadFunc_t)slaveUartTask, NULL, &slaveUartTaskParams);
+    USART_Enable(USART_MODBUS, ENABLE);
     return TRUE;
 }
 
 void vMBPortSerialEnable(BOOL xRxEnable, BOOL xTxEnable)
 {
     if (xRxEnable) {
-        app_uart_receive_async(slaveUartParams.id, &buf, 1);
+        modbus_rx_state = 1;
+        RS485_RTS_LOW;
     } else {
-        app_uart_abort_receive(slaveUartParams.id);
+        modbus_rx_state = 0;
     }
+
     if (xTxEnable) {
-        app_io_write_pin(APP_RS485_TYPE, APP_RS485_EN, APP_IO_PIN_SET);
-        osEventFlagsSet(slaveUartEvent, SLAVE_UART_TX_NEXT);
+        RS485_RTS_HIGH;
+        modbus_tx_state = 1;
     } else {
-        app_io_write_pin(APP_RS485_TYPE, APP_RS485_EN, APP_IO_PIN_RESET);
-        osEventFlagsClear(slaveUartEvent, SLAVE_UART_TX_NEXT);
+        modbus_tx_state = 0;
     }
-    return;
 }
 
 void vMBPortClose(void)
 {
-    app_uart_deinit(slaveUartParams.id);
+    USART_Enable(USART_MODBUS, DISABLE);
+    RS485_RTS_LOW; // Ensure RTS is low when closing
 }
 
 BOOL xMBPortSerialPutByte(CHAR ucByte)
 {
-    app_uart_transmit_sync(slaveUartParams.id, &ucByte, 1, 100);
-    // APP_LOG_RAW_INFO("%02x ", ucByte);
+    /* Put a byte in the UARTs transmit buffer. This function is called
+     * by the protocol stack if pxMBFrameCBTransmitterEmpty( ) has been
+     * called. */
+    USART_SendData(USART_MODBUS, ucByte);
     return TRUE;
 }
 
 BOOL xMBPortSerialGetByte(CHAR* pucByte)
 {
-    ring_buffer_read(&slaveRxRingBufCB, pucByte, 1);
-    // APP_LOG_RAW_INFO("%02x ", *pucByte);
+    /* Return the byte in the UARTs receive buffer. This function is called
+     * by the protocol stack after pxMBFrameCBByteReceived( ) has been called.
+     */
+    *pucByte = modbus_rx_char;
     return TRUE;
 }
+
+/* Create an interrupt handler for the transmit buffer empty interrupt
+ * (or an equivalent) for your target processor. This function should then
+ * call pxMBFrameCBTransmitterEmpty( ) which tells the protocol stack that
+ * a new character can be sent. The protocol stack will then call
+ * xMBPortSerialPutByte( ) to send the character.
+ */
+static void prvvUARTTxReadyISR(void)
+{
+    pxMBFrameCBTransmitterEmpty();
+}
+
+/* Create an interrupt handler for the receive interrupt for your target
+ * processor. This function should then call pxMBFrameCBByteReceived( ). The
+ * protocol stack will then call xMBPortSerialGetByte( ) to retrieve the
+ * character.
+ */
+static void prvvUARTRxISR(void)
+{
+    pxMBFrameCBByteReceived();
+}
+
+void USART_MODBUS_IRQHandler(void)
+{
+    if (USART_GetIntStatus(USART_MODBUS, USART_INT_RXDNE) != RESET) {
+        /* Read one byte from the receive data register */
+        if (modbus_rx_state) {
+            modbus_rx_char = USART_ReceiveData(USART_MODBUS);
+            prvvUARTRxISR();
+        } else {
+            USART_ReceiveData(USART_MODBUS);
+        }
+        USART_ClrIntPendingBit(USART_MODBUS, USART_INT_RXDNE);
+        USART_ClrFlag(USART_MODBUS, USART_FLAG_RXDNE);
+    }
+
+    if (USART_GetIntStatus(USART_MODBUS, USART_INT_TXC) != RESET) {
+        /* Write one byte to the transmit data register */
+        if (modbus_tx_state) {
+            prvvUARTTxReadyISR();
+        }
+        USART_ClrIntPendingBit(USART_MODBUS, USART_INT_TXC);
+        USART_ClrFlag(USART_MODBUS, USART_FLAG_TXDE);
+    }
+}
+
+#endif

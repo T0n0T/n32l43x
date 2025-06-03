@@ -23,30 +23,20 @@
 #define _PORT_H
 
 #include "mbconfig.h"
-
+#include "qpc.h"
 #include "stdint.h"
-#include "gr_includes.h"
-#include "cmsis_os2.h"
-#include "app_log.h"
+#include "bsp.h"
 
 #define INLINE
 #define PR_BEGIN_EXTERN_C        extern "C" {
 
-#define APP_TIMER_WAIT_FOR_QUEUE 2
-
-#define assert_param(x)          gr_assert_param(x)
-
-static uint32_t regPrimask;
-
-__STATIC_INLINE uint32_t ENTER_CRITICAL_SECTION(void)
-{
-    uint32_t regPrimask = __get_PRIMASK();
-    __disable_irq();
+static inline uint32_t ENTER_CRITICAL_SECTION(void){
+    QF_CRIT_ENTRY();
 }
 
-__STATIC_INLINE void EXIT_CRITICAL_SECTION(void)
+static inline void EXIT_CRITICAL_SECTION(void)
 {
-    __set_PRIMASK(regPrimask);
+    QF_CRIT_EXIT();
 }
 
 typedef uint8_t BOOL;

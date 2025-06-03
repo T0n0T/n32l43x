@@ -1,6 +1,7 @@
 /*
- * FreeModbus Libary: RT-Thread Port
+ * FreeModbus Libary: QPC Port
  * Copyright (C) 2013 Armink <armink.ztl@gmail.com>
+ * Modified for QPC QV kernel
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -27,38 +28,73 @@
 #include "mbport.h"
 
 /* ----------------------- static functions ---------------------------------*/
-static osTimerId_t timer;
-static uint32_t    timer_tick;
-static void        prvvTIMERExpiredISR(void);
-static void        timer_timeout_ind(void* argument);
+static void prvvTIMERExpiredISR(void);
 /* ----------------------- Start implementation -----------------------------*/
-BOOL xMBPortTimersInit(USHORT usTimeOut50us)
+BOOL xMBPortTimersInit(USHORT usTim1Timerout50us)
 {
-    /** for this board, using 2 ticks for modifying*/
-    timer      = osTimerNew(timer_timeout_ind, osTimerOnce, NULL, NULL);
-    timer_tick = (50 * usTimeOut50us) / (1000 * 1000 / osKernelGetTickFreq()) + 3;
-    if (timer != NULL)
-        return TRUE;
-    else
-        return FALSE;
+    /* Initializes the module. */
+    NVIC_InitType NVIC_InitStructure;
+
+    /* Enable the TIM1 global Interrupt */
+    NVIC_InitStructure.NVIC_IRQChannel            = TIM1_UP_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelCmd         = ENABLE;
+
+    NVIC_Init(&NVIC_InitStructure);
+    TIM_TimeBaseInitType TIM_TimeBaseStructure;
+
+    /* TIM1 clock enable */
+    RCC_ConfigTim18Clk(RCC_TIM18CLK_SRC_TIM18CLK);
+    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_TIM1, ENABLE);
+
+    /* Time base configuration */
+    TIM_TimeBaseStructure.Period    = 18 * usTim1Timerout50us * 50;
+    TIM_TimeBaseStructure.Prescaler = 2;
+    TIM_TimeBaseStructure.ClkDiv    = 0;
+    TIM_TimeBaseStructure.CntMode   = TIM_CNT_MODE_UP;
+
+    TIM_InitTimeBase(TIM1, &TIM_TimeBaseStructure);
+
+    /* Prescaler configuration */
+    TIM_ConfigPrescaler(TIM1, 2, TIM_PSC_RELOAD_MODE_IMMEDIATE);
+    /* TIM1 enable update irq */
+    TIM_ConfigInt(TIM1, TIM_INT_UPDATE, ENABLE);
+    return TRUE;
 }
 
 void vMBPortTimersEnable()
 {
-    osTimerStart(timer, timer_tick);
+    /* Enable the timer with the timeout passed to xMBPortTimersInit( ) */
+    /* Read the current counter value. Counter value is in status.counter. */
+
+    TIM_SetCnt(TIM1, 0);
+    /* TIM1 enable counter */
+    TIM_Enable(TIM1, ENABLE);
 }
 
 void vMBPortTimersDisable()
 {
-    osTimerStop(timer);
+    /* Read the current counter value. Counter value is in status.counter. */
+    /* TIM1 disable counter */
+    TIM_Enable(TIM1, DISABLE);
 }
 
-void prvvTIMERExpiredISR(void)
+/* Create an ISR which is called whenever the timer has expired. This function
+ * must then call pxMBPortCBTimerExpired( ) to notify the protocol stack that
+ * the timer has expired.
+ */
+static void prvvTIMERExpiredISR(void)
 {
     (void)pxMBPortCBTimerExpired();
 }
 
-static void timer_timeout_ind(void* argument)
+/**
+ * @brief  This function handles TIM1 update interrupt request.
+ */
+void TIM1_UP_IRQHandler(void)
 {
-    prvvTIMERExpiredISR();
+    if (TIM_GetIntStatus(TIM1, TIM_INT_UPDATE) != RESET) {
+        TIM_ClrIntPendingBit(TIM1, TIM_INT_UPDATE);
+        prvvTIMERExpiredISR();
+    }
 }

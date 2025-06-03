@@ -94,6 +94,44 @@ void uart_init(void)
     }
 }
 
+void uart_control(uart_index_t index, bool state)
+{
+    if (index >= UART_MAX) {
+        return;
+    }
+
+    USART_Module* usart = uarts[index].handle;
+
+    if (state == true) {
+        USART_Enable(usart, ENABLE);
+    } else {
+        USART_Enable(usart, DISABLE);
+    }
+}
+
+void uart_putc(uart_index_t index, const uint8_t data)
+{
+    if (index >= UART_MAX) {
+        return;
+    }
+    USART_Module* usart = uarts[index].handle;
+
+    USART_SendData(usart, data);
+    while (USART_GetFlagStatus(usart, USART_FLAG_TXDE) == RESET);
+}
+
+char uart_getc(uart_index_t index)
+{
+    if (index >= UART_MAX) {
+        return 0;
+    }
+
+    USART_Module* usart = uarts[index].handle;
+
+    while (USART_GetFlagStatus(uarts[index].handle, USART_FLAG_RXDNE) == RESET);
+    return (char)USART_ReceiveData(usart);
+}
+
 #include <stdio.h>
 
 #ifdef __GNUC__
@@ -114,8 +152,7 @@ STDIO_ALIAS(stderr);
 
 static int __fputc(char ch, FILE* file)
 {
-    USART_SendData(uarts[CONSOLE].handle, (uint8_t)ch);
-    while (USART_GetFlagStatus(uarts[CONSOLE].handle, USART_FLAG_TXDE) == RESET);
+    uart_putc(CONSOLE, ch);
     return (ch);
 }
 

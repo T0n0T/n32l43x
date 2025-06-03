@@ -89,6 +89,8 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
     QActive_subscribe(&me->super, LOCK_ON_SIG);
     QActive_subscribe(&me->super, LOCK_OFF_SIG);
     QActive_subscribe(&me->super, VALVE_UPDATE_SIG);
+    QActive_subscribe(&me->super, VALVE_CONFIG_WRITE_SIG);
+    QActive_subscribe(&me->super, VALVE_CONFIG_READ_SIG);
     return Q_TRAN(&ValveHandler_Idle);
 }
 
@@ -117,7 +119,7 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
         //${AOs::ValveHandler::SM::Idle::TIMEOUT}
         case TIMEOUT_SIG: {
             #ifdef USE_MODBUS
-
+            eMBPoll();
             #endif
             status_ = Q_HANDLED();
             break;
@@ -160,6 +162,9 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
                 (val->position * 360.0f / TICKS_PER_ROTATION),
                 val->rotations,
                 val->total_ticks);
+            #ifdef USE_MODBUS
+            //TODO: update modbus reg for valve count
+            #endif
             status_ = Q_HANDLED();
             break;
         }

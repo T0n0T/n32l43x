@@ -1,6 +1,7 @@
 /*
- * FreeModbus Libary: RT-Thread Port
+ * FreeModbus Libary: QPC Port
  * Copyright (C) 2013 Armink <armink.ztl@gmail.com>
+ * Modified for QPC QV kernel
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -24,31 +25,39 @@
 #include "mbport.h"
 
 /* ----------------------- Variables ----------------------------------------*/
-static osEventFlagsId_t xSlaveOsEvent;
+static volatile eMBEventType xEventInQueue = EV_READY;
+static volatile BOOL xEventPending = FALSE;
+
 /* ----------------------- Start implementation -----------------------------*/
 BOOL xMBPortEventInit(void)
 {
-    xSlaveOsEvent = osEventFlagsNew(NULL);
+    xEventInQueue = EV_READY;
+    xEventPending = FALSE;
     return TRUE;
 }
 
 BOOL xMBPortEventPost(eMBEventType eEvent)
 {
-    if (xSlaveOsEvent != NULL) {
-        osEventFlagsSet(xSlaveOsEvent, eEvent);
-    }
+    QF_CRIT_STAT
+    QF_CRIT_ENTRY();
+    xEventInQueue = eEvent;
+    xEventPending = TRUE;
+    QF_CRIT_EXIT();
     return TRUE;
 }
 
 BOOL xMBPortEventGet(eMBEventType* eEvent)
 {
-    uint32_t recvedEvent;
-    /* waiting forever OS event */
-    recvedEvent = osEventFlagsWait(xSlaveOsEvent,
-                                   EV_READY | EV_FRAME_RECEIVED | EV_EXECUTE | EV_FRAME_SENT,
-                                   osFlagsWaitAny,
-                                   osWaitForever);
+    BOOL xEventHappened = FALSE;
 
-    *eEvent = recvedEvent;
+    if (xEventInQueue) {
+        QF_CRIT_STAT
+        QF_CRIT_ENTRY();
+        *eEvent        = xEventInQueue;
+        xEventInQueue  = FALSE;
+        xEventHappened = TRUE;
+        QF_CRIT_EXIT();
+    }
+    return xEventHappened;
     return TRUE;
 }

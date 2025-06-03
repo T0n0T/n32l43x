@@ -1,12 +1,13 @@
 # 包含目录
-log_incs = include_directories(
+modbus_incs = include_directories(
   'port',
+  'port/qpc',
   'modbus/rtu',
   'modbus/include',
 )
 
 # 源文件
-log_srcs = files(
+modbus_srcs = files(
   './modbus/functions/mbfunccoils.c',
   './modbus/functions/mbfuncdiag.c',
   './modbus/functions/mbfuncdisc.c',

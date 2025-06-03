@@ -5,7 +5,7 @@
 
 typedef enum uart_index {
     CONSOLE = 0,
-    RESERVED,
+    BLE_SERIAL,
     BUS_485,
     UART_MAX,
 } uart_index_t;
@@ -28,5 +28,8 @@ typedef struct uart_struct {
 } uart_t;
 
 void uart_init(void);
+void uart_control(uart_index_t index, bool state);
+void uart_putc(uart_index_t index, const uint8_t data);
+char uart_getc(uart_index_t index);
 
 #endif /* __UART_H__ */
