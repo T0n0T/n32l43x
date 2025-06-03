@@ -29,6 +29,11 @@
 #ifndef BSP_H_
 #define BSP_H_
 
+#include "board.h"
+#include "led.h"
+#include "rtc.h"
+#include "uart.h"
+
 #define BSP_TICKS_PER_SEC 100U
 
 void BSP_init(void);

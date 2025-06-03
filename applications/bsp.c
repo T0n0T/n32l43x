@@ -4,7 +4,7 @@
 #include "qpc.h" /* QP/C API */
 #include "bsp.h"
 #include "board.h"
-#include "blinky.h" /* Blinky Application interface */
+#include "hello.h" /* Blinky Application interface */
 #include "led.h"
 #include "lpuart.h"
 #include "rtc.h"
@@ -16,26 +16,26 @@
 /* Assertion handler  ======================================================*/
 Q_NORETURN Q_onAssert(char const* module, int_t id)
 {
-    /* TBD: Perform corrective actions and damage control
-     * SPECIFIC to your particular system.
-     */
-    (void)module; /* unused parameter */
-    (void)id;     /* unused parameter */
-
-#ifndef NDEBUG  /* debug build? */
-    while (1) { /* tie the CPU in this endless loop */
-    }
+    printf("ERROR in %s:%d\r\n", module, id);
+#ifndef NDEBUG /* debug build? */
+    cm_backtrace_assert(cmb_get_sp());
+    while (1); /* tie the CPU in this endless loop */
 #endif
     NVIC_SystemReset(); /* reset the CPU */
 }
 //............................................................................
 /* assert-handling function called by exception handlers in the startup code */
-void assert_failed(char const* const module, int_t const id); // prototype
-void assert_failed(char const* const module, int_t const id)
+void assert_failed(const uint8_t* expr, const uint8_t* file, uint32_t line)
 {
-    Q_onAssert(module, id);
+    printf("ERROR in %s:%d\r\n", file, line);
+#ifndef NDEBUG /* debug build? */
+    cm_backtrace_assert(cmb_get_sp());
+    while (1); /* tie the CPU in this endless loop */
+#endif
+    NVIC_SystemReset(); /* reset the CPU */
 }
 
+/* ISRs  ===============================================*/
 void RTC_WKUP_IRQHandler(void)
 {
     if (EXTI_GetITStatus(EXTI_LINE20)) {
@@ -43,14 +43,22 @@ void RTC_WKUP_IRQHandler(void)
         RTC_ClrIntPendingBit(RTC_INT_WUT);
         QTIMEEVT_TICK_X(0, 0);
     }
+    QV_ARM_ERRATUM_838869();
+}
+
+void SysTick_Handler(void)
+{
+    // process the tick event
+    QTIMEEVT_TICK_X(0, 0);
+    QV_ARM_ERRATUM_838869();
 }
 
 /*..........................................................................*/
 void QV_onIdle(void)
 {
     QF_INT_ENABLE();
-    PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFE, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
-    SystemCoreClockUpdate();
+    // PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFE, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
+    // SystemCoreClockUpdate();
 }
 
 /* BSP functions ===========================================================*/
@@ -60,9 +68,11 @@ void BSP_init(void)
      *  but SystemCoreClock needs to be updated
      */
     SystemCoreClockUpdate();
+    RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
     cm_backtrace_init("N32L4", "V1.0", "1.0.0");
     led_init();   /* initialize the LEDs */
-    rtc_init();
+    uart_init(CONSOLE); /* initialize the console UART */
+    // rtc_init();
 }
 
 void BSP_start(void)
@@ -72,19 +82,19 @@ void BSP_start(void)
     QF_poolInit(smlPoolSto, sizeof(smlPoolSto), sizeof(smlPoolSto[0]));
 
     // initialize publish-subscribe
-    static QSubscrList subscrSto[MAX_PUB_SIG];
+    static QSubscrList subscrSto[10];
     QActive_psInit(subscrSto, Q_DIM(subscrSto));
 
     // instantiate and start AOs/threads...
 
-    static QEvtPtr blinkyQueueSto[10];
-    Blinky_ctor();
-    QActive_start(AO_Blinky,
-                  1U,                    // QP prio. of the AO
-                  blinkyQueueSto,        // event queue storage
-                  Q_DIM(blinkyQueueSto), // queue length [events]
-                  (void*)0, 0U,          // no stack storage
-                  (void*)0);             // no initialization param
+    static QEvtPtr helloQueueSto[10];
+    Hello_ctor();
+    QActive_start(AO_Hello,
+                  1U,                   // QP prio. of the AO
+                  helloQueueSto,        // event queue storage
+                  Q_DIM(helloQueueSto), // queue length [events]
+                  (void*)0, 0U,         // no stack storage
+                  (void*)0);            // no initialization param
 }
 
 /*..........................................................................*/
@@ -93,10 +103,10 @@ void QF_onStartup(void)
     /* set up the SysTick timer to fire at BSP_TICKS_PER_SEC rate
      * NOTE: do NOT call OS_CPU_SysTickInit() from uC/OS-II
      */
-    // SysTick_Config(SystemCoreClock / BSP_TICKS_PER_SEC);
+    SysTick_Config(SystemCoreClock / BSP_TICKS_PER_SEC);
 
     // /* set priorities of ALL ISRs used in the system, see NOTE1 */
-    // NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + 1U);
+    NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + 1U);
 }
 /*..........................................................................*/
 void QF_onCleanup(void)

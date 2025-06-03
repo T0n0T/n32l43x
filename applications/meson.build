@@ -12,5 +12,5 @@ applications_incdirs = include_directories(
 applications_sources = files(
   'main.c',
   'bsp.c',
-  'hello/blinky.c',
+  'hello/hello.c',
 )

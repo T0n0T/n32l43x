@@ -47,12 +47,12 @@ subdir('drivers')
 subdir('middlewares/cm_backtrace')
 subdir('middlewares/easylogger')
 subdir('middlewares/qpc')
-subdir('middlewares/multibutton')
+subdir('middlewares/FreeModbus')
 
 appdep_incdirs = []
 appdep_sources = []
-appdep_incdirs += [log_incs, btn_incs]
-appdep_sources += [log_srcs, btn_srcs]
+appdep_incdirs += [log_incs, modbus_incs]
+appdep_sources += [log_srcs, modbus_srcs]
 if get_option('buildtype').startswith('debug')
   message('Use debug buildtype' + get_option('buildtype'))
   appdep_sources += cmb_srcs

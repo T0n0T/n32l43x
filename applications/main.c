@@ -27,7 +27,6 @@
 // <info@state-machine.com>
 //============================================================================
 #include "qpc.h"    // QP/C real-time event framework
-#include "blinky.h" // Blinky Application interface
 #include "bsp.h"    // Board Support Package
 
 //............................................................................
