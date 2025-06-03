@@ -151,6 +151,7 @@ QActive_subscribe(&amp;me-&gt;super, VALVE_CONFIG_READ_SIG);</action>
     <state name="Idle">
      <entry>#ifdef USE_MODBUS
 eMBInit(MB_RTU, 0x01, 1, 115200,  MB_PAR_EVEN);
+eMBEnable();
 QTimeEvt_armX(&amp;me-&gt;timeEvt, 1, 1);
 #endif</entry>
      <tran trig="LOCK_OFF" target="../3">
@@ -167,6 +168,7 @@ QTimeEvt_armX(&amp;me-&gt;timeEvt, 1, 1);
      <tran trig="TIMEOUT">
       <action>#ifdef USE_MODBUS
 eMBPoll(); 
+led_toggle(LED_3);
 #endif</action>
       <tran_glyph conn="18,26,3,-1,20">
        <action box="0,-2,10,2"/>
@@ -427,6 +429,7 @@ $declare ${AOs::ValveConf_ctor}
    <text>#include &quot;qpc.h&quot;
 #include &quot;bsp.h&quot;
 #include &quot;valve.h&quot;
+#include &quot;user_mb_app.h&quot;
 
 $declare ${AOs::ValveHandler}
 

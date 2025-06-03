@@ -62,6 +62,8 @@ if get_option('buildtype').startswith('debug')
   c_args += '-DDEBUG'
 endif
 
+c_args += '-DUSE_MODBUS'
+
 firmware_dep = dependency('firmware')
 
 # 创建最终可执行文件

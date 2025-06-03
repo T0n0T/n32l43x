@@ -270,5 +270,5 @@ void ble_pwr_pin(void)
     RCC_EnableAPB2PeriphClk(BLE_PWR_CLK, ENABLE);
     GPIO_InitStructure.Pin       = BLE_PWR_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    GPIO_InitPeripheral(BLE_PWR_CLK, &GPIO_InitStructure);
+    GPIO_InitPeripheral(BLE_PWR_PORT, &GPIO_InitStructure);
 }
