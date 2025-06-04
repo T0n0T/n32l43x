@@ -29,9 +29,7 @@
 #if MB_SLAVE_RTU_ENABLED > 0 || MB_SLAVE_ASCII_ENABLED > 0
 
 /* ----------------------- Static variables ---------------------------------*/
-static volatile BOOL modbus_rx_state = 0; // 0: receiving, 1: idle
-static volatile BOOL modbus_tx_state = 1; // 0: idle, 1: transmitting
-static char          modbus_rx_char  = 0;
+static volatile CHAR modbus_rx_char  = 0;
 
 /* ----------------------- User defenitions ---------------------------------*/
 #define RS485_RTS_PORT          GPIOB
@@ -41,6 +39,7 @@ static char          modbus_rx_char  = 0;
 #define RS485_RTS_LOW           RS485_RTS_PORT->PBC = RS485_RTS_PIN;
 
 #define USART_MODBUS            UART5
+#define USART_MODBUS_IRQn       UART5_IRQn
 #define USART_MODBUS_IRQHandler UART5_IRQHandler
 
 static void prvvUARTTxReadyISR(void);
@@ -56,41 +55,33 @@ BOOL xMBPortSerialInit(UCHAR ucPort, ULONG ulBaudRate,
     // GPIO_InitStructure.Pin       = RS485_RTS_PIN;
     // GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     // GPIO_InitPeripheral(RS485_RTS_PORT, &GPIO_InitStructure);
-    
+
     uart_init(BUS_485);
 
-    NVIC_InitType NVIC_InitStructure;
+    NVIC_EnableIRQ(USART_MODBUS_IRQn);
 
-    /* Enable the USARTy Interrupt */
-    NVIC_InitStructure.NVIC_IRQChannel                   = UART5_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 0;
-    NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
-    NVIC_Init(&NVIC_InitStructure);
-
-    USART_ConfigInt(USART_MODBUS, USART_INT_RXDNE, ENABLE);
-    USART_ConfigInt(USART_MODBUS, USART_INT_TXC, ENABLE);
     return TRUE;
 }
 
 void vMBPortSerialEnable(BOOL xRxEnable, BOOL xTxEnable)
 {
     if (xRxEnable) {
-        modbus_rx_state = 1;
+        USART_ClrIntPendingBit(USART_MODBUS, USART_INT_RXDNE);
+        USART_ClrFlag(USART_MODBUS, USART_FLAG_RXDNE);
+        USART_ConfigInt(USART_MODBUS, USART_INT_RXDNE, ENABLE);
         // RS485_RTS_LOW;
-        printf("\r\nrx:");
     } else {
-        modbus_rx_state = 0;
+        USART_ConfigInt(USART_MODBUS, USART_INT_RXDNE, DISABLE);
     }
 
     if (xTxEnable) {
         // RS485_RTS_HIGH;
-        modbus_tx_state = 1;
-        printf("\r\ntx:");
+        USART_ClrIntPendingBit(USART_MODBUS, USART_INT_TXDE);
+        USART_ClrFlag(USART_MODBUS, USART_FLAG_TXDE);
+        USART_ConfigInt(USART_MODBUS, USART_INT_TXDE, ENABLE);
     } else {
-        modbus_tx_state = 0;
+        USART_ConfigInt(USART_MODBUS, USART_INT_TXDE, DISABLE);
     }
-    
 }
 
 void vMBPortClose(void)
@@ -105,7 +96,6 @@ BOOL xMBPortSerialPutByte(CHAR ucByte)
      * by the protocol stack if pxMBFrameCBTransmitterEmpty( ) has been
      * called. */
     USART_SendData(USART_MODBUS, ucByte);
-    printf("0x%2x ", ucByte);
     return TRUE;
 }
 
@@ -115,8 +105,6 @@ BOOL xMBPortSerialGetByte(CHAR* pucByte)
      * by the protocol stack after pxMBFrameCBByteReceived( ) has been called.
      */
     *pucByte = modbus_rx_char;
-
-    printf("0x%2x ", *pucByte);
     return TRUE;
 }
 
@@ -145,23 +133,28 @@ void UART5_IRQHandler(void)
 {
     if (USART_GetIntStatus(USART_MODBUS, USART_INT_RXDNE) != RESET) {
         /* Read one byte from the receive data register */
-        if (modbus_rx_state) {
-            modbus_rx_char = USART_ReceiveData(USART_MODBUS);            
-            prvvUARTRxISR();
-        } else {
-            USART_ReceiveData(USART_MODBUS);
-        }
+        modbus_rx_char = USART_ReceiveData(USART_MODBUS);
+        prvvUARTRxISR();
         USART_ClrIntPendingBit(USART_MODBUS, USART_INT_RXDNE);
         USART_ClrFlag(USART_MODBUS, USART_FLAG_RXDNE);
     }
 
-    if (USART_GetIntStatus(USART_MODBUS, USART_INT_TXC) != RESET) {
+    if (USART_GetIntStatus(USART_MODBUS, USART_INT_TXDE) != RESET) {
         /* Write one byte to the transmit data register */
-        if (modbus_tx_state) {
-            prvvUARTTxReadyISR();
-        }
-        USART_ClrIntPendingBit(USART_MODBUS, USART_INT_TXC);
+        prvvUARTTxReadyISR();
+        USART_ClrIntPendingBit(USART_MODBUS, USART_INT_TXDE);
         USART_ClrFlag(USART_MODBUS, USART_FLAG_TXDE);
+    }
+
+    if ((USART_GetFlagStatus(USART_MODBUS, USART_FLAG_OREF) != RESET) ||
+        (USART_GetFlagStatus(USART_MODBUS, USART_FLAG_NEF) != RESET) ||
+        (USART_GetFlagStatus(USART_MODBUS, USART_FLAG_PEF) != RESET) ||
+        (USART_GetFlagStatus(USART_MODBUS, USART_FLAG_FEF) != RESET)) {
+        /*Read the sts register first,and the read the DAT register to clear the all error flag*/
+        (void)USART_MODBUS->STS;
+        (void)USART_MODBUS->DAT;
+        /* Under normal circumstances, all error flags will be cleared when the upper data is read and will not be executed here;
+           users can add their own processing according to the actual scenario. */
     }
 }
 
