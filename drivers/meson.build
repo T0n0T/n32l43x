@@ -7,5 +7,7 @@ drivers_incdirs = include_directories(
 drivers_sources = files(
     'board.c',
     'led.c',
-    'lpuart.c',
+    'lptimer.c',
+    'rtc.c',
+    'uart.c',
 )

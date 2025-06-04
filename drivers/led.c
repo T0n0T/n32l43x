@@ -1,22 +1,22 @@
 #include "led.h"
 
-static led_t leds[LED_MAX] = {
+static led_t leds[] = {
     {
-        .port         = GPIOB,
-        .clk          = RCC_APB2_PERIPH_GPIOB,
-        .pin          = GPIO_PIN_4,
+        .port         = GPIOA,
+        .clk          = RCC_APB2_PERIPH_GPIOA,
+        .pin          = GPIO_PIN_12,
+        .active_level = Bit_RESET,
+    },
+    {
+        .port         = GPIOA,
+        .clk          = RCC_APB2_PERIPH_GPIOA,
+        .pin          = GPIO_PIN_11,
         .active_level = Bit_RESET,
     },
     {
         .port         = GPIOA,
         .clk          = RCC_APB2_PERIPH_GPIOA,
         .pin          = GPIO_PIN_8,
-        .active_level = Bit_RESET,
-    },
-    {
-        .port         = GPIOB,
-        .clk          = RCC_APB2_PERIPH_GPIOB,
-        .pin          = GPIO_PIN_5,
         .active_level = Bit_RESET,
     }
 };
@@ -25,13 +25,12 @@ void led_init(void)
 {
     GPIO_InitType GPIO_InitStructure;
     GPIO_InitStruct(&GPIO_InitStructure);
-    for (size_t i = 0; i < LED_MAX; i++)
-    {
+    for (size_t i = 0; i < sizeof(leds) / sizeof(led_t); i++) {
         RCC_EnableAPB2PeriphClk(leds[i].clk, ENABLE);
         GPIO_InitStructure.Pin = leds[i].pin;
         GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
         GPIO_InitPeripheral(leds[i].port, &GPIO_InitStructure);
-    }   
+    }
 }
 
 void led_on(led_index_t index)

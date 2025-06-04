@@ -48,6 +48,7 @@ subdir('middlewares/cm_backtrace')
 subdir('middlewares/easylogger')
 subdir('middlewares/qpc')
 subdir('middlewares/multibutton')
+subdir('middlewares/FreeModbus')
 
 appdep_incdirs = []
 appdep_sources = []
@@ -61,6 +62,9 @@ if get_option('buildtype').startswith('debug')
   c_args += '-DCMB_USER_CFG'
   c_args += '-DDEBUG'
 endif
+
+appdep_incdirs += modbus_incs
+appdep_sources += modbus_srcs
 
 firmware_dep = dependency('firmware')
 

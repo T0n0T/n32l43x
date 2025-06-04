@@ -1,14 +1,14 @@
 #include "lpuart.h"
 
 static lpuart_t _lpuart = {
-    .tx_port     = GPIOA,
-    .rx_port     = GPIOA,
-    .tx_pin      = GPIO_PIN_4,
-    .rx_pin      = GPIO_PIN_3,
-    .tx_gpio_clk = RCC_APB2_PERIPH_GPIOA,
-    .rx_gpio_clk = RCC_APB2_PERIPH_GPIOA,
-    .tx_af       = GPIO_AF6_LPUART,
-    .rx_af       = GPIO_AF6_LPUART,
+    .tx_port     = GPIOB,
+    .rx_port     = GPIOB,
+    .tx_pin      = GPIO_PIN_10,
+    .rx_pin      = GPIO_PIN_11,
+    .tx_gpio_clk = RCC_APB2_PERIPH_GPIOB,
+    .rx_gpio_clk = RCC_APB2_PERIPH_GPIOB,
+    .tx_af       = GPIO_AF4_LPUART,
+    .rx_af       = GPIO_AF4_LPUART,
     .clk_src     = RCC_LPUARTCLK_SRC_LSE,
 };
 
@@ -106,31 +106,31 @@ void LPUART_WKUP_IRQHandler(void)
     EXTI_ClrITPendBit(EXTI_LINE23);
 }
 
-#include <stdio.h>
+// #include <stdio.h>
 
-#ifdef __GNUC__
-#ifdef TINY_STDIO
+// #ifdef __GNUC__
+// #ifdef TINY_STDIO
 
-static int __fputc(char c, FILE* file);
+// static int __fputc(char c, FILE* file);
 
-static FILE __stdio_out = FDEV_SETUP_STREAM(__fputc, NULL, NULL, _FDEV_SETUP_WRITE);
+// static FILE __stdio_out = FDEV_SETUP_STREAM(__fputc, NULL, NULL, _FDEV_SETUP_WRITE);
 
-#ifdef __strong_reference
-#define STDIO_ALIAS(x) __strong_reference(stdout, x);
-#else
-#define STDIO_ALIAS(x) FILE* const x = &__stdio_out;
-#endif
+// #ifdef __strong_reference
+// #define STDIO_ALIAS(x) __strong_reference(stdout, x);
+// #else
+// #define STDIO_ALIAS(x) FILE* const x = &__stdio_out;
+// #endif
 
-FILE* const stdout = &__stdio_out;
-STDIO_ALIAS(stderr);
+// FILE* const stdout = &__stdio_out;
+// STDIO_ALIAS(stderr);
 
-static int __fputc(char c, FILE* file)
-{
-    LPUART_ClrIntPendingBit(LPUART_INT_TXC);
-    LPUART_SendData(c);
-    while (LPUART_GetFlagStatus(LPUART_FLAG_TXC) == RESET);
-    return c;
-}
+// static int __fputc(char c, FILE* file)
+// {
+//     LPUART_ClrIntPendingBit(LPUART_INT_TXC);
+//     LPUART_SendData(c);
+//     while (LPUART_GetFlagStatus(LPUART_FLAG_TXC) == RESET);
+//     return c;
+// }
 
-#endif
-#endif
+// #endif
+// #endif
