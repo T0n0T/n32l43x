@@ -81,7 +81,6 @@ void BSP_init(void)
     // hall_init();
     // hall_set_ctr(ENABLE);
     uart_init(CONSOLE);
-    uart_init(BUS_485);
     // rtc_init();
     // wakeup_pin_init(wakeup_handle);
 }

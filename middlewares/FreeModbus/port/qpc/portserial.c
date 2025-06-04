@@ -40,8 +40,9 @@ static char          modbus_rx_char  = 0;
 #define RS485_RTS_HIGH          RS485_RTS_PORT->PBSC = RS485_RTS_PIN;
 #define RS485_RTS_LOW           RS485_RTS_PORT->PBC = RS485_RTS_PIN;
 
-#define USART_MODBUS            USART3
-#define USART_MODBUS_IRQHandler USART3_IRQHandler
+#define USART_MODBUS            UART5
+#define USART_MODBUS_IRQ        UART5_IRQn
+#define USART_MODBUS_IRQHandler UART5_IRQHandler
 
 static void prvvUARTTxReadyISR(void);
 static void prvvUARTRxISR(void);
@@ -56,7 +57,8 @@ BOOL xMBPortSerialInit(UCHAR ucPort, ULONG ulBaudRate,
     GPIO_InitStructure.Pin       = RS485_RTS_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitPeripheral(RS485_RTS_PORT, &GPIO_InitStructure);
-
+    uart_init(BUS_485);
+    NVIC_EnableIRQ(USART_MODBUS_IRQ);
     USART_ClrIntPendingBit(USART_MODBUS, USART_INT_RXDNE);
     USART_ClrFlag(USART_MODBUS, USART_FLAG_RXDNE);
     USART_ConfigInt(USART_MODBUS, USART_INT_RXDNE, ENABLE);
@@ -65,7 +67,6 @@ BOOL xMBPortSerialInit(UCHAR ucPort, ULONG ulBaudRate,
     USART_ClrFlag(USART_MODBUS, USART_FLAG_TXC);
     USART_ConfigInt(USART_MODBUS, USART_INT_TXC, ENABLE);
 
-    USART_Enable(USART_MODBUS, ENABLE);
     return TRUE;
 }
 
