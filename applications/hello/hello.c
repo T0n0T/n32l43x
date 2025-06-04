@@ -97,7 +97,7 @@ static QState Hello_initial(Hello * const me, void const * const par) {
     QTimeEvt_armX(&me->ledEvt, BSP_TICKS_PER_SEC/2, BSP_TICKS_PER_SEC/2);
     QTimeEvt_armX(&me->modbusEvt, 1, 1);
 
-    eMBInit(MB_RTU, 0x01, 1, 115200, MB_PAR_EVEN);
+    eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
     eMBEnable();
 
     QS_FUN_DICTIONARY(&Hello_NORMAL);

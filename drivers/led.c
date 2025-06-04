@@ -2,15 +2,15 @@
 
 static led_t leds[] = {
     {
-        .port         = GPIOA,
-        .clk          = RCC_APB2_PERIPH_GPIOA,
-        .pin          = GPIO_PIN_12,
+        .port         = GPIOB,
+        .clk          = RCC_APB2_PERIPH_GPIOB,
+        .pin          = GPIO_PIN_5,
         .active_level = Bit_RESET,
     },
     {
-        .port         = GPIOA,
-        .clk          = RCC_APB2_PERIPH_GPIOA,
-        .pin          = GPIO_PIN_11,
+        .port         = GPIOB,
+        .clk          = RCC_APB2_PERIPH_GPIOB,
+        .pin          = GPIO_PIN_4,
         .active_level = Bit_RESET,
     },
     {
@@ -18,8 +18,7 @@ static led_t leds[] = {
         .clk          = RCC_APB2_PERIPH_GPIOA,
         .pin          = GPIO_PIN_8,
         .active_level = Bit_RESET,
-    }
-};
+    }};
 
 void led_init(void)
 {

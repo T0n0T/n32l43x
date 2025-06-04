@@ -45,7 +45,7 @@ static uart_t uarts[] = {
         .handle      = UART5,
         .irqn        = UART5_IRQn,
         .clk_src     = RCC_APB2_PERIPH_UART5,
-        .baudrate    = 115200,
+        .baudrate    = 9600,
         .parity      = USART_PE_NO,
         .stop_bits   = USART_STPB_1,
     },
