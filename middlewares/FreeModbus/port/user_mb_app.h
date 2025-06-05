@@ -14,7 +14,7 @@
 #define S_COIL_NCOILS               32
 #define S_REG_INPUT_START           0
 #define S_REG_INPUT_NREGS           100
-#define S_REG_HOLDING_START         0x200
+#define S_REG_HOLDING_START         0
 #define S_REG_HOLDING_NREGS         1000
 /* salve mode: holding register's all address */
 #define S_HD_RESERVE                0

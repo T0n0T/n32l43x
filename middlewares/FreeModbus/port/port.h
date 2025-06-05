@@ -30,7 +30,7 @@
 #define INLINE
 #define PR_BEGIN_EXTERN_C        extern "C" {
 
-static inline uint32_t ENTER_CRITICAL_SECTION(void){
+static inline void ENTER_CRITICAL_SECTION(void){
     QF_CRIT_ENTRY();
 }
 

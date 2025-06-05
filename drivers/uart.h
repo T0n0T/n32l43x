@@ -28,7 +28,8 @@ typedef struct uart_struct {
 } uart_t;
 
 void uart_init(uart_index_t index);
-void uart_control(uart_index_t index, bool state);
+void uart_deinit(uart_index_t index);
+void uart_control(uart_index_t index, uint16_t int_flag, bool state);
 void uart_putc(uart_index_t index, const uint8_t data);
 char uart_getc(uart_index_t index);
 

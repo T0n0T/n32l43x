@@ -48,7 +48,7 @@ enum AppSignals {
     LOCK_OFF_SIG,
     VALVE_DAILY_SIG,
     VALVE_UPDATE_SIG,
-    VALVE_CONFIG_PARSE_SIG,
+    VALVE_CMD_PARSE_SIG,
     VALVE_CONFIG_WRITE_SIG,
     VALVE_CONFIG_READ_SIG,
     MAX_PUB_SIG,
@@ -92,7 +92,7 @@ typedef struct {} ValveConfig;
 //${Shared::ValveEvtType} ....................................................
 enum ValveEvtType {
     VALVE_VALUE,
-    VALVE_CONFIG,
+    VALVE_CMD,
 };
 
 //${Shared::ValveEvt} ........................................................

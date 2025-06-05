@@ -38,6 +38,7 @@
 #include "qpc.h"
 #include "bsp.h"
 #include "valve.h"
+#include "cmd.h"
 
 //$declare${AOs::ValveConf} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -88,7 +89,6 @@ static QState ValveConf_initial(ValveConf * const me, void const * const par) {
     //${AOs::ValveConf::SM::initial}
     QActive_subscribe(&me->super, LOCK_ON_SIG);
     QActive_subscribe(&me->super, LOCK_OFF_SIG);
-    QActive_subscribe(&me->super, VALVE_CONFIG_PARSE_SIG);
     return Q_TRAN(&ValveConf_Wait);
 }
 
@@ -96,6 +96,18 @@ static QState ValveConf_initial(ValveConf * const me, void const * const par) {
 static QState ValveConf_Active(ValveConf * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
+        //${AOs::ValveConf::SM::Active}
+        case Q_ENTRY_SIG: {
+            cmd_init();
+            status_ = Q_HANDLED();
+            break;
+        }
+        //${AOs::ValveConf::SM::Active}
+        case Q_EXIT_SIG: {
+            cmd_deinit();
+            status_ = Q_HANDLED();
+            break;
+        }
         //${AOs::ValveConf::SM::Active::TIMEOUT}
         case TIMEOUT_SIG: {
             static int count = 10;
@@ -113,8 +125,12 @@ static QState ValveConf_Active(ValveConf * const me, QEvt const * const e) {
             status_ = Q_TRAN(&ValveConf_Wait);
             break;
         }
-        //${AOs::ValveConf::SM::Active::VALVE_CONFIG_PARSE}
-        case VALVE_CONFIG_PARSE_SIG: {
+        //${AOs::ValveConf::SM::Active::VALVE_CMD_PARSE}
+        case VALVE_CMD_PARSE_SIG: {
+            ValveEvt* const evt = (ValveEvt*)e;
+            if (evt->evtType == VALVE_CMD) {
+                cmd_execute((char*)evt->msg);
+            }
             status_ = Q_HANDLED();
             break;
         }

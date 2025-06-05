@@ -45,7 +45,7 @@ static uart_t uarts[] = {
         .handle      = UART5,
         .irqn        = UART5_IRQn,
         .clk_src     = RCC_APB2_PERIPH_UART5,
-        .baudrate    = 115200,
+        .baudrate    = 9600,
         .parity      = USART_PE_NO,
         .stop_bits   = USART_STPB_1,
     },
@@ -96,7 +96,7 @@ void uart_init(uart_index_t index)
     USART_Enable(uarts[index].handle, ENABLE);
 }
 
-void uart_control(uart_index_t index, bool state)
+void uart_deinit(uart_index_t index)
 {
     if (index >= UART_MAX) {
         return;
@@ -104,10 +104,32 @@ void uart_control(uart_index_t index, bool state)
 
     USART_Module* usart = uarts[index].handle;
 
-    if (state == true) {
-        USART_Enable(usart, ENABLE);
+    /* Disable the USARTx */
+    USART_Enable(usart, DISABLE);
+    /* Deinitialize the USARTx peripheral */
+    USART_DeInit(usart);
+}
+
+void uart_control(uart_index_t index, uint16_t int_flag, bool state)
+{
+    if (index >= UART_MAX) {
+        return;
+    }
+
+    USART_Module* usart = uarts[index].handle;
+
+    if (!int_flag) {
+        if (state == true) {
+            USART_Enable(usart, ENABLE);
+        } else {
+            USART_Enable(usart, DISABLE);
+        }
     } else {
-        USART_Enable(usart, DISABLE);
+        if (state == true) {
+            USART_ConfigInt(usart, int_flag, ENABLE);
+        } else {
+            USART_ConfigInt(usart, int_flag, DISABLE);
+        }
     }
 }
 

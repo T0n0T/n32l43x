@@ -38,6 +38,7 @@
 #include "qpc.h"
 #include "bsp.h"
 #include "valve.h"
+#include "cmd.h"
 #include "user_mb_app.h"
 
 //$declare${AOs::ValveHandler} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -123,12 +124,6 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
         case TIMEOUT_SIG: {
             #ifdef USE_MODBUS
             eMBPoll();
-            static int count = 0;
-            extern USHORT usSRegHoldBuf[S_REG_HOLDING_NREGS];
-            count++;
-            // APP_LOG_INFO("%04x", count);
-            usSRegHoldBuf[3] = count;
-            led_toggle(LED_3);
             #endif
             status_ = Q_HANDLED();
             break;

@@ -8,7 +8,7 @@
     LOCK_OFF_SIG,
     VALVE_DAILY_SIG,
     VALVE_UPDATE_SIG,
-    VALVE_CONFIG_PARSE_SIG,
+    VALVE_CMD_PARSE_SIG,
     VALVE_CONFIG_WRITE_SIG,
     VALVE_CONFIG_READ_SIG,
     MAX_PUB_SIG,
@@ -43,7 +43,7 @@
   <attribute name="ValveEvtType" type="enum" visibility="0x04" properties="0x00">
    <code>{
     VALVE_VALUE,
-    VALVE_CONFIG,
+    VALVE_CMD,
 };</code>
   </attribute>
   <class name="ValveEvt" superclass="qpc::QEvt">
@@ -168,7 +168,6 @@ QTimeEvt_armX(&amp;me-&gt;timeEvt, 1, 1);
      <tran trig="TIMEOUT">
       <action>#ifdef USE_MODBUS
 eMBPoll(); 
-led_toggle(LED_3);
 #endif</action>
       <tran_glyph conn="18,26,3,-1,20">
        <action box="0,-2,10,2"/>
@@ -229,13 +228,14 @@ printf(&quot;Position: %d/6 (%.1f°), Rotations: %d, Total Ticks: %d\r\n&quot;,
    <statechart properties="0x00">
     <initial target="../2">
      <action>QActive_subscribe(&amp;me-&gt;super, LOCK_ON_SIG);
-QActive_subscribe(&amp;me-&gt;super, LOCK_OFF_SIG);
-QActive_subscribe(&amp;me-&gt;super, VALVE_CONFIG_PARSE_SIG);</action>
+QActive_subscribe(&amp;me-&gt;super, LOCK_OFF_SIG);</action>
      <initial_glyph conn="20,16,5,1,20,7,-2">
       <action box="0,-2,10,2"/>
      </initial_glyph>
     </initial>
     <state name="Active">
+     <entry>cmd_init();</entry>
+     <exit>cmd_deinit();</exit>
      <tran trig="TIMEOUT">
       <action>static int count = 10;
 //blinky, toggle led
@@ -253,12 +253,15 @@ if(!count){
        <action box="0,-2,10,2"/>
       </tran_glyph>
      </tran>
-     <tran trig="VALVE_CONFIG_PARSE">
+     <tran trig="VALVE_CMD_PARSE">
       <tran_glyph conn="20,44,3,-1,13">
        <action box="0,-2,18,3"/>
       </tran_glyph>
      </tran>
-     <state_glyph node="20,34,18,14"/>
+     <state_glyph node="20,34,18,14">
+      <entry box="0,3,6,2"/>
+      <exit box="0,5,6,2"/>
+     </state_glyph>
     </state>
     <state name="Wait">
      <entry>Sleep_request(CONFIG_BIT);</entry>
@@ -429,6 +432,7 @@ $declare ${AOs::ValveConf_ctor}
    <text>#include &quot;qpc.h&quot;
 #include &quot;bsp.h&quot;
 #include &quot;valve.h&quot;
+#include &quot;cmd.h&quot;
 #include &quot;user_mb_app.h&quot;
 
 $declare ${AOs::ValveHandler}
@@ -441,6 +445,7 @@ $define ${AOs::ValveHandler}</text>
    <text>#include &quot;qpc.h&quot;
 #include &quot;bsp.h&quot;
 #include &quot;valve.h&quot;
+#include &quot;cmd.h&quot;
 
 $declare ${AOs::ValveConf}
 

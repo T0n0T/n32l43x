@@ -48,15 +48,15 @@ BOOL xMBPortTimersInit(USHORT usTim1Timerout50us)
     RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_TIM1, ENABLE);
 
     /* Time base configuration */
-    TIM_TimeBaseStructure.Period    = 18 * usTim1Timerout50us * 50;
-    TIM_TimeBaseStructure.Prescaler = 2;
+    TIM_TimeBaseStructure.Period    = 54 * usTim1Timerout50us * 50;
+    TIM_TimeBaseStructure.Prescaler = 0;
     TIM_TimeBaseStructure.ClkDiv    = 0;
     TIM_TimeBaseStructure.CntMode   = TIM_CNT_MODE_UP;
 
     TIM_InitTimeBase(TIM1, &TIM_TimeBaseStructure);
 
     /* Prescaler configuration */
-    TIM_ConfigPrescaler(TIM1, 2, TIM_PSC_RELOAD_MODE_IMMEDIATE);
+    TIM_ConfigPrescaler(TIM1, 0, TIM_PSC_RELOAD_MODE_IMMEDIATE);
     /* TIM1 enable update irq */
     TIM_ConfigInt(TIM1, TIM_INT_UPDATE, ENABLE);
     return TRUE;
