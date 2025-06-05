@@ -29,9 +29,7 @@
 #if MB_SLAVE_RTU_ENABLED > 0 || MB_SLAVE_ASCII_ENABLED > 0
 
 /* ----------------------- Static variables ---------------------------------*/
-static volatile BOOL modbus_rx_state = 0; // 0: receiving, 1: idle
-static volatile BOOL modbus_tx_state = 1; // 0: idle, 1: transmitting
-static uint8_t       modbus_rx_char  = 0;
+static volatile CHAR modbus_rx_char  = 0;
 
 /* ----------------------- User defenitions ---------------------------------*/
 #define RS485_RTS_PORT          GPIOB
@@ -60,14 +58,6 @@ BOOL xMBPortSerialInit(UCHAR ucPort, ULONG ulBaudRate,
 
     uart_init(BUS_485);
 
-    USART_ClrIntPendingBit(USART_MODBUS, USART_INT_RXDNE);
-    USART_ClrFlag(USART_MODBUS, USART_FLAG_RXDNE);
-    USART_ClrIntPendingBit(USART_MODBUS, USART_INT_TXC);
-    USART_ClrFlag(USART_MODBUS, USART_FLAG_TXC);
-
-    USART_ConfigInt(USART_MODBUS, USART_INT_RXDNE, ENABLE);
-    USART_ConfigInt(USART_MODBUS, USART_INT_TXC, ENABLE);
-
     NVIC_EnableIRQ(USART_MODBUS_IRQn);
 
     return TRUE;
@@ -76,19 +66,19 @@ BOOL xMBPortSerialInit(UCHAR ucPort, ULONG ulBaudRate,
 void vMBPortSerialEnable(BOOL xRxEnable, BOOL xTxEnable)
 {
     if (xRxEnable) {
-        modbus_rx_state = 1;
+        USART_ClrIntPendingBit(USART_MODBUS, USART_INT_RXDNE);
+        USART_ClrFlag(USART_MODBUS, USART_FLAG_RXDNE);
+        USART_ConfigInt(USART_MODBUS, USART_INT_RXDNE, ENABLE);
         // RS485_RTS_LOW;
-        printf("\r\nrx:");
     } else {
-        modbus_rx_state = 0;
+        USART_ConfigInt(USART_MODBUS, USART_INT_RXDNE, DISABLE);
     }
 
     if (xTxEnable) {
         // RS485_RTS_HIGH;
-        modbus_tx_state = 1;
-        printf("\r\ntx:");
+        USART_ConfigInt(USART_MODBUS, USART_INT_TXDE, ENABLE);
     } else {
-        modbus_tx_state = 0;
+        USART_ConfigInt(USART_MODBUS, USART_INT_TXDE, DISABLE);
     }
 }
 
@@ -104,7 +94,6 @@ BOOL xMBPortSerialPutByte(CHAR ucByte)
      * by the protocol stack if pxMBFrameCBTransmitterEmpty( ) has been
      * called. */
     USART_SendData(USART_MODBUS, ucByte);
-    printf("0x%02x ", ucByte);
     return TRUE;
 }
 
@@ -113,7 +102,7 @@ BOOL xMBPortSerialGetByte(CHAR* pucByte)
     /* Return the byte in the UARTs receive buffer. This function is called
      * by the protocol stack after pxMBFrameCBByteReceived( ) has been called.
      */
-    *pucByte = USART_ReceiveData(USART_MODBUS);
+    *pucByte = modbus_rx_char;
     return TRUE;
 }
 
@@ -136,30 +125,21 @@ static void prvvUARTTxReadyISR(void)
 static void prvvUARTRxISR(void)
 {
     pxMBFrameCBByteReceived();
-    printf("0x%02x ", modbus_rx_char);
 }
 
 void UART5_IRQHandler(void)
 {
-    if (USART_GetIntStatus(USART_MODBUS, USART_INT_RXDNE) != RESET ) {
+    if (USART_GetIntStatus(USART_MODBUS, USART_INT_RXDNE) != RESET) {
         /* Read one byte from the receive data register */
-        if (modbus_rx_state) {
-            modbus_rx_char = USART_ReceiveData(USART_MODBUS);
-            prvvUARTRxISR();
-        } else {
-            USART_ReceiveData(USART_MODBUS);
-        }
+        modbus_rx_char = USART_ReceiveData(USART_MODBUS);
+        prvvUARTRxISR();
         USART_ClrIntPendingBit(USART_MODBUS, USART_INT_RXDNE);
         USART_ClrFlag(USART_MODBUS, USART_FLAG_RXDNE);
     }
 
-    if (USART_GetIntStatus(USART_MODBUS, USART_INT_TXC) != RESET ) {
+    if (USART_GetIntStatus(USART_MODBUS, USART_INT_TXDE) != RESET) {
         /* Write one byte to the transmit data register */
-        if (modbus_tx_state) {
-            prvvUARTTxReadyISR();
-        }
-        USART_ClrIntPendingBit(USART_MODBUS, USART_INT_TXC);
-        USART_ClrFlag(USART_MODBUS, USART_FLAG_TXC);
+        prvvUARTTxReadyISR();
     }
 
     if ((USART_GetFlagStatus(USART_MODBUS, USART_FLAG_OREF) != RESET) ||

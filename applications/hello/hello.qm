@@ -69,7 +69,9 @@ QTimeEvt_ctorX(&amp;me-&gt;modbusEvt, &amp;me-&gt;super, MODBUS_POLL_SIG, 0U);</
      <action>(void)par; // unused parameter
 QTimeEvt_armX(&amp;me-&gt;ledEvt, BSP_TICKS_PER_SEC/2, BSP_TICKS_PER_SEC/2);
 QTimeEvt_armX(&amp;me-&gt;modbusEvt, 1, 1);
-</action>
+
+eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
+eMBEnable();</action>
      <initial_glyph color="3" conn="11,4,5,1,31,15,-10">
       <action box="2,-2,6,2"/>
      </initial_glyph>
@@ -79,10 +81,8 @@ QTimeEvt_armX(&amp;me-&gt;modbusEvt, 1, 1);
      <!--${AOs::Hello::SM::NORMAL::MODBUS_POLL}-->
      <tran trig="MODBUS_POLL">
       <action>eMBPoll();
-static int count = 0;
 extern USHORT usSRegHoldBuf[S_REG_HOLDING_NREGS];
-count++;
-usSRegHoldBuf[3] = count;</action>
+usSRegHoldBuf[3] = 0x1234;</action>
       <tran_glyph conn="10,14,3,-1,19">
        <action box="0,-2,14,2"/>
       </tran_glyph>

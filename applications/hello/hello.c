@@ -115,8 +115,7 @@ static QState Hello_NORMAL(Hello * const me, QEvt const * const e) {
         case MODBUS_POLL_SIG: {
             eMBPoll();
             extern USHORT usSRegHoldBuf[S_REG_HOLDING_NREGS];
-            usSRegHoldBuf[3] = 0x55;
-
+            usSRegHoldBuf[3] = 0x1234;
             status_ = Q_HANDLED();
             break;
         }
