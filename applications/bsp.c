@@ -5,6 +5,7 @@
 #include "bsp.h"
 #include "board.h"
 #include "hello.h" /* Blinky Application interface */
+#include "cmd.h" /* Command interface */
 #include "led.h"
 #include "lpuart.h"
 #include "rtc.h"
@@ -36,16 +37,6 @@ void assert_failed(const uint8_t* expr, const uint8_t* file, uint32_t line)
 }
 
 /* ISRs  ===============================================*/
-void RTC_WKUP_IRQHandler(void)
-{
-    if (EXTI_GetITStatus(EXTI_LINE20)) {
-        EXTI_ClrITPendBit(EXTI_LINE20);
-        RTC_ClrIntPendingBit(RTC_INT_WUT);
-        QTIMEEVT_TICK_X(0, 0);
-    }
-    QV_ARM_ERRATUM_838869();
-}
-
 void SysTick_Handler(void)
 {
     // process the tick event
@@ -72,7 +63,7 @@ void BSP_init(void)
     cm_backtrace_init("N32L4", "V1.0", "1.0.0");
     led_init();   /* initialize the LEDs */
     uart_init(CONSOLE); /* initialize the console UART */
-    // rtc_init();
+    cmd_init(); /* initialize the command interface */
 }
 
 void BSP_start(void)

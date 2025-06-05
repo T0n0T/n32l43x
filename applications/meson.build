@@ -2,6 +2,7 @@
 applications_incdirs = include_directories(
   '.',
   'hello',
+  'cmd',
   # 'services',
   # 'services/cmd',
   # 'services/log',
@@ -13,4 +14,5 @@ applications_sources = files(
   'main.c',
   'bsp.c',
   'hello/hello.c',
+  'cmd/cmd.c',
 )

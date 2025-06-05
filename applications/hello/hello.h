@@ -44,6 +44,7 @@
 enum AppSignals {
     BLINKY_SIG = Q_USER_SIG,
     MODBUS_POLL_SIG,
+    USER_COMMAND_SIG,
 };
 
 //${Shared::AO_Hello} ........................................................
@@ -51,6 +52,15 @@ extern QActive * const AO_Hello;
 
 //${Shared::Hello_ctor} ......................................................
 void Hello_ctor(void);
+
+//${Shared::CmdEvt} ..........................................................
+typedef struct {
+// protected:
+    QEvt super;
+
+// public:
+    uint8_t buf[64];
+} CmdEvt;
 //$enddecl${Shared} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 #endif //__HELLO_H__

@@ -96,7 +96,7 @@ void uart_init(uart_index_t index)
     USART_Enable(uarts[index].handle, ENABLE);
 }
 
-void uart_control(uart_index_t index, bool state)
+void uart_control(uart_index_t index, uint16_t int_flag, bool state)
 {
     if (index >= UART_MAX) {
         return;
@@ -104,10 +104,18 @@ void uart_control(uart_index_t index, bool state)
 
     USART_Module* usart = uarts[index].handle;
 
-    if (state == true) {
-        USART_Enable(usart, ENABLE);
+    if (!int_flag) {
+        if (state == true) {
+            USART_Enable(usart, ENABLE);
+        } else {
+            USART_Enable(usart, DISABLE);
+        }
     } else {
-        USART_Enable(usart, DISABLE);
+        if (state == true) {
+            USART_ConfigInt(usart, int_flag, ENABLE);
+        } else {
+            USART_ConfigInt(usart, int_flag, DISABLE);
+        }
     }
 }
 

@@ -36,6 +36,7 @@ https://www.state-machine.com/qpc/exa.html</documentation>
    <code>{
     BLINKY_SIG = Q_USER_SIG,
     MODBUS_POLL_SIG,
+    USER_COMMAND_SIG,
 };</code>
   </attribute>
   <!--${Shared::AO_Hello}-->
@@ -50,6 +51,11 @@ QActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;Hello_initial));
 QTimeEvt_ctorX(&amp;me-&gt;ledEvt, &amp;me-&gt;super, BLINKY_SIG, 0U);
 QTimeEvt_ctorX(&amp;me-&gt;modbusEvt, &amp;me-&gt;super, MODBUS_POLL_SIG, 0U);</code>
   </operation>
+  <!--${Shared::CmdEvt}-->
+  <class name="CmdEvt" superclass="qpc::QEvt">
+   <!--${Shared::CmdEvt::buf[64]}-->
+   <attribute name="buf[64]" type="uint8_t" visibility="0x00" properties="0x00"/>
+  </class>
  </package>
  <!--${AOs}-->
  <package name="AOs" stereotype="0x02">
@@ -65,7 +71,7 @@ QTimeEvt_ctorX(&amp;me-&gt;modbusEvt, &amp;me-&gt;super, MODBUS_POLL_SIG, 0U);</
    <statechart properties="0x03">
     <documentation>Blinky state machine</documentation>
     <!--${AOs::Hello::SM::initial}-->
-    <initial target="../1/1">
+    <initial target="../1/2">
      <action>(void)par; // unused parameter
 QTimeEvt_armX(&amp;me-&gt;ledEvt, BSP_TICKS_PER_SEC/2, BSP_TICKS_PER_SEC/2);
 QTimeEvt_armX(&amp;me-&gt;modbusEvt, 1, 1);
@@ -87,11 +93,19 @@ usSRegHoldBuf[3] = 0x1234;</action>
        <action box="0,-2,14,2"/>
       </tran_glyph>
      </tran>
+     <!--${AOs::Hello::SM::NORMAL::USER_COMMAND}-->
+     <tran trig="USER_COMMAND">
+      <action>CmdEvt const* const cmdEvt = (CmdEvt const*)e;
+cmd_execute(cmdEvt-&gt;buf);</action>
+      <tran_glyph conn="10,12,3,-1,19">
+       <action box="0,-2,15,3"/>
+      </tran_glyph>
+     </tran>
      <!--${AOs::Hello::SM::NORMAL::off}-->
      <state name="off">
       <entry>BSP_ledOff();</entry>
       <!--${AOs::Hello::SM::NORMAL::off::BLINKY}-->
-      <tran trig="BLINKY" target="../../2">
+      <tran trig="BLINKY" target="../../3">
        <tran_glyph color="1" conn="16,26,3,1,18,11,-2">
         <action box="0,-2,8,2"/>
        </tran_glyph>
@@ -104,7 +118,7 @@ usSRegHoldBuf[3] = 0x1234;</action>
      <state name="on">
       <entry>BSP_ledOn();</entry>
       <!--${AOs::Hello::SM::NORMAL::on::BLINKY}-->
-      <tran trig="BLINKY" target="../../1">
+      <tran trig="BLINKY" target="../../2">
        <tran_glyph color="1" conn="16,40,3,1,20,-19,-4">
         <action box="0,-2,8,2"/>
        </tran_glyph>
@@ -113,7 +127,7 @@ usSRegHoldBuf[3] = 0x1234;</action>
        <entry box="0,3,16,4"/>
       </state_glyph>
      </state>
-     <state_glyph node="10,8,29,36"/>
+     <state_glyph node="10,6,29,38"/>
     </state>
     <state_diagram size="73,81"/>
    </statechart>
@@ -127,6 +141,7 @@ usSRegHoldBuf[3] = 0x1234;</action>
 #include &quot;bsp.h&quot;    // Board Support Package interface
 #include &quot;stdio.h&quot;
 #include &quot;hello.h&quot;
+#include &quot;cmd.h&quot;
 #include &quot;user_mb_app.h&quot;
 
 // ask QM to declare the Blinky class

@@ -39,6 +39,7 @@
 #include "bsp.h"    // Board Support Package interface
 #include "stdio.h"
 #include "hello.h"
+#include "cmd.h"
 #include "user_mb_app.h"
 
 // ask QM to declare the Blinky class
@@ -116,6 +117,13 @@ static QState Hello_NORMAL(Hello * const me, QEvt const * const e) {
             eMBPoll();
             extern USHORT usSRegHoldBuf[S_REG_HOLDING_NREGS];
             usSRegHoldBuf[3] = 0x1234;
+            status_ = Q_HANDLED();
+            break;
+        }
+        //${AOs::Hello::SM::NORMAL::USER_COMMAND}
+        case USER_COMMAND_SIG: {
+            CmdEvt const* const cmdEvt = (CmdEvt const*)e;
+            cmd_execute(cmdEvt->buf);
             status_ = Q_HANDLED();
             break;
         }
