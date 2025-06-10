@@ -78,8 +78,7 @@ void BSP_init(void)
     RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
     cm_backtrace_init("N32L4", "V1.0", "1.0.0");
     led_init(); /* initialize the LEDs */
-    // hall_init();
-    // hall_set_ctr(ENABLE);
+    hall_init();
     uart_init(CONSOLE);
     // rtc_init();
     // wakeup_pin_init(wakeup_handle);
@@ -97,14 +96,14 @@ void BSP_start(void)
 
     // instantiate and start AOs/threads...
 
-    // static QEvtPtr valveCounterQueueSto[10];
-    // ValveCounter_ctor();
-    // QActive_start(AO_ValveCounter,
-    //               1U,
-    //               valveCounterQueueSto,
-    //               Q_DIM(valveCounterQueueSto),
-    //               (void*)0, 0U,
-    //               (void*)0);
+    static QEvtPtr valveCounterQueueSto[10];
+    ValveCounter_ctor();
+    QActive_start(AO_ValveCounter,
+                  1U,
+                  valveCounterQueueSto,
+                  Q_DIM(valveCounterQueueSto),
+                  (void*)0, 0U,
+                  (void*)0);
     static QEvtPtr valveHandlerQueueSto[10];
     ValveHandler_ctor();
     QActive_start(AO_ValveHandler,

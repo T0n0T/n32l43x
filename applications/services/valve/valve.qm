@@ -150,7 +150,7 @@ QActive_subscribe(&amp;me-&gt;super, VALVE_CONFIG_READ_SIG);</action>
     </initial>
     <state name="Idle">
      <entry>#ifdef USE_MODBUS
-eMBInit(MB_RTU, 0x01, 1, 115200,  MB_PAR_EVEN);
+eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
 eMBEnable();
 QTimeEvt_armX(&amp;me-&gt;timeEvt, 1, 1);
 #endif</entry>
@@ -184,13 +184,17 @@ eMBPoll();
       <tran trig="VALVE_UPDATE">
        <action brief="handle data write flash action and lcd refresh">ValveEvt const *ve = (ValveEvt const *)e;
 ValveVal const *val = (ValveVal const *)ve-&gt;msg;
-printf(&quot;Position: %d/6 (%.1f°), Rotations: %d, Total Ticks: %d\r\n&quot;,
+printf(&quot;Position: %d/6, Rotations: %d, Total Ticks: %d\r\n&quot;,
     val-&gt;position,
-    (val-&gt;position * 360.0f / TICKS_PER_ROTATION),
     val-&gt;rotations,
     val-&gt;total_ticks);
 #ifdef USE_MODBUS
-//TODO: update modbus reg for valve count
+QF_CRIT_ENTRY();
+extern USHORT usSRegHoldBuf[S_REG_HOLDING_NREGS];
+usSRegHoldBuf[1] = val-&gt;total_ticks &gt; 0 ? 1 : 2;
+usSRegHoldBuf[2] = val-&gt;rotations;
+usSRegHoldBuf[3] = val-&gt;rotations &gt; 5 ? 1 : 2;
+QF_CRIT_EXIT();
 #endif</action>
        <tran_glyph conn="24,38,3,-1,14">
         <action box="0,-2,13,2"/>
@@ -254,8 +258,12 @@ if(!count){
       </tran_glyph>
      </tran>
      <tran trig="VALVE_CMD_PARSE">
+      <action>ValveEvt* const evt = (ValveEvt*)e;
+if (evt-&gt;evtType == VALVE_CMD) {
+    cmd_execute((char*)evt-&gt;msg);
+}</action>
       <tran_glyph conn="20,44,3,-1,13">
-       <action box="0,-2,18,3"/>
+       <action box="0,-2,17,2"/>
       </tran_glyph>
      </tran>
      <state_glyph node="20,34,18,14">

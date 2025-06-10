@@ -49,12 +49,12 @@ static void prvvUARTRxISR(void);
 BOOL xMBPortSerialInit(UCHAR ucPort, ULONG ulBaudRate,
                        UCHAR ucDataBits, eMBParity eParity)
 {
-    // GPIO_InitType GPIO_InitStructure;
-    // GPIO_InitStruct(&GPIO_InitStructure);
-    // RCC_EnableAPB2PeriphClk(RS485_RTS_CLK, ENABLE);
-    // GPIO_InitStructure.Pin       = RS485_RTS_PIN;
-    // GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    // GPIO_InitPeripheral(RS485_RTS_PORT, &GPIO_InitStructure);
+    GPIO_InitType GPIO_InitStructure;
+    GPIO_InitStruct(&GPIO_InitStructure);
+    RCC_EnableAPB2PeriphClk(RS485_RTS_CLK, ENABLE);
+    GPIO_InitStructure.Pin       = RS485_RTS_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitPeripheral(RS485_RTS_PORT, &GPIO_InitStructure);
 
     uart_init(BUS_485);
 
@@ -68,15 +68,15 @@ void vMBPortSerialEnable(BOOL xRxEnable, BOOL xTxEnable)
     if (xRxEnable) {
         USART_ClrIntPendingBit(USART_MODBUS, USART_INT_RXDNE);
         USART_ClrFlag(USART_MODBUS, USART_FLAG_RXDNE);
-        USART_ConfigInt(USART_MODBUS, USART_INT_RXDNE, ENABLE);
-        // RS485_RTS_LOW;
+        USART_ConfigInt(USART_MODBUS, USART_INT_RXDNE, ENABLE);        
+        RS485_RTS_LOW;
     } else {
+        RS485_RTS_HIGH;
         USART_ConfigInt(USART_MODBUS, USART_INT_RXDNE, DISABLE);
     }
 
     if (xTxEnable) {
-        // RS485_RTS_HIGH;
-        USART_ConfigInt(USART_MODBUS, USART_INT_TXDE, ENABLE);
+        USART_ConfigInt(USART_MODBUS, USART_INT_TXDE, ENABLE);        
     } else {
         USART_ConfigInt(USART_MODBUS, USART_INT_TXDE, DISABLE);
     }

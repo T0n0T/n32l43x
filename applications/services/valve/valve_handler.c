@@ -103,7 +103,7 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
         //${AOs::ValveHandler::SM::Idle}
         case Q_ENTRY_SIG: {
             #ifdef USE_MODBUS
-            eMBInit(MB_RTU, 0x01, 1, 115200,  MB_PAR_EVEN);
+            eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
             eMBEnable();
             QTimeEvt_armX(&me->timeEvt, 1, 1);
             #endif
@@ -161,13 +161,17 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         case VALVE_UPDATE_SIG: {
             ValveEvt const *ve = (ValveEvt const *)e;
             ValveVal const *val = (ValveVal const *)ve->msg;
-            printf("Position: %d/6 (%.1f°), Rotations: %d, Total Ticks: %d\r\n",
+            printf("Position: %d/6, Rotations: %d, Total Ticks: %d\r\n",
                 val->position,
-                (val->position * 360.0f / TICKS_PER_ROTATION),
                 val->rotations,
                 val->total_ticks);
             #ifdef USE_MODBUS
-            //TODO: update modbus reg for valve count
+            QF_CRIT_ENTRY();
+            extern USHORT usSRegHoldBuf[S_REG_HOLDING_NREGS];
+            usSRegHoldBuf[1] = val->total_ticks > 0 ? 1 : 2;
+            usSRegHoldBuf[2] = val->rotations;
+            usSRegHoldBuf[3] = val->rotations > 5 ? 1 : 2;
+            QF_CRIT_EXIT();
             #endif
             status_ = Q_HANDLED();
             break;

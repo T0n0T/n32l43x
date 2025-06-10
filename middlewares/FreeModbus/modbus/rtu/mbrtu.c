@@ -158,6 +158,11 @@ eMBRTUReceive(UCHAR *pucRcvAddress, UCHAR **pucFrame, USHORT *pusLength)
 
         /* Return the start of the Modbus PDU to the caller. */
         *pucFrame = (UCHAR *)&ucRTUBuf[MB_SER_PDU_PDU_OFF];
+
+        printf("\r\nReceived frame: ");
+        for (USHORT i = 0; i < usRcvBufferPos; i++) {
+            printf("%02X ", ucRTUBuf[i]);
+        }
     } else {
         eStatus = MB_EIO;
     }
@@ -193,6 +198,11 @@ eMBRTUSend(UCHAR ucSlaveAddress, const UCHAR *pucFrame, USHORT usLength)
 
         /* Activate the transmitter. */
         eSndState = STATE_TX_XMIT;
+
+        printf("\r\nTransmit frame: ");
+        for (USHORT i = 0; i < usSndBufferCount; i++) {
+            printf("%02X ", ucRTUBuf[i]);
+        }
         vMBPortSerialEnable(FALSE, TRUE);
     } else {
         eStatus = MB_EIO;

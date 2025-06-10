@@ -14,8 +14,8 @@
 #define S_COIL_NCOILS               32
 #define S_REG_INPUT_START           0
 #define S_REG_INPUT_NREGS           100
-#define S_REG_HOLDING_START         0
-#define S_REG_HOLDING_NREGS         1000
+#define S_REG_HOLDING_START         0x100
+#define S_REG_HOLDING_NREGS         100
 /* salve mode: holding register's all address */
 #define S_HD_RESERVE                0
 #define S_HD_CPU_USAGE_MAJOR        1
