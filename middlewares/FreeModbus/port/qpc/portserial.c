@@ -85,7 +85,7 @@ void vMBPortSerialEnable(BOOL xRxEnable, BOOL xTxEnable)
 void vMBPortClose(void)
 {
     USART_Enable(USART_MODBUS, DISABLE);
-    // RS485_RTS_LOW; // Ensure RTS is low when closing
+    RS485_RTS_LOW; // Ensure RTS is low when closing
 }
 
 BOOL xMBPortSerialPutByte(CHAR ucByte)
@@ -94,6 +94,8 @@ BOOL xMBPortSerialPutByte(CHAR ucByte)
      * by the protocol stack if pxMBFrameCBTransmitterEmpty( ) has been
      * called. */
     USART_SendData(USART_MODBUS, ucByte);
+    while (USART_GetFlagStatus(USART_MODBUS, USART_FLAG_TXC) == RESET);
+
     return TRUE;
 }
 
