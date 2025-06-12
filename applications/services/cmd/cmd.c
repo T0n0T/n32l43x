@@ -148,3 +148,12 @@ int cmd_hello(int argc, char** argv)
     }
     return 0;
 }
+
+int cmd_reboot(int argc, char** argv)
+{
+    (void)argc; // 未使用参数
+    (void)argv; // 未使用参数
+    printf("System is rebooting...\r\n");
+    NVIC_SystemReset(); // 调用系统重启函数
+    return 0;
+}

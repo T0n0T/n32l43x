@@ -100,3 +100,17 @@ int cmd_config_read(int argc, char** argv)
     printf("Reading config: Request sent.\r\n");
     return 0;
 }
+
+int cmd_config_reset(int argc, char** argv)
+{
+    (void)argc; // 未使用参数
+    (void)argv; // 未使用参数
+
+    memset(&config, 0, sizeof(cmd_config_t)); // 重置配置数据
+    QEvt_ctor(&evt.super, VALVE_CONFIG_WRITE_SIG); // 初始化事件
+    evt.msg     = &config;                         // 将静态config数据指针赋给事件的msg字段
+    evt.evtType = VALVE_CMD;                       // 设置事件类型
+
+    QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
+    return 0;
+}
