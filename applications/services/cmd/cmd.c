@@ -26,21 +26,28 @@ void USART_CMD_IRQHandler(void)
     // process the UART2 interrupt
     if (USART_GetIntStatus(USART_CMD, USART_INT_RXDNE) != RESET) {
         /* Read one byte from the receive data register */
-        printf("Received: %c\r\n", USART_ReceiveData(USART_CMD));
-        // if (_cmd_pos < CMD_BUF_LEN - 1) {
-        //     _cmd_buf[_cmd_pos] = USART_ReceiveData(USART_CMD);
-        //     _cmd_pos++;
-        //     if (_cmd_buf[_cmd_pos - 1] == '\n' || _cmd_buf[_cmd_pos - 1] == '\r') {
-        //         // process the command
-        //         _cmd_buf[_cmd_pos] = '\0'; // null-terminate the string
-        //         // Reset the command buffer position
-        //         QACTIVE_POST(AO_ValveConf, &_cmd_evt.super, 0U);
-        //         _cmd_pos = 0;
-        //     }
-        // }
+        if (_cmd_pos < CMD_BUF_LEN - 1) {
+            _cmd_buf[_cmd_pos] = USART_ReceiveData(USART_CMD);
+            _cmd_pos++;
+            if (_cmd_buf[_cmd_pos - 1] == '\n' || _cmd_buf[_cmd_pos - 1] == '\r') {
+                // process the command
+                _cmd_buf[_cmd_pos] = '\0'; // null-terminate the string
+                // Reset the command buffer position
+                QACTIVE_POST(AO_ValveConf, &_cmd_evt.super, 0U);            
+                _cmd_pos = 0;
+            }
+        }
 
         USART_ClrIntPendingBit(USART_CMD, USART_INT_RXDNE);
         USART_ClrFlag(USART_CMD, USART_FLAG_RXDNE);
+    }
+    if ((USART_GetFlagStatus(USART_CMD, USART_FLAG_OREF) != RESET) ) {
+        /*Read the sts register first,and the read the DAT register to clear the all error flag*/
+        (void)USART_CMD->STS;
+        (void)USART_CMD->DAT;
+        printf("error happened %c\r\n", USART_CMD->DAT);
+        /* Under normal circumstances, all error flags will be cleared when the upper data is read and will not be executed here;
+           users can add their own processing according to the actual scenario. */
     }
 }
 
@@ -52,6 +59,7 @@ void cmd_init(void)
     _cmd_evt.evtType = VALVE_CMD; // 设置事件类型为命令解析
     uart_init(BLE_SERIAL);
     uart_control(BLE_SERIAL, USART_INT_RXDNE, true);
+    NVIC_SetPriority(USART_CMD_IRQn, 1U);
     NVIC_EnableIRQ(USART_CMD_IRQn);
 
     GPIO_InitType GPIO_InitStructure;
@@ -104,7 +112,7 @@ void cmd_execute(char* input)
         if (strcmp(args[0], commands[i].name) == 0) {
             // 检查参数数量
             if (argc - 1 > commands[i].max_args) {
-                printf("Error: Too many arguments for command '%s'. Max is %d.\n",
+                printf("Error: Too many arguments for command '%s'. Max is %d.\r\n",
                        commands[i].name, commands[i].max_args);
                 return;
             }
@@ -115,13 +123,13 @@ void cmd_execute(char* input)
         }
     }
 
-    printf("Error: Unknown command '%s'\n", args[0]);
+    printf("Error: Unknown command '%s'\r\n", args[0]);
 }
 
 int cmd_add(int argc, char** argv)
 {
     if (argc != 2) {
-        printf("Usage: add <num1> <num2>\n");
+        printf("Usage: add <num1> <num2>\r\n");
         return -1;
     }
 
@@ -134,9 +142,9 @@ int cmd_add(int argc, char** argv)
 int cmd_hello(int argc, char** argv)
 {
     if (argc == 0) {
-        printf("Hello, world!\n");
+        printf("Hello, world!\r\n");
     } else {
-        printf("Hello, %s!\n", argv[0]);
+        printf("Hello, %s!\r\n", argv[0]);
     }
     return 0;
 }

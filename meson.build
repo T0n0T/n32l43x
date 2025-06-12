@@ -48,11 +48,12 @@ subdir('middlewares/cm_backtrace')
 subdir('middlewares/easylogger')
 subdir('middlewares/qpc')
 subdir('middlewares/FreeModbus')
+subdir('middlewares/cJSON')
 
 appdep_incdirs = []
 appdep_sources = []
-appdep_incdirs += [log_incs, modbus_incs]
-appdep_sources += [log_srcs, modbus_srcs]
+appdep_incdirs += [log_incs, cjson_incs, modbus_incs]
+appdep_sources += [log_srcs, cjson_srcs, modbus_srcs]
 if get_option('buildtype').startswith('debug')
   message('Use debug buildtype' + get_option('buildtype'))
   appdep_sources += cmb_srcs
