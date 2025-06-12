@@ -5,6 +5,12 @@
 #include "cmd.h"
 #include "valve.h"
 
+#define BLE_PWR_PORT GPIOB
+#define BLE_PWR_CLK  RCC_APB2_PERIPH_GPIOB
+#define BLE_PWR_PIN  GPIO_PIN_6
+#define BLE_PWR_HIGH BLE_PWR_PORT->PBSC = BLE_PWR_PIN;
+#define BLE_PWR_LOW  BLE_PWR_PORT->PBC = BLE_PWR_PIN;
+
 #define USART_CMD            USART2
 #define USART_CMD_IRQn       USART2_IRQn
 #define USART_CMD_IRQHandler USART2_IRQHandler
@@ -20,17 +26,18 @@ void USART_CMD_IRQHandler(void)
     // process the UART2 interrupt
     if (USART_GetIntStatus(USART_CMD, USART_INT_RXDNE) != RESET) {
         /* Read one byte from the receive data register */
-        if (_cmd_pos < CMD_BUF_LEN - 1) {
-            _cmd_buf[_cmd_pos] = USART_ReceiveData(USART_CMD);
-            _cmd_pos++;
-            if (_cmd_buf[_cmd_pos - 1] == '\n' || _cmd_buf[_cmd_pos - 1] == '\r') {
-                // process the command
-                _cmd_buf[_cmd_pos] = '\0'; // null-terminate the string
-                // Reset the command buffer position
-                QACTIVE_POST(AO_ValveConf, &_cmd_evt.super, 0U);
-                _cmd_pos = 0;
-            }
-        }
+        printf("Received: %c\r\n", USART_ReceiveData(USART_CMD));
+        // if (_cmd_pos < CMD_BUF_LEN - 1) {
+        //     _cmd_buf[_cmd_pos] = USART_ReceiveData(USART_CMD);
+        //     _cmd_pos++;
+        //     if (_cmd_buf[_cmd_pos - 1] == '\n' || _cmd_buf[_cmd_pos - 1] == '\r') {
+        //         // process the command
+        //         _cmd_buf[_cmd_pos] = '\0'; // null-terminate the string
+        //         // Reset the command buffer position
+        //         QACTIVE_POST(AO_ValveConf, &_cmd_evt.super, 0U);
+        //         _cmd_pos = 0;
+        //     }
+        // }
 
         USART_ClrIntPendingBit(USART_CMD, USART_INT_RXDNE);
         USART_ClrFlag(USART_CMD, USART_FLAG_RXDNE);
@@ -46,10 +53,20 @@ void cmd_init(void)
     uart_init(BLE_SERIAL);
     uart_control(BLE_SERIAL, USART_INT_RXDNE, true);
     NVIC_EnableIRQ(USART_CMD_IRQn);
+
+    GPIO_InitType GPIO_InitStructure;
+    GPIO_InitStruct(&GPIO_InitStructure);
+    RCC_EnableAPB2PeriphClk(BLE_PWR_CLK, ENABLE);
+    GPIO_InitStructure.Pin       = BLE_PWR_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitPeripheral(BLE_PWR_PORT, &GPIO_InitStructure);
+
+    BLE_PWR_HIGH;
 }
 
 void cmd_deinit(void)
 {
+    BLE_PWR_LOW;
     NVIC_DisableIRQ(USART_CMD_IRQn);
     uart_deinit(BLE_SERIAL); 
 }
