@@ -47,8 +47,11 @@ BOOL xMBPortTimersInit(USHORT usTim1Timerout50us)
     RCC_ConfigTim18Clk(RCC_TIM18CLK_SRC_TIM18CLK);
     RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_TIM1, ENABLE);
 
-    /* Time base configuration */
-    TIM_TimeBaseStructure.Period    = 54 * usTim1Timerout50us * 50;
+    /* Time base configuration 
+    @tip when using higher clk like pll, 
+    oneshot update willbe overrun,
+    so the expired also need to edit*/
+    TIM_TimeBaseStructure.Period    = 50 * 16 * usTim1Timerout50us - 1;
     TIM_TimeBaseStructure.Prescaler = 0;
     TIM_TimeBaseStructure.ClkDiv    = 0;
     TIM_TimeBaseStructure.CntMode   = TIM_CNT_MODE_UP;

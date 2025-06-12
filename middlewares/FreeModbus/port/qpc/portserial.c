@@ -76,7 +76,7 @@ void vMBPortSerialEnable(BOOL xRxEnable, BOOL xTxEnable)
     }
 
     if (xTxEnable) {
-        USART_ConfigInt(USART_MODBUS, USART_INT_TXDE, ENABLE);        
+        USART_ConfigInt(USART_MODBUS, USART_INT_TXDE, ENABLE);
     } else {
         USART_ConfigInt(USART_MODBUS, USART_INT_TXDE, DISABLE);
     }
@@ -95,7 +95,6 @@ BOOL xMBPortSerialPutByte(CHAR ucByte)
      * called. */
     USART_SendData(USART_MODBUS, ucByte);
     while (USART_GetFlagStatus(USART_MODBUS, USART_FLAG_TXC) == RESET);
-
     return TRUE;
 }
 

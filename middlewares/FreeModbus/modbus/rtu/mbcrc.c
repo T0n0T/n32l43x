@@ -94,6 +94,5 @@ usMBCRC16( UCHAR * pucFrame, USHORT usLen )
         ucCRCLo = ( UCHAR )( ucCRCHi ^ aucCRCHi[iIndex] );
         ucCRCHi = aucCRCLo[iIndex];
     }
-    printf("\r\nCRC16: %02X %02X", ucCRCHi, ucCRCLo);
     return ( USHORT )( ucCRCHi << 8 | ucCRCLo );
 }

@@ -35,6 +35,7 @@
 #include "led.h"
 #include "lptimer.h"
 #include "rtc.h"
+#include "spi_flash.h"
 #include "uart.h"
 
 void BSP_init(void);

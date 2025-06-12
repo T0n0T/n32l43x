@@ -50,6 +50,7 @@ typedef struct ValveHandler {
 
 // public:
     QTimeEvt timeEvt;
+    QTimeEvt exitEvt;
 } ValveHandler;
 
 extern ValveHandler ValveHandler_inst;
@@ -78,6 +79,7 @@ void ValveHandler_ctor(void) {
     ValveHandler * const me = &ValveHandler_inst;
     QActive_ctor(&me->super, Q_STATE_CAST(&ValveHandler_initial));
     QTimeEvt_ctorX(&me->timeEvt, &me->super, TIMEOUT_SIG, 0U);
+    QTimeEvt_ctorX(&me->exitEvt, &me->super, VALVE_EXIT_SIG, 0U);
 }
 //$enddef${AOs::ValveHandler_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$define${AOs::ValveHandler} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -143,18 +145,14 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         //${AOs::ValveHandler::SM::Idle::Handle}
         case Q_ENTRY_SIG: {
             Sleep_release(HANDLER_BIT);
-            status_ = Q_HANDLED();
-            break;
-        }
-        //${AOs::ValveHandler::SM::Idle::Handle}
-        case Q_EXIT_SIG: {
-            Sleep_request(HANDLER_BIT);
+            sFLASH_Init();
             status_ = Q_HANDLED();
             break;
         }
         //${AOs::ValveHandler::SM::Idle::Handle::LOCK_ON}
         case LOCK_ON_SIG: {
-            status_ = Q_TRAN(&ValveHandler_Idle);
+            QTimeEvt_armX(&me->exitEvt, 500, 0);
+            status_ = Q_HANDLED();
             break;
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_UPDATE}
@@ -165,6 +163,17 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
                 val->position,
                 val->rotations,
                 val->total_ticks);
+            if (val->rotations > 5) {
+                lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
+                lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
+                lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
+                lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
+            } else if (val->rotations <= 5) {
+                lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
+                lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
+                lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
+                lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
+            }
             #ifdef USE_MODBUS
             QF_CRIT_ENTRY();
             extern USHORT usSRegHoldBuf[S_REG_HOLDING_NREGS];
@@ -178,12 +187,23 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_CONFIG_WRITE}
         case VALVE_CONFIG_WRITE_SIG: {
+            printf("write config");
             status_ = Q_HANDLED();
             break;
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_CONFIG_READ}
         case VALVE_CONFIG_READ_SIG: {
+            printf("read config");
             status_ = Q_HANDLED();
+            break;
+        }
+        //${AOs::ValveHandler::SM::Idle::Handle::VALVE_EXIT}
+        case VALVE_EXIT_SIG: {
+            //sFLASH_WriteBuffer
+            printf("write flash");
+            sFLASH_DeInit();
+            Sleep_request(HANDLER_BIT);
+            status_ = Q_TRAN(&ValveHandler_Idle);
             break;
         }
         default: {

@@ -8,6 +8,7 @@
     LOCK_OFF_SIG,
     VALVE_DAILY_SIG,
     VALVE_UPDATE_SIG,
+    VALVE_EXIT_SIG,
     VALVE_CMD_PARSE_SIG,
     VALVE_CONFIG_WRITE_SIG,
     VALVE_CONFIG_READ_SIG,
@@ -137,6 +138,7 @@ include:
 - wireless;</documentation>
    <attribute name="inst" type="ValveHandler" visibility="0x00" properties="0x01"/>
    <attribute name="timeEvt" type="QTimeEvt" visibility="0x00" properties="0x00"/>
+   <attribute name="exitEvt" type="QTimeEvt" visibility="0x00" properties="0x00"/>
    <statechart properties="0x00">
     <initial target="../1">
      <action>QActive_subscribe(&amp;me-&gt;super, LOCK_ON_SIG);
@@ -174,11 +176,12 @@ eMBPoll();
       </tran_glyph>
      </tran>
      <state name="Handle">
-      <entry>Sleep_release(HANDLER_BIT);</entry>
-      <exit>Sleep_request(HANDLER_BIT);</exit>
-      <tran trig="LOCK_ON" target="../..">
-       <tran_glyph conn="24,34,3,3,-6">
-        <action box="-8,-2,10,2"/>
+      <entry>Sleep_release(HANDLER_BIT);
+sFLASH_Init();</entry>
+      <tran trig="LOCK_ON">
+       <action>QTimeEvt_armX(&amp;me-&gt;exitEvt, 500, 0);</action>
+       <tran_glyph conn="24,44,3,-1,14">
+        <action box="0,-2,10,2"/>
        </tran_glyph>
       </tran>
       <tran trig="VALVE_UPDATE">
@@ -188,6 +191,17 @@ printf(&quot;Position: %d/6, Rotations: %d, Total Ticks: %d\r\n&quot;,
     val-&gt;position,
     val-&gt;rotations,
     val-&gt;total_ticks);
+if (val-&gt;rotations &gt; 5) {
+    lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
+    lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
+    lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
+    lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
+} else if (val-&gt;rotations &lt;= 5) {
+    lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
+    lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
+    lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
+    lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
+}
 #ifdef USE_MODBUS
 QF_CRIT_ENTRY();
 extern USHORT usSRegHoldBuf[S_REG_HOLDING_NREGS];
@@ -201,22 +215,31 @@ QF_CRIT_EXIT();
        </tran_glyph>
       </tran>
       <tran trig="VALVE_CONFIG_WRITE">
-       <action brief="handle config write flash action;if error happend, start timer for error blinky"/>
+       <action brief="handle config write flash action;if error happend, start timer for error blinky">printf(&quot;write config&quot;);</action>
        <tran_glyph conn="24,40,3,-1,14">
         <action box="0,-2,19,2"/>
        </tran_glyph>
       </tran>
       <tran trig="VALVE_CONFIG_READ">
+       <action>printf(&quot;read config&quot;);</action>
        <tran_glyph conn="24,42,3,-1,14">
         <action box="0,-2,19,2"/>
        </tran_glyph>
       </tran>
-      <state_glyph node="24,28,20,16">
+      <tran trig="VALVE_EXIT" target="../..">
+       <action>//sFLASH_WriteBuffer
+printf(&quot;write flash&quot;);
+sFLASH_DeInit();
+Sleep_request(HANDLER_BIT);</action>
+       <tran_glyph conn="24,34,3,3,-6">
+        <action box="-9,-2,10,2"/>
+       </tran_glyph>
+      </tran>
+      <state_glyph node="24,28,20,18">
        <entry box="0,3,6,2"/>
-       <exit box="0,5,6,2"/>
       </state_glyph>
      </state>
-     <state_glyph node="18,16,32,30">
+     <state_glyph node="18,16,32,32">
       <entry box="0,3,6,2"/>
      </state_glyph>
     </state>
@@ -301,7 +324,8 @@ QTimeEvt_ctorX(&amp;me-&gt;timeEvt, &amp;me-&gt;super, TIMEOUT_SIG, 0U);</code>
   <operation name="ValveHandler_ctor" type="void" visibility="0x00" properties="0x00">
    <code>ValveHandler * const me = &amp;ValveHandler_inst;
 QActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveHandler_initial));
-QTimeEvt_ctorX(&amp;me-&gt;timeEvt, &amp;me-&gt;super, TIMEOUT_SIG, 0U);</code>
+QTimeEvt_ctorX(&amp;me-&gt;timeEvt, &amp;me-&gt;super, TIMEOUT_SIG, 0U);
+QTimeEvt_ctorX(&amp;me-&gt;exitEvt, &amp;me-&gt;super, VALVE_EXIT_SIG, 0U);</code>
   </operation>
   <attribute name="AO_ValveConf" type="QActive * const" visibility="0x00" properties="0x00">
    <code>= &amp;ValveConf_inst.super;</code>

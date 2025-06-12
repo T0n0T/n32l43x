@@ -74,12 +74,14 @@ void BSP_init(void)
     /* NOTE: SystemInit() has been already called from the startup code
      *  but SystemCoreClock needs to be updated
      */
-    SystemCoreClockUpdate();
-    RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
+    board_init(); /* initialize the board */
     cm_backtrace_init("N32L4", "V1.0", "1.0.0");
     led_init(); /* initialize the LEDs */
-    hall_init();
+    hall_init();/* initialize the Hall sensor */
     uart_init(CONSOLE);
+    lcd_init(); /* initialize the LCD */
+    // lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
+    dump_clk();
     // rtc_init();
     // wakeup_pin_init(wakeup_handle);
 }
@@ -110,6 +112,14 @@ void BSP_start(void)
                   2U,
                   valveHandlerQueueSto,
                   Q_DIM(valveHandlerQueueSto),
+                  (void*)0, 0U,
+                  (void*)0);
+    static QEvtPtr valveConfQueueSto[10];
+    ValveConf_ctor();
+    QActive_start(AO_ValveConf,
+                  3U,
+                  valveConfQueueSto,
+                  Q_DIM(valveConfQueueSto),
                   (void*)0, 0U,
                   (void*)0);
 }

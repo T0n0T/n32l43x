@@ -6,13 +6,284 @@
 #include "n32l43x_lptim.h"
 #include "n32l43x_lpuart.h"
 
+ErrorStatus SetSysClockToMSI(void);
+ErrorStatus SetSysClockToHSI(void);
+ErrorStatus SetSysClockToHSE(void);
+ErrorStatus SetSysClockToPLL(uint32_t freq, uint8_t src);
+
 void board_init(void)
 {
+    SetSysClockToHSI();
     RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
-    set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSI);
 }
 
-void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)
+void dump_clk(void)
+{
+    RCC_ClocksType RCC_ClockFreq;
+    RCC_GetClocksFreqValue(&RCC_ClockFreq);
+    printf("\r\nSYSCLK: %u\r\n", (unsigned int)RCC_ClockFreq.SysclkFreq);
+    printf("HCLK: %u\r\n", (unsigned int)RCC_ClockFreq.HclkFreq);
+    printf("PCLK1: %u\r\n", (unsigned int)RCC_ClockFreq.Pclk1Freq);
+    printf("PCLK2: %u\r\n", (unsigned int)RCC_ClockFreq.Pclk2Freq);
+}
+
+/**
+ * @brief  Selects MSI as System clock source and configure HCLK, PCLK2
+ *         and PCLK1 prescalers.
+ */
+ErrorStatus SetSysClockToMSI(void)
+{
+    uint32_t timeout_value = 0xFFFFFF;
+
+    if (RESET == RCC_GetFlagStatus(RCC_CTRLSTS_FLAG_MSIRD)) {
+        /* Enable MSI and Config Clock */
+        RCC_ConfigMsi(RCC_MSI_ENABLE, RCC_MSI_RANGE_4M);
+        /* Waits for MSI start-up */
+        if (SUCCESS != RCC_WaitMsiStable()) {
+            return ERROR;
+        }
+    }
+
+    /* Enable Prefetch Buffer */
+    FLASH_PrefetchBufSet(FLASH_PrefetchBuf_EN);
+
+    /* Select MSI as system clock source */
+    RCC_ConfigSysclk(RCC_SYSCLK_SRC_MSI);
+
+    /* Wait till MSI is used as system clock source */
+    while (RCC_GetSysclkSrc() != 0x00) {
+        if ((timeout_value--) == 0) {
+            return ERROR;
+        }
+    }
+
+    /* Flash 0 wait state */
+    FLASH_SetLatency(FLASH_LATENCY_0);
+
+    /* HCLK = SYSCLK */
+    RCC_ConfigHclk(RCC_SYSCLK_DIV1);
+
+    /* PCLK2 = HCLK */
+    RCC_ConfigPclk2(RCC_HCLK_DIV1);
+
+    /* PCLK1 = HCLK */
+    RCC_ConfigPclk1(RCC_HCLK_DIV1);
+
+    return SUCCESS;
+}
+
+/**
+ * @brief  Selects HSI as System clock source and configure HCLK, PCLK2
+ *         and PCLK1 prescalers.
+ */
+ErrorStatus SetSysClockToHSI(void)
+{
+    uint32_t    msi_ready_flag   = RESET;
+    uint32_t    timeout_value    = 0xFFFFFF;
+    ErrorStatus HSIStartUpStatus = ERROR;
+
+    RCC_EnableHsi(ENABLE);
+
+    /* Wait till HSI is ready */
+    HSIStartUpStatus = RCC_WaitHsiStable();
+
+    if (HSIStartUpStatus == SUCCESS) {
+        /* Enable Prefetch Buffer */
+        FLASH_PrefetchBufSet(FLASH_PrefetchBuf_EN);
+
+        if (((*(__IO uint8_t*)((UCID_BASE + 0x2))) == 0x01) || ((*(__IO uint8_t*)((UCID_BASE + 0x2))) == 0x11) || ((*(__IO uint8_t*)((UCID_BASE + 0x2))) == 0xFF)) {
+            /* Cheak if MSI is Ready */
+            if (RESET == RCC_GetFlagStatus(RCC_CTRLSTS_FLAG_MSIRD)) {
+                /* Enable MSI and Config Clock */
+                RCC_ConfigMsi(RCC_MSI_ENABLE, RCC_MSI_RANGE_4M);
+                /* Waits for MSI start-up */
+                if (SUCCESS != RCC_WaitMsiStable()) {
+                    return ERROR;
+                }
+
+                msi_ready_flag = SET;
+            }
+
+            /* Select MSI as system clock source */
+            RCC_ConfigSysclk(RCC_SYSCLK_SRC_MSI);
+
+            /* Disable PLL */
+            RCC_EnablePll(DISABLE);
+
+            RCC_ConfigPll(RCC_PLL_HSI_PRE_DIV2, RCC_PLL_MUL_2, RCC_PLLDIVCLK_DISABLE);
+
+            /* Enable PLL */
+            RCC_EnablePll(ENABLE);
+
+            /* Wait till PLL is ready */
+            while (RCC_GetFlagStatus(RCC_CTRL_FLAG_PLLRDF) == RESET) {
+                if ((timeout_value--) == 0) {
+                    return ERROR;
+                }
+            }
+
+            /* Select PLL as system clock source */
+            RCC_ConfigSysclk(RCC_SYSCLK_SRC_PLLCLK);
+
+            /* Wait till PLL is used as system clock source */
+            timeout_value = 0xFFFFFF;
+            while (RCC_GetSysclkSrc() != 0x0C) {
+                if ((timeout_value--) == 0) {
+                    return ERROR;
+                }
+            }
+
+            if (msi_ready_flag == SET) {
+                /* MSI oscillator OFF */
+                RCC_ConfigMsi(RCC_MSI_DISABLE, RCC_MSI_RANGE_4M);
+            }
+        } else {
+            /* Select HSI as system clock source */
+            RCC_ConfigSysclk(RCC_SYSCLK_SRC_HSI);
+
+            /* Wait till HSI is used as system clock source */
+            timeout_value = 0xFFFFFF;
+            while (RCC_GetSysclkSrc() != 0x04) {
+                if ((timeout_value--) == 0) {
+                    return ERROR;
+                }
+            }
+        }
+
+        /* Flash 0 wait state */
+        FLASH_SetLatency(FLASH_LATENCY_0);
+
+        /* HCLK = SYSCLK */
+        RCC_ConfigHclk(RCC_SYSCLK_DIV1);
+
+        /* PCLK2 = HCLK */
+        RCC_ConfigPclk2(RCC_HCLK_DIV1);
+
+        /* PCLK1 = HCLK */
+        RCC_ConfigPclk1(RCC_HCLK_DIV1);
+    } else {
+        /* If HSI fails to start-up, the application will have wrong clock
+           configuration. User can add here some code to deal with this error */
+        return ERROR;
+    }
+    return SUCCESS;
+}
+
+/**
+ * @brief  Selects HSE as System clock source and configure HCLK, PCLK2
+ *         and PCLK1 prescalers.
+ */
+ErrorStatus SetSysClockToHSE(void)
+{
+    uint32_t timeout_value = 0xFFFFFF;
+    /* SYSCLK, HCLK, PCLK2 and PCLK1 configuration
+     * -----------------------------*/
+
+    uint32_t    msi_ready_flag   = RESET;
+    ErrorStatus HSEStartUpStatus = ERROR;
+
+    /* Enable HSE */
+    RCC_ConfigHse(RCC_HSE_ENABLE);
+
+    /* Wait till HSE is ready */
+    HSEStartUpStatus = RCC_WaitHseStable();
+
+    if (HSEStartUpStatus == SUCCESS) {
+        /* Enable Prefetch Buffer */
+        FLASH_PrefetchBufSet(FLASH_PrefetchBuf_EN);
+
+        if (((*(__IO uint8_t*)((UCID_BASE + 0x2))) == 0x01) || ((*(__IO uint8_t*)((UCID_BASE + 0x2))) == 0x11) || ((*(__IO uint8_t*)((UCID_BASE + 0x2))) == 0xFF)) {
+            /* Cheak if MSI is Ready */
+            if (RESET == RCC_GetFlagStatus(RCC_CTRLSTS_FLAG_MSIRD)) {
+                /* Enable MSI and Config Clock */
+                RCC_ConfigMsi(RCC_MSI_ENABLE, RCC_MSI_RANGE_4M);
+                /* Waits for MSI start-up */
+                if (SUCCESS != RCC_WaitMsiStable()) {
+                    return ERROR;
+                }
+
+                msi_ready_flag = SET;
+            }
+
+            /* Select MSI as system clock source */
+            RCC_ConfigSysclk(RCC_SYSCLK_SRC_MSI);
+
+            /* Disable PLL */
+            RCC_EnablePll(DISABLE);
+
+            RCC_ConfigPll(RCC_PLL_SRC_HSE_DIV2, RCC_PLL_MUL_2, RCC_PLLDIVCLK_DISABLE);
+
+            /* Enable PLL */
+            RCC_EnablePll(ENABLE);
+
+            /* Wait till PLL is ready */
+            while (RCC_GetFlagStatus(RCC_CTRL_FLAG_PLLRDF) == RESET) {
+                if ((timeout_value--) == 0) {
+                    return ERROR;
+                }
+            }
+
+            /* Select PLL as system clock source */
+            RCC_ConfigSysclk(RCC_SYSCLK_SRC_PLLCLK);
+
+            /* Wait till PLL is used as system clock source */
+            timeout_value = 0xFFFFFF;
+            while (RCC_GetSysclkSrc() != 0x0C) {
+                if ((timeout_value--) == 0) {
+                    return ERROR;
+                }
+            }
+
+            if (msi_ready_flag == SET) {
+                /* MSI oscillator OFF */
+                RCC_ConfigMsi(RCC_MSI_DISABLE, RCC_MSI_RANGE_4M);
+            }
+        } else {
+            /* Select HSE as system clock source */
+            RCC_ConfigSysclk(RCC_SYSCLK_SRC_HSE);
+
+            /* Wait till HSE is used as system clock source */
+            timeout_value = 0xFFFFFF;
+            while (RCC_GetSysclkSrc() != 0x08) {
+                if ((timeout_value--) == 0) {
+                    return ERROR;
+                }
+            }
+        }
+
+        if (HSE_Value <= 32000000) {
+            /* Flash 0 wait state */
+            FLASH_SetLatency(FLASH_LATENCY_0);
+        } else {
+            /* Flash 1 wait state */
+            FLASH_SetLatency(FLASH_LATENCY_1);
+        }
+
+        /* HCLK = SYSCLK */
+        RCC_ConfigHclk(RCC_SYSCLK_DIV1);
+
+        /* PCLK2 = HCLK */
+        RCC_ConfigPclk2(RCC_HCLK_DIV1);
+
+        /* PCLK1 = HCLK */
+        RCC_ConfigPclk1(RCC_HCLK_DIV1);
+    } else {
+        /* If HSE fails to start-up, the application will have wrong clock
+           configuration. User can add here some code to deal with this error */
+        return ERROR;
+    }
+    return SUCCESS;
+}
+
+/**
+ *\*\name    SetSysClockToPLL.
+ *\*\fun     Selects PLL clock as System clock source and configure HCLK, PCLK2
+ *\*\         and PCLK1 prescalers.
+ *\*\param   none
+ *\*\note    PLL frequency must be greater than or equal to 32MHz.
+ *\*\return  none
+ **/
+ErrorStatus SetSysClockToPLL(uint32_t freq, uint8_t src)
 {
     uint32_t    pllsrcclk;
     uint32_t    pllsrc;
@@ -20,16 +291,18 @@ void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)
     uint32_t    plldiv = RCC_PLLDIVCLK_DISABLE;
     uint32_t    latency;
     uint32_t    pclk1div, pclk2div;
-    uint32_t    msi_ready_flag = RESET;
-    ErrorStatus HSEStartUpStatus;
-    ErrorStatus HSIStartUpStatus;
+    uint32_t    msi_ready_flag   = RESET;
+    uint32_t    timeout_value    = 0xFFFFFF;
+    ErrorStatus HSIStartUpStatus = ERROR;
+    ErrorStatus HSEStartUpStatus = ERROR;
 
     if (HSE_VALUE != 8000000) {
-        /* HSE_VALUE == 8000000 is needed in this project, if HSE crystal is not 8MHz, User should modify HSE_VALUE ! */
-        while (1);
+        /* HSE_VALUE == 8000000 is needed in this project! */
+        return ERROR;
     }
 
-    /* SYSCLK, HCLK, PCLK2 and PCLK1 configuration */
+    /* SYSCLK, HCLK, PCLK2 and PCLK1 configuration
+     * -----------------------------*/
 
     if ((src == SYSCLK_PLLSRC_HSI) || (src == SYSCLK_PLLSRC_HSIDIV2) || (src == SYSCLK_PLLSRC_HSI_PLLDIV2) || (src == SYSCLK_PLLSRC_HSIDIV2_PLLDIV2)) {
         /* Enable HSI */
@@ -42,9 +315,7 @@ void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)
             /* If HSI fails to start-up, the application will have wrong clock
                configuration. User can add here some code to deal with this
                error */
-
-            /* Go to infinite loop */
-            while (1);
+            return ERROR;
         }
 
         if ((src == SYSCLK_PLLSRC_HSIDIV2) || (src == SYSCLK_PLLSRC_HSIDIV2_PLLDIV2)) {
@@ -76,9 +347,7 @@ void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)
             /* If HSE fails to start-up, the application will have wrong clock
                configuration. User can add here some code to deal with this
                error */
-
-            /* Go to infinite loop */
-            while (1);
+            return ERROR;
         }
 
         if ((src == SYSCLK_PLLSRC_HSEDIV2) || (src == SYSCLK_PLLSRC_HSEDIV2_PLLDIV2)) {
@@ -124,8 +393,7 @@ void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)
         }
     } else {
         /* Cannot make a PLL multiply factor to freq. */
-        // log_info("Cannot make a PLL multiply factor to freq..\n");
-        while (1); /* User can add here some code to deal with this error */
+        return ERROR;
     }
 
     /* Cheak if MSI is Ready */
@@ -133,7 +401,9 @@ void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)
         /* Enable MSI and Config Clock */
         RCC_ConfigMsi(RCC_MSI_ENABLE, RCC_MSI_RANGE_4M);
         /* Waits for MSI start-up */
-        while (SUCCESS != RCC_WaitMsiStable());
+        if (SUCCESS != RCC_WaitMsiStable()) {
+            return ERROR;
+        }
 
         msi_ready_flag = SET;
     }
@@ -161,18 +431,28 @@ void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src)
     RCC_EnablePll(ENABLE);
 
     /* Wait till PLL is ready */
-    while (RCC_GetFlagStatus(RCC_CTRL_FLAG_PLLRDF) == RESET); /* if this flag is always not set, it means PLL is failed, User can add here some code to deal with this error*/
+    while (RCC_GetFlagStatus(RCC_CTRL_FLAG_PLLRDF) == RESET) {
+        if ((timeout_value--) == 0) {
+            return ERROR;
+        }
+    }
 
     /* Select PLL as system clock source */
     RCC_ConfigSysclk(RCC_SYSCLK_SRC_PLLCLK);
 
     /* Wait till PLL is used as system clock source */
-    while (RCC_GetSysclkSrc() != 0x0C); /* if this bits is always not set, it means select PLL as system clock failed, User can add here some code to deal with this error*/
+    timeout_value = 0xFFFFFF;
+    while (RCC_GetSysclkSrc() != 0x0C) {
+        if ((timeout_value--) == 0) {
+            return ERROR;
+        }
+    }
 
     if (msi_ready_flag == SET) {
         /* MSI oscillator OFF */
         RCC_ConfigMsi(RCC_MSI_DISABLE, RCC_MSI_RANGE_4M);
     }
+    return SUCCESS;
 }
 
 // void wakeup_pin_init(int wkup_pin, void (*cb)(void))
@@ -256,19 +536,4 @@ void EXTI15_10_IRQHandler(void)
         }
         EXTI_ClrITPendBit(EXTI_LINE13);
     }
-}
-
-void ble_pwr_pin(void)
-{
-#define BLE_PWR_PORT GPIOB
-#define BLE_PWR_CLK  RCC_APB2_PERIPH_GPIOB
-#define BLE_PWR_PIN  GPIO_PIN_6
-#define BLE_PWR_HIGH BLE_PWR_PORT->PBSC = BLE_PWR_PIN;
-#define BLE_PWR_LOW  BLE_PWR_PORT->PBC = BLE_PWR_PIN;
-    GPIO_InitType GPIO_InitStructure;
-    GPIO_InitStruct(&GPIO_InitStructure);
-    RCC_EnableAPB2PeriphClk(BLE_PWR_CLK, ENABLE);
-    GPIO_InitStructure.Pin       = BLE_PWR_PIN;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    GPIO_InitPeripheral(BLE_PWR_PORT, &GPIO_InitStructure);
 }
