@@ -76,9 +76,12 @@ void uart_init(uart_index_t index)
     GPIO_InitStructure.GPIO_Alternate = uarts[index].rx_af;
     GPIO_InitPeripheral(uarts[index].rx_port, &GPIO_InitStructure);
 
-    if (IS_RCC_APB2_PERIPH(uarts[index].clk_src)) {
+    if (uarts[index].handle == USART1 ||
+        uarts[index].handle == UART4 ||
+        uarts[index].handle == UART5) {
         RCC_EnableAPB2PeriphClk(uarts[index].clk_src, ENABLE);
-    } else {
+    } else if (uarts[index].handle == USART2 ||
+               uarts[index].handle == USART3) {
         RCC_EnableAPB1PeriphClk(uarts[index].clk_src, ENABLE);
     }
 
