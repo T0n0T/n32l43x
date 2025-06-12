@@ -3,7 +3,7 @@
 #define COM_NUM_MAX  3
 #define CHAR_NUM_MAX 9
 
-const uint32_t lcd_bit_define[COM_NUM_MAX] = {
+const uint32_t lcd_bit_define[CHAR_NUM_MAX][COM_NUM_MAX] = {
     {0x00000000, 0x00000000, 0x40000000}, // LCD_CHAR_OPEN_CHINESE
     {0x00000000, 0x00000000, 0x10000000}, // LCD_CHAR_OPEN_ARROW
     {0x40000000, 0x00000000, 0x00000000}, // LCD_CHAR_CLOSE_CHINESE
@@ -80,13 +80,13 @@ void lcd_set_char(LCD_Char_Enum lcd_char, bool enable)
     }
 
     if (enable) {
-        LCD_SetBit(LCD_RAM1_COM3, lcd_bit_define[0]);
-        LCD_SetBit(LCD_RAM1_COM4, lcd_bit_define[1]);
-        LCD_SetBit(LCD_RAM1_COM5, lcd_bit_define[2]);
+        LCD_SetBit(LCD_RAM1_COM3, lcd_bit_define[lcd_char][0]);
+        LCD_SetBit(LCD_RAM1_COM4, lcd_bit_define[lcd_char][1]);
+        LCD_SetBit(LCD_RAM1_COM5, lcd_bit_define[lcd_char][2]);
     } else {
-        LCD_ClearBit(LCD_RAM1_COM3, lcd_bit_define[0]);
-        LCD_ClearBit(LCD_RAM1_COM4, lcd_bit_define[1]);
-        LCD_ClearBit(LCD_RAM1_COM5, lcd_bit_define[2]);
+        LCD_ClearBit(LCD_RAM1_COM3, lcd_bit_define[lcd_char][0]);
+        LCD_ClearBit(LCD_RAM1_COM4, lcd_bit_define[lcd_char][1]);
+        LCD_ClearBit(LCD_RAM1_COM5, lcd_bit_define[lcd_char][2]);
     }
 
     LCD_UpdateDisplayRequest();

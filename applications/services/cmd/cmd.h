@@ -1,11 +1,14 @@
 #ifndef __CMD_H__
 #define __CMD_H__
 
+#include "cmd_impl.h" // 包含cmd_impl.h
+
 #define CMD_DEFINE(func) int cmd_##func(int argc, char** argv);
 
 #define CMD_DEFINE_LIST  {   \
     {"hello", cmd_hello, 1}, \
     {"add", cmd_add, 2},     \
+    {"config_write", cmd_config_write, 1}, \
 }
 
 // 命令处理函数类型定义
@@ -24,5 +27,6 @@ void cmd_execute(char* input);
 
 CMD_DEFINE(hello)
 CMD_DEFINE(add)
+CMD_DEFINE(config_write)
 
 #endif // __CMD_H__
