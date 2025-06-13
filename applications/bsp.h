@@ -31,6 +31,7 @@
 
 #include "board.h"
 #include "led.h"
+#include "lcd.h"
 #include "rtc.h"
 #include "uart.h"
 

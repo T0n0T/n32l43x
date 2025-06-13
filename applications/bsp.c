@@ -5,10 +5,7 @@
 #include "bsp.h"
 #include "board.h"
 #include "hello.h" /* Blinky Application interface */
-#include "cmd.h" /* Command interface */
-#include "led.h"
-#include "lpuart.h"
-#include "rtc.h"
+#include "cmd.h"   /* Command interface */
 #include "cm_backtrace.h"
 
 #define BTN_SW1 (1U << 4)
@@ -58,12 +55,13 @@ void BSP_init(void)
     /* NOTE: SystemInit() has been already called from the startup code
      *  but SystemCoreClock needs to be updated
      */
-    SystemCoreClockUpdate();
-    RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
+    board_init(); /* initialize the board */
     cm_backtrace_init("N32L4", "V1.0", "1.0.0");
-    led_init();   /* initialize the LEDs */
+    led_init();         /* initialize the LEDs */
     uart_init(CONSOLE); /* initialize the console UART */
-    cmd_init(); /* initialize the command interface */
+    cmd_init();         /* initialize the command interface */
+    lcd_init();         /* initialize the LCD */
+    lcd_set_char(LCD_CHAR_OPEN_CHINESE, 1);
 }
 
 void BSP_start(void)
