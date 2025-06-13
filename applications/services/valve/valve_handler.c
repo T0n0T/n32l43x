@@ -40,12 +40,9 @@
 #include "valve.h"
 #include "cmd.h"
 #include "user_mb_app.h"
-#include "spi_flash.h" // 引入SPI Flash头文件
+#include "spi_flash.h"
 
-// 定义配置存储的闪存地址
-// 假设我们使用闪存的最后一个扇区来存储配置，需要根据实际闪存大小和扇区大小调整
-// 这是一个示例地址，实际应用中需要根据具体硬件和分区情况确定
-#define CONFIG_FLASH_ADDRESS 0x0800F800 // 示例地址，需要根据实际情况调整
+#define CONFIG_FLASH_ADDRESS 0x0
 
 //$declare${AOs::ValveHandler} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -195,23 +192,19 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         case VALVE_CONFIG_WRITE_SIG: {
             ValveEvt const *ve = (ValveEvt const *)e;
             cmd_config_t const *config = (cmd_config_t const *)ve->msg;
-
-            printf("Writing config: valve_count=%d, model=%s\r\n", config->valve_count, config->model);
-
             // 擦除扇区
             sFLASH_EraseSector(CONFIG_FLASH_ADDRESS);
             // 写入配置数据
             sFLASH_WriteBuffer((uint8_t*)config, CONFIG_FLASH_ADDRESS, sizeof(cmd_config_t));
-            
             printf("Config written to flash.\r\n");
             status_ = Q_HANDLED();
             break;
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_CONFIG_READ}
         case VALVE_CONFIG_READ_SIG: {
-            cmd_config_t read_config;
-            sFLASH_ReadBuffer((uint8_t*)&read_config, CONFIG_FLASH_ADDRESS, sizeof(cmd_config_t));
-            printf("Read config from flash: valve_count=%d, model=%s\r\n", read_config.valve_count, read_config.model);
+            ValveEvt const*     ve     = (ValveEvt const*)e;
+            cmd_config_t const* config = (cmd_config_t const*)ve->msg;
+            sFLASH_ReadBuffer((uint8_t*)config, CONFIG_FLASH_ADDRESS, sizeof(cmd_config_t));
             status_ = Q_HANDLED();
             break;
         }

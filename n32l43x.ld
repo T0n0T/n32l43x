@@ -114,6 +114,7 @@ SECTIONS
         _ebss = . ;
     } >SRAM1
     __bss_end = .;
-
+    __heap_start = .;
     _end = .;
+    __heap_end = 0x20000000 + 24*1024;
 }

@@ -2,7 +2,6 @@
 #include "bsp.h" // Board Support Package interface
 #include "stdio.h"
 #include "string.h"
-#include "cJSON.h"
 #include "cmd.h"
 #include "valve.h"
 
@@ -92,7 +91,8 @@ int cmd_config_read(int argc, char** argv)
     (void)argv; // 未使用参数
 
     QEvt_ctor(&evt.super, VALVE_CONFIG_READ_SIG); // 初始化事件
-    evt.evtType = VALVE_CMD; // 设置事件类型
+    evt.msg     = &config;                        // 将静态config数据指针赋给事件的msg字段
+    evt.evtType = VALVE_CMD;                      // 设置事件类型
 
     // 发布事件
     QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);

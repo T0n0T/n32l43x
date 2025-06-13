@@ -215,13 +215,21 @@ QF_CRIT_EXIT();
        </tran_glyph>
       </tran>
       <tran trig="VALVE_CONFIG_WRITE">
-       <action brief="handle config write flash action;if error happend, start timer for error blinky">printf(&quot;write config&quot;);</action>
+       <action brief="handle config write flash action;if error happend, start timer for error blinky">ValveEvt const *ve = (ValveEvt const *)e;
+cmd_config_t const *config = (cmd_config_t const *)ve-&gt;msg;
+// 擦除扇区
+sFLASH_EraseSector(CONFIG_FLASH_ADDRESS);
+// 写入配置数据
+sFLASH_WriteBuffer((uint8_t*)config, CONFIG_FLASH_ADDRESS, sizeof(cmd_config_t));
+printf(&quot;Config written to flash.\r\n&quot;);</action>
        <tran_glyph conn="24,40,3,-1,14">
         <action box="0,-2,19,2"/>
        </tran_glyph>
       </tran>
       <tran trig="VALVE_CONFIG_READ">
-       <action>printf(&quot;read config&quot;);</action>
+       <action>ValveEvt const*     ve     = (ValveEvt const*)e;
+cmd_config_t const* config = (cmd_config_t const*)ve-&gt;msg;
+sFLASH_ReadBuffer((uint8_t*)config, CONFIG_FLASH_ADDRESS, sizeof(cmd_config_t));</action>
        <tran_glyph conn="24,42,3,-1,14">
         <action box="0,-2,19,2"/>
        </tran_glyph>
@@ -466,6 +474,9 @@ $declare ${AOs::ValveConf_ctor}
 #include &quot;valve.h&quot;
 #include &quot;cmd.h&quot;
 #include &quot;user_mb_app.h&quot;
+#include &quot;spi_flash.h&quot;
+
+#define CONFIG_FLASH_ADDRESS 0x0
 
 $declare ${AOs::ValveHandler}
 

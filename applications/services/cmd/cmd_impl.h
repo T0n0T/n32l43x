@@ -1,6 +1,8 @@
 #ifndef __CMD_IMPL_H__
 #define __CMD_IMPL_H__
 
+#include "cJSON.h"
+
 // 定义与JSON模板对应的结构体
 typedef struct {
     int valve_count;
