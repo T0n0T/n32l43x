@@ -22,7 +22,7 @@ void lcd_init(void)
     /*LCD parameter config*/
     Init.Divider         = LCD_DIV_25;
     Init.Prescaler       = LCD_PRESCALER_1;
-    Init.Duty            = LCD_DUTY_1_3;
+    Init.Duty            = LCD_DUTY_1_8;
     Init.Bias            = LCD_BIAS_1_2;
     Init.VoltageSource   = LCD_VOLTAGESOURCE_EXTERNAL;
     Init.Contrast        = LCD_CONTRASTLEVEL_5;

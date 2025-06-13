@@ -68,7 +68,10 @@ int cmd_config_write(int argc, char** argv)
         return -1;
     }
 
-    char* json_string = argv[0];
+    // 测试用的json_string
+    char* json_string = "{\"valve_count\": 10, \"model\": \"test_model\"}";
+    // 实际使用时，请将上一行注释掉，并使用下一行
+    // char* json_string = argv[0];
     
     if (cmd_config_decode(json_string, &config) != 0) {
         printf("Error: Failed to decode command configuration.\r\n");

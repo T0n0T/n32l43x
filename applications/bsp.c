@@ -80,7 +80,10 @@ void BSP_init(void)
     hall_init();/* initialize the Hall sensor */
     uart_init(CONSOLE);
     lcd_init(); /* initialize the LCD */
-    // lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
+    lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
+    lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
+    lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
+    lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
     dump_clk();
     // rtc_init();
     // wakeup_pin_init(wakeup_handle);

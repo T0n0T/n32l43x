@@ -468,6 +468,18 @@ $declare ${AOs::ValveConf_ctor}
 
 #endif // __VALVE_H__</text>
   </file>
+  <file name="valve_conf.c">
+   <text>#include &quot;qpc.h&quot;
+#include &quot;bsp.h&quot;
+#include &quot;valve.h&quot;
+#include &quot;cmd.h&quot;
+
+$declare ${AOs::ValveConf}
+
+$define ${AOs::AO_ValveConf}
+$define ${AOs::ValveConf_ctor}
+$define ${AOs::ValveConf}</text>
+  </file>
   <file name="valve_handler.c">
    <text>#include &quot;qpc.h&quot;
 #include &quot;bsp.h&quot;
@@ -483,18 +495,6 @@ $declare ${AOs::ValveHandler}
 $define ${AOs::AO_ValveHandler}
 $define ${AOs::ValveHandler_ctor}
 $define ${AOs::ValveHandler}</text>
-  </file>
-  <file name="valve_conf.c">
-   <text>#include &quot;qpc.h&quot;
-#include &quot;bsp.h&quot;
-#include &quot;valve.h&quot;
-#include &quot;cmd.h&quot;
-
-$declare ${AOs::ValveConf}
-
-$define ${AOs::AO_ValveConf}
-$define ${AOs::ValveConf_ctor}
-$define ${AOs::ValveConf}</text>
   </file>
  </directory>
 </model>
