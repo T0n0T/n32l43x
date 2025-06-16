@@ -130,7 +130,7 @@ void BSP_start(void)
 /*..........................................................................*/
 void QF_onStartup(void)
 {
-    SysTick_Config(SystemCoreClock / 100);
+    SysTick_Config(SystemCoreClock / 1000);
     NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + 1U);
     static QEvt const wakeEvt = QEVT_INITIALIZER(LOCK_OFF_SIG);
     QACTIVE_PUBLISH(&wakeEvt, &me->super);

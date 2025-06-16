@@ -188,14 +188,14 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             ValveVal const *val = (ValveVal const *)ve->msg;
             printf("Position: %d/6, Rotations: %d, Total Ticks: %d\r\n",
                 val->position,
-                val->rotations,
+                val->total_ticks / TICKS_PER_ROTATION,
                 val->total_ticks);
-            if (val->rotations > global_config.valve_count) {
+            if (val->total_ticks > global_config.valve_count * 6) {
                 lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
                 lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
                 lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
                 lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
-            } else if (val->rotations <= 0) {
+            } else if (val->total_ticks <= 0) {
                 lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
                 lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
                 lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
@@ -205,8 +205,8 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             QF_CRIT_ENTRY();
             extern USHORT usSRegHoldBuf[S_REG_HOLDING_NREGS];
             usSRegHoldBuf[1] = val->total_ticks > 0 ? 1 : 2;
-            usSRegHoldBuf[2] = val->rotations;
-            usSRegHoldBuf[3] = val->rotations > global_config.valve_count ? 1 : 2;
+            usSRegHoldBuf[2] = val->total_ticks / TICKS_PER_ROTATION;
+            usSRegHoldBuf[3] = val->total_ticks > global_config.valve_count * 6 ? 1 : 2;
             QF_CRIT_EXIT();
             #endif
             status_ = Q_HANDLED();

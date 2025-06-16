@@ -101,19 +101,13 @@ static const int8_t rules[64][64] = {
     [0x01][0x10] = -2,
     [0x02][0x20] = -2, // 环形连接
     // 单触发+3
-    [0x01][0x08] = 3,
-    [0x02][0x10] = 3,
-    [0x04][0x20] = 3,
-    [0x08][0x01] = 3,
-    [0x10][0x02] = 3,
-    [0x20][0x04] = 3, // 环形连接
-    // 单触发-3
-    [0x08][0x01] = -3,
-    [0x10][0x02] = -3,
-    [0x20][0x04] = -3,
-    [0x01][0x10] = -3,
-    [0x02][0x20] = -3,
-    [0x04][0x08] = -3, // 环形连接
+    // [0x01][0x08] = 3,
+    // [0x02][0x10] = 3,
+    // [0x04][0x20] = 3,
+    // [0x08][0x01] = 3,
+    // [0x10][0x02] = 3,
+    // [0x20][0x04] = 3, // 环形连接
+
     // 双触发+1(单-->双)
     [0x01][0x03] = 1,
     [0x02][0x06] = 1,
@@ -297,14 +291,20 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
                 // 检查方向并更新旋转计数
                 if (is_valid_state(&last_state)) {
                     int8_t dir = check_direction(&last_state, &new_state);
+                    printf("State change: %02X -> %02X Bits: %d%d%d%d%d%d Direction: %d\r\n",
+                                       last_state, new_state,
+                                       (new_state & 0x20) >> 5,
+                                       (new_state & 0x10) >> 4,
+                                       (new_state & 0x08) >> 3,
+                                       (new_state & 0x04) >> 2,
+                                       (new_state & 0x02) >> 1,
+                                       new_state & 0x01,
+                                       dir);
                     if (dir != 0) {
                         _val.total_ticks += dir;
 
                         // 更新位置计数
                         _val.position = (_val.total_ticks % TICKS_PER_ROTATION + TICKS_PER_ROTATION) % TICKS_PER_ROTATION;
-                        // 更新圈数
-                        _val.rotations = _val.total_ticks / TICKS_PER_ROTATION;
-
                         QEvt const se  = QEVT_INITIALIZER(VALVE_UPDATE_SIG);
                         _ve.super      = se;
                         _ve.evtType    = VALVE_VALUE;
@@ -314,7 +314,9 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
                         // 处理错误（如复位状态）
                     }
                 }
+                QF_CRIT_ENTRY();
                 last_state = new_state;
+                QF_CRIT_EXIT();
             }
             status_ = Q_HANDLED();
             break;

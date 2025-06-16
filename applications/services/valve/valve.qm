@@ -37,7 +37,6 @@
   </operation>
   <class name="ValveVal">
    <attribute name="total_ticks" type="int32_t" visibility="0x00" properties="0x00"/>
-   <attribute name="rotations" type="int32_t" visibility="0x00" properties="0x00"/>
    <attribute name="position" type="int32_t" visibility="0x00" properties="0x00"/>
   </class>
   <class name="ValveConfig"/>
@@ -98,14 +97,20 @@ if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
     // 检查方向并更新旋转计数
     if (is_valid_state(&amp;last_state)) {
         int8_t dir = check_direction(&amp;last_state, &amp;new_state);
+        printf(&quot;State change: %02X -&gt; %02X Bits: %d%d%d%d%d%d Direction: %d\r\n&quot;,
+                           last_state, new_state,
+                           (new_state &amp; 0x20) &gt;&gt; 5,
+                           (new_state &amp; 0x10) &gt;&gt; 4,
+                           (new_state &amp; 0x08) &gt;&gt; 3,
+                           (new_state &amp; 0x04) &gt;&gt; 2,
+                           (new_state &amp; 0x02) &gt;&gt; 1,
+                           new_state &amp; 0x01,
+                           dir);
         if (dir != 0) {
             _val.total_ticks += dir;
 
             // 更新位置计数
             _val.position = (_val.total_ticks % TICKS_PER_ROTATION + TICKS_PER_ROTATION) % TICKS_PER_ROTATION;
-            // 更新圈数
-            _val.rotations = _val.total_ticks / TICKS_PER_ROTATION;
-            
             QEvt const se  = QEVT_INITIALIZER(VALVE_UPDATE_SIG);
             _ve.super      = se;
             _ve.evtType    = VALVE_VALUE;
@@ -115,7 +120,9 @@ if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
             // 处理错误（如复位状态）
         }
     } 
+    QF_CRIT_ENTRY();
     last_state = new_state;        
+    QF_CRIT_EXIT();
 }</action>
       <tran_glyph conn="28,42,3,-1,11">
        <action box="0,-2,10,2"/>
@@ -207,14 +214,14 @@ break;</entry>
 ValveVal const *val = (ValveVal const *)ve-&gt;msg;
 printf(&quot;Position: %d/6, Rotations: %d, Total Ticks: %d\r\n&quot;,
     val-&gt;position,
-    val-&gt;rotations,
+    val-&gt;total_ticks / TICKS_PER_ROTATION,
     val-&gt;total_ticks);
-if (val-&gt;rotations &gt; global_config.valve_count) {
+if (val-&gt;total_ticks &gt; global_config.valve_count * 6) {
     lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
     lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
     lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
     lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
-} else if (val-&gt;rotations &lt;= 0) {
+} else if (val-&gt;total_ticks &lt;= 0) {
     lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
     lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
     lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
@@ -224,8 +231,8 @@ if (val-&gt;rotations &gt; global_config.valve_count) {
 QF_CRIT_ENTRY();
 extern USHORT usSRegHoldBuf[S_REG_HOLDING_NREGS];
 usSRegHoldBuf[1] = val-&gt;total_ticks &gt; 0 ? 1 : 2;
-usSRegHoldBuf[2] = val-&gt;rotations;
-usSRegHoldBuf[3] = val-&gt;rotations &gt; global_config.valve_count ? 1 : 2;
+usSRegHoldBuf[2] = val-&gt;total_ticks / TICKS_PER_ROTATION;
+usSRegHoldBuf[3] = val-&gt;total_ticks &gt; global_config.valve_count * 6 ? 1 : 2;
 QF_CRIT_EXIT();
 #endif</action>
        <tran_glyph conn="24,38,3,-1,14">
@@ -410,20 +417,6 @@ static const int8_t rules[64][64] = {
     [0x20][0x08] = -2,
     [0x01][0x10] = -2,
     [0x02][0x20] = -2, // 环形连接
-    // 单触发+3
-    [0x01][0x08] = 3,
-    [0x02][0x10] = 3,
-    [0x04][0x20] = 3,
-    [0x08][0x01] = 3,
-    [0x10][0x02] = 3,
-    [0x20][0x04] = 3, // 环形连接
-    // 单触发-3
-    [0x08][0x01] = -3,
-    [0x10][0x02] = -3,
-    [0x20][0x04] = -3,
-    [0x01][0x10] = -3,
-    [0x02][0x20] = -3,
-    [0x04][0x08] = -3, // 环形连接
     // 双触发+1(单--&gt;双)
     [0x01][0x03] = 1,
     [0x02][0x06] = 1,
