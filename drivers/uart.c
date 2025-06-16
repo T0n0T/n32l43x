@@ -29,7 +29,7 @@ static uart_t uarts[] = {
         .handle      = USART2,
         .irqn        = USART2_IRQn,
         .clk_src     = RCC_APB1_PERIPH_USART2,
-        .baudrate    = 9600,
+        .baudrate    = 115200,
         .parity      = USART_PE_NO,
         .stop_bits   = USART_STPB_1,
     },
@@ -177,9 +177,15 @@ static FILE __stdio_out = FDEV_SETUP_STREAM(__fputc, NULL, NULL, _FDEV_SETUP_WRI
 FILE* const stdout = &__stdio_out;
 STDIO_ALIAS(stderr);
 
+int ble_flag = 0;
+
 static int __fputc(char ch, FILE* file)
 {
     uart_putc(CONSOLE, ch);
+    if (ble_flag) {
+        uart_putc(BLE_SERIAL, ch);
+    }
+
     return (ch);
 }
 

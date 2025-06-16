@@ -46,7 +46,12 @@ void sFLASH_LowLevel_Init(void)
     /*!< sFLASH_SPI_CS_GPIO, sFLASH_SPI_MOSI_GPIO, sFLASH_SPI_MISO_GPIO
          and sFLASH_SPI_SCK_GPIO Periph clock enable */
     RCC_EnableAPB2PeriphClk(
-        sFLASH_CS_GPIO_CLK | sFLASH_SPI_MOSI_GPIO_CLK | sFLASH_SPI_MISO_GPIO_CLK | sFLASH_SPI_SCK_GPIO_CLK, ENABLE);
+        sFLASH_CS_GPIO_CLK |
+            sFLASH_SPI_MOSI_GPIO_CLK |
+            sFLASH_SPI_MISO_GPIO_CLK |
+            sFLASH_SPI_SCK_GPIO_CLK |
+            sFLASH_PWR_GPIO_CLK,
+        ENABLE);
 
     /*!< sFLASH_SPI Periph clock enable */
     RCC_EnableAPB2PeriphClk(sFLASH_SPI_CLK | RCC_APB2_PERIPH_AFIO, ENABLE);
@@ -70,6 +75,11 @@ void sFLASH_LowLevel_Init(void)
     GPIO_InitStructure.Pin       = sFLASH_CS_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitPeripheral(sFLASH_CS_GPIO_PORT, &GPIO_InitStructure);
+
+    /*!< Configure FLASH PWR ENABLE PIN*/
+    GPIO_InitStructure.Pin       = sFLASH_PWR_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitPeripheral(sFLASH_PWR_GPIO_PORT, &GPIO_InitStructure);
 }
 
 /**
@@ -77,6 +87,7 @@ void sFLASH_LowLevel_Init(void)
  */
 void sFLASH_DeInit(void)
 {
+    // GPIO_ResetBits(sFLASH_PWR_GPIO_PORT, sFLASH_PWR_PIN);
     sFLASH_LowLevel_DeInit();
 }
 
@@ -88,6 +99,7 @@ void sFLASH_Init(void)
     SPI_InitType SPI_InitStructure;
 
     sFLASH_LowLevel_Init();
+    // GPIO_SetBits(sFLASH_PWR_GPIO_PORT, sFLASH_PWR_PIN);
 
     /*!< Deselect the FLASH: Chip Select high */
     sFLASH_CS_HIGH();
@@ -451,4 +463,3 @@ void sFLASH_WaitForWriteEnd(void)
     /*!< Deselect the FLASH: Chip Select high */
     sFLASH_CS_HIGH();
 }
-

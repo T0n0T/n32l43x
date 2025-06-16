@@ -16,41 +16,59 @@
 #define USART_CMD_IRQHandler USART2_IRQHandler
 #define CMD_BUF_LEN          64U
 
+extern int              ble_flag;
+
 static ValveEvt         _cmd_evt;
+static uint8_t          _cmd_ch;
 static uint8_t          _cmd_buf[CMD_BUF_LEN];
 static volatile uint8_t _cmd_pos;
 static const command_t  commands[] = CMD_DEFINE_LIST;
 
-void USART_CMD_IRQHandler(void)
+// void USART_CMD_IRQHandler(void)
+// {
+//     // process the UART2 interrupt
+//     if (USART_GetIntStatus(USART_CMD, USART_INT_RXDNE) != RESET) {
+//         /* Read one byte from the receive data register */
+//         if (_cmd_pos < CMD_BUF_LEN - 1) {
+//             _cmd_buf[_cmd_pos] = USART_ReceiveData(USART_CMD);
+//             _cmd_pos++;
+//             if (_cmd_buf[_cmd_pos - 1] == '\n') {
+//                 // process the command
+//                 // _cmd_buf[_cmd_pos] = '\0'; // null-terminate the string
+//                 // Reset the command buffer position
+//                 QACTIVE_POST(AO_ValveConf, &_cmd_evt.super, 0U);
+//             }
+//         }else{
+//             USART_ReceiveData(USART_CMD);
+//         }
+//         USART_ClrIntPendingBit(USART_CMD, USART_INT_RXDNE);
+//         USART_ClrFlag(USART_CMD, USART_FLAG_RXDNE);
+//     }
+//     if ((USART_GetFlagStatus(USART_CMD, USART_FLAG_OREF) != RESET) ||
+//         (USART_GetFlagStatus(USART_CMD, USART_FLAG_NEF) != RESET) ||
+//         (USART_GetFlagStatus(USART_CMD, USART_FLAG_PEF) != RESET) ||
+//         (USART_GetFlagStatus(USART_CMD, USART_FLAG_FEF) != RESET)) {
+//         /*Read the sts register first,and the read the DAT register to clear the all error flag*/
+//         (void)USART_CMD->STS;
+//         (void)USART_CMD->DAT;
+//         printf("error happened\r\n");
+//         /* Under normal circumstances, all error flags will be cleared when the upper data is read and will not be executed here;
+//            users can add their own processing according to the actual scenario. */
+//     }
+// }
+
+void DMA_Channel6_IRQHandler(void)
 {
-    // process the UART2 interrupt
-    if (USART_GetIntStatus(USART_CMD, USART_INT_RXDNE) != RESET) {
-        /* Read one byte from the receive data register */
+    if (DMA_GetFlagStatus(DMA_FLAG_TC6, DMA) != RESET) {
         if (_cmd_pos < CMD_BUF_LEN - 1) {
-            _cmd_buf[_cmd_pos] = USART_ReceiveData(USART_CMD);
+            _cmd_buf[_cmd_pos] = _cmd_ch;
             _cmd_pos++;
             if (_cmd_buf[_cmd_pos - 1] == '\n') {
-                // process the command
-                // _cmd_buf[_cmd_pos] = '\0'; // null-terminate the string
-                // Reset the command buffer position
                 QACTIVE_POST(AO_ValveConf, &_cmd_evt.super, 0U);
             }
-        }else{
-            USART_ReceiveData(USART_CMD);
+            DMA_ClrIntPendingBit(DMA_INT_TXC6, DMA);
+            DMA_ClearFlag(DMA_FLAG_TC6, DMA);
         }
-        USART_ClrIntPendingBit(USART_CMD, USART_INT_RXDNE);
-        USART_ClrFlag(USART_CMD, USART_FLAG_RXDNE);
-    }
-    if ((USART_GetFlagStatus(USART_CMD, USART_FLAG_OREF) != RESET) ||
-        (USART_GetFlagStatus(USART_CMD, USART_FLAG_NEF) != RESET) ||
-        (USART_GetFlagStatus(USART_CMD, USART_FLAG_PEF) != RESET) ||
-        (USART_GetFlagStatus(USART_CMD, USART_FLAG_FEF) != RESET)) {
-        /*Read the sts register first,and the read the DAT register to clear the all error flag*/
-        (void)USART_CMD->STS;
-        (void)USART_CMD->DAT;
-        printf("error happened\r\n");
-        /* Under normal circumstances, all error flags will be cleared when the upper data is read and will not be executed here;
-           users can add their own processing according to the actual scenario. */
     }
 }
 
@@ -65,10 +83,33 @@ void cmd_init(void)
 
     BLE_PWR_HIGH;
 
+    ble_flag = true;
     uart_init(BLE_SERIAL);
-    uart_control(BLE_SERIAL, USART_INT_RXDNE, true);
-    NVIC_SetPriority(USART_CMD_IRQn, 0U);
-    NVIC_EnableIRQ(USART_CMD_IRQn);
+    USART_Enable(USART_CMD, DISABLE);
+
+    RCC_EnableAHBPeriphClk(RCC_AHB_PERIPH_DMA, ENABLE);
+    DMA_InitType DMA_InitStructure;
+    DMA_DeInit(DMA_CH6);
+    DMA_InitStructure.PeriphAddr     = (USART2_BASE + 0x04);
+    DMA_InitStructure.MemAddr        = (uint32_t)&_cmd_ch;
+    DMA_InitStructure.Direction      = DMA_DIR_PERIPH_SRC;
+    DMA_InitStructure.BufSize        = 1;
+    DMA_InitStructure.PeriphInc      = DMA_PERIPH_INC_DISABLE;
+    DMA_InitStructure.DMA_MemoryInc  = DMA_MEM_INC_ENABLE;
+    DMA_InitStructure.PeriphDataSize = DMA_PERIPH_DATA_SIZE_BYTE;
+    DMA_InitStructure.MemDataSize    = DMA_MemoryDataSize_Byte;
+    DMA_InitStructure.CircularMode   = DMA_MODE_CIRCULAR;
+    DMA_InitStructure.Priority       = DMA_PRIORITY_VERY_HIGH;
+    DMA_InitStructure.Mem2Mem        = DMA_M2M_DISABLE;
+    DMA_Init(DMA_CH6, &DMA_InitStructure);
+    DMA_ConfigInt(DMA_CH6, DMA_INT_TXC, ENABLE);
+    DMA_RequestRemap(DMA_REMAP_USART2_RX, DMA, DMA_CH6, ENABLE);
+    USART_EnableDMA(USART_CMD, USART_DMAREQ_RX, ENABLE);
+    DMA_EnableChannel(DMA_CH6, ENABLE);
+    USART_Enable(USART_CMD, ENABLE);
+
+    NVIC_SetPriority(DMA_Channel6_IRQn, 0U);
+    NVIC_EnableIRQ(DMA_Channel6_IRQn);
 
     memset(_cmd_buf, 0, sizeof(_cmd_buf));
     _cmd_pos = 0; // 初始化命令缓冲区位置
@@ -81,6 +122,7 @@ void cmd_init(void)
 void cmd_deinit(void)
 {
     BLE_PWR_LOW;
+    ble_flag = false;
     NVIC_DisableIRQ(USART_CMD_IRQn);
     uart_deinit(BLE_SERIAL);
 }

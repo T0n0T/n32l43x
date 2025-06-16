@@ -37,8 +37,8 @@
 //$endhead${.::valve_conf.c} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #include "qpc.h"
 #include "bsp.h"
-#include "valve.h"
 #include "cmd.h"
+#include "valve.h"
 
 //$declare${AOs::ValveConf} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 

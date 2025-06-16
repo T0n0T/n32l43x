@@ -44,6 +44,12 @@
 
 #define CONFIG_FLASH_ADDRESS 0x0
 
+cmd_config_t global_config = {
+    .valve_count = 2,              // 默认阀门数量
+    .dir         = 1,              // 默认方向
+    .model       = "default_model" // 默认模型名称
+};
+
 //$declare${AOs::ValveHandler} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 //${AOs::ValveHandler} .......................................................
@@ -149,6 +155,24 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         case Q_ENTRY_SIG: {
             Sleep_release(HANDLER_BIT);
             sFLASH_Init();
+            cmd_config_t _read_config = {0};
+            sFLASH_ReadBuffer((uint8_t*)&_read_config, CONFIG_FLASH_ADDRESS, sizeof(cmd_config_t));
+            bool all_ff = true;
+            for (size_t i = 0; i < sizeof(cmd_config_t); ++i) {
+                if (((uint8_t*)&_read_config)[i] != 0xFF) {
+                    all_ff = false;
+                    break;
+                }
+            }
+            if (!all_ff) {
+                // 数据合法，复制到全局变量_config
+                global_config = _read_config;
+                printf("Config read from flash and applied.\r\n");
+                } else {
+                printf("Flash config is empty (all FF), using default config.\r\n");
+            }
+            status_ = Q_HANDLED();
+            break;
             status_ = Q_HANDLED();
             break;
         }
@@ -166,12 +190,12 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
                 val->position,
                 val->rotations,
                 val->total_ticks);
-            if (val->rotations > 5) {
+            if (val->rotations > global_config.valve_count) {
                 lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
                 lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
                 lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
                 lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
-            } else if (val->rotations <= 5) {
+            } else if (val->rotations <= 0) {
                 lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
                 lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
                 lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
@@ -182,7 +206,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             extern USHORT usSRegHoldBuf[S_REG_HOLDING_NREGS];
             usSRegHoldBuf[1] = val->total_ticks > 0 ? 1 : 2;
             usSRegHoldBuf[2] = val->rotations;
-            usSRegHoldBuf[3] = val->rotations > 5 ? 1 : 2;
+            usSRegHoldBuf[3] = val->rotations > global_config.valve_count ? 1 : 2;
             QF_CRIT_EXIT();
             #endif
             status_ = Q_HANDLED();
