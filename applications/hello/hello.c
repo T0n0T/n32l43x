@@ -101,6 +101,8 @@ static QState Hello_initial(Hello * const me, void const * const par) {
     eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
     eMBEnable();
 
+    cmd_init();
+
     QS_FUN_DICTIONARY(&Hello_NORMAL);
     QS_FUN_DICTIONARY(&Hello_off);
     QS_FUN_DICTIONARY(&Hello_on);
@@ -123,7 +125,7 @@ static QState Hello_NORMAL(Hello * const me, QEvt const * const e) {
         //${AOs::Hello::SM::NORMAL::USER_COMMAND}
         case USER_COMMAND_SIG: {
             CmdEvt const* const cmdEvt = (CmdEvt const*)e;
-            cmd_execute(cmdEvt->buf);
+            cmd_execute(cmdEvt->msg);
             status_ = Q_HANDLED();
             break;
         }

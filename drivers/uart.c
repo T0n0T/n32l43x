@@ -18,14 +18,14 @@ static uart_t uarts[] = {
         .stop_bits   = USART_STPB_1,
     },
     {
-        .tx_port     = GPIOB,
-        .rx_port     = GPIOB,
-        .tx_pin      = GPIO_PIN_4,
-        .rx_pin      = GPIO_PIN_5,
-        .tx_gpio_clk = RCC_APB2_PERIPH_GPIOB,
-        .rx_gpio_clk = RCC_APB2_PERIPH_GPIOB,
+        .tx_port     = GPIOD,
+        .rx_port     = GPIOD,
+        .tx_pin      = GPIO_PIN_14,
+        .rx_pin      = GPIO_PIN_15,
+        .tx_gpio_clk = RCC_APB2_PERIPH_GPIOD,
+        .rx_gpio_clk = RCC_APB2_PERIPH_GPIOD,
         .tx_af       = GPIO_AF4_USART2,
-        .rx_af       = GPIO_AF6_USART2,
+        .rx_af       = GPIO_AF4_USART2,
         .handle      = USART2,
         .irqn        = USART2_IRQn,
         .clk_src     = RCC_APB1_PERIPH_USART2,
@@ -76,9 +76,12 @@ void uart_init(uart_index_t index)
     GPIO_InitStructure.GPIO_Alternate = uarts[index].rx_af;
     GPIO_InitPeripheral(uarts[index].rx_port, &GPIO_InitStructure);
 
-    if (IS_RCC_APB2_PERIPH(uarts[index].clk_src)) {
+    if (uarts[index].handle == USART1 ||
+        uarts[index].handle == UART4 ||
+        uarts[index].handle == UART5) {
         RCC_EnableAPB2PeriphClk(uarts[index].clk_src, ENABLE);
-    } else {
+    } else if (uarts[index].handle == USART2 ||
+               uarts[index].handle == USART3) {
         RCC_EnableAPB1PeriphClk(uarts[index].clk_src, ENABLE);
     }
 

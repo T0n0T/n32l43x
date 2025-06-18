@@ -4,8 +4,8 @@
 #define CMD_DEFINE(func)   int cmd_##func(int argc, char** argv);
 
 #define CMD_DEFINE_LIST {    \
-    {"hello", cmd_hello, 1}, \
-    {"add", cmd_add, 2},     \
+    {"reboot", cmd_reboot, 1}, \
+    {"update", cmd_update, 1}, \
 }
 
 // 命令处理函数类型定义
@@ -21,7 +21,7 @@ typedef struct {
 void cmd_init(void);
 void cmd_execute(char* input);
 
-CMD_DEFINE(hello)
-CMD_DEFINE(add)
+CMD_DEFINE(reboot)
+CMD_DEFINE(update)
 
 #endif // __CMD_H__

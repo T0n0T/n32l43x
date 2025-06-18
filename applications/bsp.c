@@ -59,9 +59,8 @@ void BSP_init(void)
     cm_backtrace_init("N32L4", "V1.0", "1.0.0");
     led_init();         /* initialize the LEDs */
     uart_init(CONSOLE); /* initialize the console UART */
-    cmd_init();         /* initialize the command interface */
-    lcd_init();         /* initialize the LCD */
-    lcd_set_char(LCD_CHAR_OPEN_CHINESE, 1);
+    dump_clk();         /* dump the clock configuration */
+    printf("UPDATE FLAG: 0x%x\r\n", *(uint32_t*)0x0801F800);
 }
 
 void BSP_start(void)
@@ -105,11 +104,11 @@ void QF_onCleanup(void)
 /*..........................................................................*/
 void BSP_ledOn(void)
 {
-    led_on(LED_1);
+    led_on(LED_3);
 }
 
 /*..........................................................................*/
 void BSP_ledOff(void)
 {
-    led_off(LED_1);
+    led_off(LED_3);
 }

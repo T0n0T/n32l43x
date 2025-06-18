@@ -59,7 +59,7 @@ typedef struct {
     QEvt super;
 
 // public:
-    uint8_t buf[64];
+    uint8_t * msg;
 } CmdEvt;
 //$enddecl${Shared} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

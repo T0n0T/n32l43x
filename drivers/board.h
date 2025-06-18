@@ -21,7 +21,7 @@ typedef enum {
 typedef void (*wakeup_handle_func)(uint8_t);
 
 void board_init(void);
-void set_sysclock_to_pll(uint32_t freq, SYSCLK_PLL_TYPE src);
+void dump_clk(void);
 void wakeup_pin_init(wakeup_handle_func h);
 
 #endif /* __BOARD_H__ */

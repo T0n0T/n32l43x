@@ -53,8 +53,8 @@ QTimeEvt_ctorX(&amp;me-&gt;modbusEvt, &amp;me-&gt;super, MODBUS_POLL_SIG, 0U);</
   </operation>
   <!--${Shared::CmdEvt}-->
   <class name="CmdEvt" superclass="qpc::QEvt">
-   <!--${Shared::CmdEvt::buf[64]}-->
-   <attribute name="buf[64]" type="uint8_t" visibility="0x00" properties="0x00"/>
+   <!--${Shared::CmdEvt::msg}-->
+   <attribute name="msg" type="uint8_t *" visibility="0x00" properties="0x00"/>
   </class>
  </package>
  <!--${AOs}-->
@@ -77,7 +77,9 @@ QTimeEvt_armX(&amp;me-&gt;ledEvt, BSP_TICKS_PER_SEC/2, BSP_TICKS_PER_SEC/2);
 QTimeEvt_armX(&amp;me-&gt;modbusEvt, 1, 1);
 
 eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
-eMBEnable();</action>
+eMBEnable();
+
+cmd_init();</action>
      <initial_glyph color="3" conn="11,4,5,1,31,15,-10">
       <action box="2,-2,6,2"/>
      </initial_glyph>
@@ -96,7 +98,7 @@ usSRegHoldBuf[3] = 0x1234;</action>
      <!--${AOs::Hello::SM::NORMAL::USER_COMMAND}-->
      <tran trig="USER_COMMAND">
       <action>CmdEvt const* const cmdEvt = (CmdEvt const*)e;
-cmd_execute(cmdEvt-&gt;buf);</action>
+cmd_execute(cmdEvt-&gt;msg);</action>
       <tran_glyph conn="10,12,3,-1,19">
        <action box="0,-2,15,3"/>
       </tran_glyph>

@@ -30,6 +30,7 @@
 #define BSP_H_
 
 #include "board.h"
+#include "flash.h"
 #include "led.h"
 #include "lcd.h"
 #include "rtc.h"
