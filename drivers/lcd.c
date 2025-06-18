@@ -22,7 +22,7 @@ void lcd_init(void)
     /*LCD parameter config*/
     Init.Divider         = LCD_DIV_25;
     Init.Prescaler       = LCD_PRESCALER_1;
-    Init.Duty            = LCD_DUTY_1_8;
+    Init.Duty            = LCD_DUTY_1_3;
     Init.Bias            = LCD_BIAS_1_2;
     Init.VoltageSource   = LCD_VOLTAGESOURCE_EXTERNAL;
     Init.Contrast        = LCD_CONTRASTLEVEL_5;
@@ -54,15 +54,11 @@ void lcd_init(void)
     GPIO_InitPeripheral(GPIOB, &lcd_gpio_initstruct);
 
     /*
-    PA15: COM3
-    PC10: COM4
-    PC11: COM5
+    PA8:  COM0
+    PA9:  COM1
+    PA10: COM2
     */
-    lcd_gpio_initstruct.Pin = GPIO_PIN_10 | GPIO_PIN_11;
-    GPIO_InitPeripheral(GPIOC, &lcd_gpio_initstruct);
-
-    lcd_gpio_initstruct.Pin            = GPIO_PIN_15;
-    lcd_gpio_initstruct.GPIO_Alternate = GPIO_AF11_LCD;
+    lcd_gpio_initstruct.Pin = GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10;
     GPIO_InitPeripheral(GPIOA, &lcd_gpio_initstruct);
 
     /*config and start LCD controller*/
@@ -80,13 +76,13 @@ void lcd_set_char(LCD_Char_Enum lcd_char, bool enable)
     }
 
     if (enable) {
-        LCD_SetBit(LCD_RAM1_COM3, lcd_bit_define[lcd_char][0]);
-        LCD_SetBit(LCD_RAM1_COM4, lcd_bit_define[lcd_char][1]);
-        LCD_SetBit(LCD_RAM1_COM5, lcd_bit_define[lcd_char][2]);
+        LCD_SetBit(LCD_RAM1_COM0, lcd_bit_define[lcd_char][0]);
+        LCD_SetBit(LCD_RAM1_COM1, lcd_bit_define[lcd_char][1]);
+        LCD_SetBit(LCD_RAM1_COM2, lcd_bit_define[lcd_char][2]);
     } else {
-        LCD_ClearBit(LCD_RAM1_COM3, lcd_bit_define[lcd_char][0]);
-        LCD_ClearBit(LCD_RAM1_COM4, lcd_bit_define[lcd_char][1]);
-        LCD_ClearBit(LCD_RAM1_COM5, lcd_bit_define[lcd_char][2]);
+        LCD_ClearBit(LCD_RAM1_COM0, lcd_bit_define[lcd_char][0]);
+        LCD_ClearBit(LCD_RAM1_COM1, lcd_bit_define[lcd_char][1]);
+        LCD_ClearBit(LCD_RAM1_COM2, lcd_bit_define[lcd_char][2]);
     }
 
     LCD_UpdateDisplayRequest();

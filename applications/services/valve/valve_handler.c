@@ -45,7 +45,7 @@
 #define CONFIG_FLASH_ADDRESS 0x0
 
 cmd_config_t global_config = {
-    .valve_count = 2,              // 默认阀门数量
+    .count = 2,              // 默认阀门数量
     .dir         = 1,              // 默认方向
     .model       = "default_model" // 默认模型名称
 };
@@ -190,7 +190,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
                 val->position,
                 val->total_ticks / TICKS_PER_ROTATION,
                 val->total_ticks);
-            if (val->total_ticks > global_config.valve_count * 6) {
+            if (val->total_ticks > global_config.count * 6) {
                 lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
                 lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
                 lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
@@ -206,7 +206,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             extern USHORT usSRegHoldBuf[S_REG_HOLDING_NREGS];
             usSRegHoldBuf[1] = val->total_ticks > 0 ? 1 : 2;
             usSRegHoldBuf[2] = val->total_ticks / TICKS_PER_ROTATION;
-            usSRegHoldBuf[3] = val->total_ticks > global_config.valve_count * 6 ? 1 : 2;
+            usSRegHoldBuf[3] = val->total_ticks > global_config.count * 6 ? 1 : 2;
             QF_CRIT_EXIT();
             #endif
             status_ = Q_HANDLED();

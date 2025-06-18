@@ -24,39 +24,6 @@ static uint8_t          _cmd_buf[CMD_BUF_LEN];
 static volatile uint8_t _cmd_pos;
 static const command_t  commands[] = CMD_DEFINE_LIST;
 
-// void USART_CMD_IRQHandler(void)
-// {
-//     // process the UART2 interrupt
-//     if (USART_GetIntStatus(USART_CMD, USART_INT_RXDNE) != RESET) {
-//         /* Read one byte from the receive data register */
-//         if (_cmd_pos < CMD_BUF_LEN - 1) {
-//             _cmd_buf[_cmd_pos] = USART_ReceiveData(USART_CMD);
-//             _cmd_pos++;
-//             if (_cmd_buf[_cmd_pos - 1] == '\n') {
-//                 // process the command
-//                 // _cmd_buf[_cmd_pos] = '\0'; // null-terminate the string
-//                 // Reset the command buffer position
-//                 QACTIVE_POST(AO_ValveConf, &_cmd_evt.super, 0U);
-//             }
-//         }else{
-//             USART_ReceiveData(USART_CMD);
-//         }
-//         USART_ClrIntPendingBit(USART_CMD, USART_INT_RXDNE);
-//         USART_ClrFlag(USART_CMD, USART_FLAG_RXDNE);
-//     }
-//     if ((USART_GetFlagStatus(USART_CMD, USART_FLAG_OREF) != RESET) ||
-//         (USART_GetFlagStatus(USART_CMD, USART_FLAG_NEF) != RESET) ||
-//         (USART_GetFlagStatus(USART_CMD, USART_FLAG_PEF) != RESET) ||
-//         (USART_GetFlagStatus(USART_CMD, USART_FLAG_FEF) != RESET)) {
-//         /*Read the sts register first,and the read the DAT register to clear the all error flag*/
-//         (void)USART_CMD->STS;
-//         (void)USART_CMD->DAT;
-//         printf("error happened\r\n");
-//         /* Under normal circumstances, all error flags will be cleared when the upper data is read and will not be executed here;
-//            users can add their own processing according to the actual scenario. */
-//     }
-// }
-
 void DMA_Channel6_IRQHandler(void)
 {
     if (DMA_GetFlagStatus(DMA_FLAG_TC6, DMA) != RESET) {
@@ -184,5 +151,19 @@ int cmd_reboot(int argc, char** argv)
     (void)argv; // 未使用参数
     printf("System is rebooting...\r\n");
     NVIC_SystemReset(); // 调用系统重启函数
+    return 0;
+}
+
+int cmd_update(int argc, char** argv)
+{
+    (void)argc; // 未使用参数
+    (void)argv; // 未使用参数
+    extern uint32_t __heap_end;
+    flash_start();
+    flash_erase_page((uint32_t)&__heap_end);
+    flash_program_word((uint32_t)&__heap_end, 0x12345678); // 擦除堆区
+    flash_stop();
+    printf("System  updating...\r\n");
+    // 这里可以添加实际的更新逻辑
     return 0;
 }

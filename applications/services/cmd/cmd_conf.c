@@ -9,7 +9,8 @@
 configure the command line interface for the application.
 json template:
 {
-    "valve_count": 2,
+    "count": 2,
+    "dir": -1,
     "model": "model_name",
 }
 
@@ -26,9 +27,17 @@ int cmd_config_decode(const char* json_string, cmd_config_t* config)
         return -1; // 解析失败
     }
 
-    cJSON* valve_count_item = cJSON_GetObjectItemCaseSensitive(root, "valve_count");
+    cJSON* valve_count_item = cJSON_GetObjectItemCaseSensitive(root, "count");
     if (cJSON_IsNumber(valve_count_item)) {
-        config->valve_count = valve_count_item->valueint;
+        config->count = valve_count_item->valueint;
+    } else {
+        cJSON_Delete(root);
+        return -1; // valve_count不存在或类型不正确
+    }
+
+    cJSON* dir_item = cJSON_GetObjectItemCaseSensitive(root, "dir");
+    if (cJSON_IsNumber(dir_item)) {
+        config->dir = dir_item->valueint > 0 ? 1 : -1;
     } else {
         cJSON_Delete(root);
         return -1; // valve_count不存在或类型不正确
@@ -55,7 +64,8 @@ char* cmd_config_encode(const cmd_config_t* config)
         return NULL;
     }
 
-    cJSON_AddNumberToObject(root, "valve_count", config->valve_count);
+    cJSON_AddNumberToObject(root, "count", config->count);
+    cJSON_AddNumberToObject(root, "dir", config->dir);
     cJSON_AddStringToObject(root, "model", config->model);
 
     char* json_string = cJSON_Print(root);
@@ -71,9 +81,9 @@ int cmd_config_write(int argc, char** argv)
     }
 
     // 测试用的json_string
-    char* json_string = "{\"valve_count\": 10, \"model\": \"test_model\"}";
+    // char* json_string = "{\"count\": 10, \"dir\": -1, model\": \"test_model\"}";
     // 实际使用时，请将上一行注释掉，并使用下一行
-    // char* json_string = argv[0];
+    char* json_string = argv[0];
 
     if (cmd_config_decode(json_string, &config) != 0) {
         printf("Error: Failed to decode command configuration.\r\n");
