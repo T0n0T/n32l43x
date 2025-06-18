@@ -1,29 +1,11 @@
 #include "bootloader.h"
 #include "stdio.h"
 
-void app_start_final(uint32_t app_addr)
-{
-    if ((((uint32_t)(*((__IO uint32_t*)(app_addr + 4))) & 0xff000000) != 0x08000000) ||
-        (((*((__IO uint32_t*)app_addr) & 0x2ff00000) != 0x20000000))) {
-        printf("No legitimate application.\r\n");
-        return;
-    }
-
-    printf("Jump to application running ... \r\n");
-
-    NVIC->ICER[0] = 0xFFFFFFFF;
-    NVIC->ICPR[0] = 0xFFFFFFFF;
-
-    app_start(app_addr);
-
-    while (1);
-}
-
 /**@brief Function for booting an app as if the chip was reset.
  *
  * @param[in]  vector_table_addr  The address of the app's vector table.
  */
-static inline void app_start(uint32_t vector_table_addr)
+static inline void jump_to_application(uint32_t vector_table_addr)
 {
     const uint32_t current_isr_num = (__get_IPSR() & IPSR_ISR_Msk);
     const uint32_t new_msp         = *((uint32_t*)(vector_table_addr));                    // The app's Stack Pointer is found as the first word of the vector table.
@@ -38,4 +20,26 @@ static inline void app_start(uint32_t vector_table_addr)
 
     __set_MSP(new_msp);
     ((void (*)(void))reset_handler)();
+}
+
+void app_run(uint32_t app_addr)
+{
+    printf("Jump to application running ... \r\n");
+
+    NVIC->ICER[0] = 0xFFFFFFFF;
+    NVIC->ICPR[0] = 0xFFFFFFFF;
+
+    jump_to_application(app_addr);
+
+    while (1);
+}
+
+bool app_is_valid(uint32_t app_addr)
+{
+    if ((((uint32_t)(*((__IO uint32_t*)(app_addr + 4))) & 0xff000000) != 0x08000000) ||
+        (((*((__IO uint32_t*)app_addr) & 0x2ff00000) != 0x20000000))) {
+        printf("No legitimate application.\r\n");
+        return false;
+    }
+    return true;
 }

@@ -20,7 +20,7 @@ c_args = [
   '-specs=picolibc.specs',
   '-ffunction-sections',
   '-fdata-sections',
-  '-O0',                    # 优化等级2
+  '-O2',                    # 优化等级2
   '-fdata-sections',        # 将数据放入独立段
   '-ffunction-sections',    # 将函数放入独立段
 ]

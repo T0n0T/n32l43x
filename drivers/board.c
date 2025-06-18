@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdint.h>
-#include "cm_backtrace.h"
 #include "board.h"
 
 ErrorStatus SetSysClockToMSI(void);
@@ -17,7 +16,7 @@ void board_init(void)
 void assert_failed(const uint8_t* expr, const uint8_t* file, uint32_t line)
 {
     printf("Assert failed: %s, file %s, line %d\r\n", expr, file, line);
-    cm_backtrace_assert(cmb_get_sp());
+    // cm_backtrace_assert(cmb_get_sp());
 #ifndef NDEBUG /* debug build? */
     while (1); /* tie the CPU in this endless loop */
 #endif

@@ -8,7 +8,5 @@ drivers_sources = files(
     'board.c',
     'flash.c',
     'led.c',
-    'lptimer.c',
-    # 'spi_flash.c',
     'uart.c',
 )
