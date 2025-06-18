@@ -32,23 +32,7 @@ static uart_t uarts[] = {
         .baudrate    = 115200,
         .parity      = USART_PE_NO,
         .stop_bits   = USART_STPB_1,
-    },
-    {
-        .tx_port     = GPIOC,
-        .rx_port     = GPIOD,
-        .tx_pin      = GPIO_PIN_12,
-        .rx_pin      = GPIO_PIN_2,
-        .tx_gpio_clk = RCC_APB2_PERIPH_GPIOC,
-        .rx_gpio_clk = RCC_APB2_PERIPH_GPIOD,
-        .tx_af       = GPIO_AF6_UART5,
-        .rx_af       = GPIO_AF6_UART5,
-        .handle      = UART5,
-        .irqn        = UART5_IRQn,
-        .clk_src     = RCC_APB2_PERIPH_UART5,
-        .baudrate    = 9600,
-        .parity      = USART_PE_NO,
-        .stop_bits   = USART_STPB_1,
-    },
+    }
 };
 
 void uart_init(uart_index_t index)

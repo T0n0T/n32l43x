@@ -26,14 +26,10 @@
 // <www.state-machine.com/licensing>
 // <info@state-machine.com>
 //============================================================================
-#include "qpc.h"    // QP/C real-time event framework
-#include "bsp.h"    // Board Support Package
+
 
 //............................................................................
-int main()
+void main(void)
 {
-    QF_init();       // initialize the framework and the underlying RT kernel
-    BSP_init();      // initialize the BSP
-    BSP_start();     // start the AOs/Threads
-    return QF_run(); // run the QF application
+
 }
