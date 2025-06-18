@@ -19,7 +19,6 @@ void assert_failed(const uint8_t* expr, const uint8_t* file, uint32_t line)
     printf("Assert failed: %s, file %s, line %d\r\n", expr, file, line);
     cm_backtrace_assert(cmb_get_sp());
 #ifndef NDEBUG /* debug build? */
-    cm_backtrace_assert(cmb_get_sp());
     while (1); /* tie the CPU in this endless loop */
 #endif
     NVIC_SystemReset(); /* reset the CPU */

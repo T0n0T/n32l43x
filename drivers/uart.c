@@ -114,7 +114,7 @@ void uart_putc(uart_index_t index, const uint8_t data)
     USART_Module* usart = uarts[index].handle;
 
     USART_SendData(usart, data);
-    while (USART_GetFlagStatus(usart, USART_FLAG_TXDE) == RESET);
+    while (USART_GetFlagStatus(usart, USART_FLAG_TXC) == RESET);
 }
 
 char uart_getc(uart_index_t index)
