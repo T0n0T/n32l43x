@@ -17,13 +17,14 @@
     0xD8, 0x10, 0x9A, 0xAC}
 
 typedef enum {
-    DFU_STATE_IDLE,   // 空闲状态，等待开始
-    DFU_STATE_HEADER, // 接收块头
-    DFU_STATE_DATA,   // 接收块数据
-    DFU_STATE_VERIFY, // 验签
-    DFU_STATE_WRITE,  // 写入Flash
-    DFU_STATE_FINAL,  // DFU结束
-    DFU_STATE_ERROR   // 错误状态
+    DFU_STATE_IDLE,    // 空闲状态，等待开始
+    DFU_STATE_PREPARE, // 准备阶段
+    DFU_STATE_HEADER,  // 接收块头
+    DFU_STATE_DATA,    // 接收块数据
+    DFU_STATE_VERIFY,  // 验签
+    DFU_STATE_WRITE,   // 写入Flash
+    DFU_STATE_FINAL,   // DFU结束
+    DFU_STATE_ERROR    // 错误状态
 } dfu_state;
 
 typedef struct {
@@ -33,6 +34,8 @@ typedef struct {
 
 typedef struct {
     dfu_state state;
+    uint32_t  current_block_index;                       // 当前块
+    uint32_t  total_block;                               // 总块数
     uint32_t  data_received;                             // 当前块已接收字节数
     uint32_t  flash_base_addr;                           // 固件写入的起始地址（如0x08008000）
     uint32_t  flash_offset;                              // 当前写入偏移
@@ -49,27 +52,37 @@ static firmware_updater dfu_updater;
 static uint8_t          dfu_reset_task_index;
 static uint8_t          dfu_process_task_index;
 
+static uint8_t byte_count      = 0;
+static uint8_t _total_block[4] = {0};
+
 void DMA_Channel6_IRQHandler(void)
 {
     if (DMA_GetFlagStatus(DMA_FLAG_TC6, DMA) != RESET) {
         switch (dfu_updater.state) {
             case DFU_STATE_IDLE: {
-                static const uint8_t preamble[]    = DFU_PREAMBLE;
-                static uint8_t       preamble_idx  = 0;
-                uint8_t              received_byte = ch; // Assuming DMA writes here
-
-                if (received_byte == preamble[preamble_idx]) {
-                    preamble_idx++;
+                static const uint8_t preamble[]   = DFU_PREAMBLE;
+                static uint8_t       preamble_idx = 0;
+                if (ch == preamble[preamble_idx++]) {
                     if (preamble_idx == sizeof(preamble)) {
-                        dfu_updater.state         = DFU_STATE_HEADER;
-                        dfu_updater.data_received = 0;
-                        preamble_idx              = 0; // Reset for next DFU session
+                        dfu_updater.state               = DFU_STATE_PREPARE;
+                        dfu_updater.data_received       = 0;
+                        dfu_updater.current_block_index = 0;
+                        preamble_idx                    = 0; // Reset for next DFU session
                     }
                 } else {
                     preamble_idx = 0; // Reset if mismatch
                 }
                 break;
             }
+            case DFU_STATE_PREPARE:
+
+                _total_block[byte_count++] = ch;
+                if (byte_count >= 4) {
+                    dfu_updater.total_block = *(uint32_t*)_total_block;
+                    dfu_updater.state       = DFU_STATE_HEADER;
+                    byte_count              = 0;
+                }
+                break;
             case DFU_STATE_HEADER:
                 if (dfu_updater.data_received < sizeof(firmware_block_header)) {
                     dfu_updater.header_buf[dfu_updater.data_received++] = ch;
@@ -128,14 +141,13 @@ static void bootloader_dfu_serial_init(void)
 
 void bootloader_dfu_process(void)
 {
-    static dfu_state       last_state         = DFU_STATE_IDLE;
-    firmware_block_header* header             = (firmware_block_header*)dfu_updater.header_buf;
+    static dfu_state       last_state = DFU_STATE_IDLE;
+    firmware_block_header* header     = (firmware_block_header*)dfu_updater.header_buf;
     switch (dfu_updater.state) {
         case DFU_STATE_HEADER:
             if (dfu_updater.data_received >= sizeof(firmware_block_header)) {
                 dfu_updater.data_received = 0;
                 dfu_updater.state         = DFU_STATE_DATA;
-            
             }
             break;
         case DFU_STATE_DATA:
@@ -164,6 +176,13 @@ void bootloader_dfu_process(void)
             dfu_updater.flash_offset += DFU_PAGE_LEN;
             dfu_updater.state = DFU_STATE_HEADER; // next header
             memset(header, 0, sizeof(firmware_block_header));
+            if (++dfu_updater.current_block_index == dfu_updater.total_block) {
+                dfu_updater.state = DFU_STATE_FINAL;
+            }
+            break;
+        case DFU_STATE_FINAL:
+            flash_stop();
+            NVIC_SystemReset();
             break;
         default:
             break;
