@@ -3,8 +3,10 @@
 #include "flash.h"
 #include "led.h"
 #include "uart.h"
-#include "cm_backtrace.h"
 #include "bootloader.h"
+#ifdef DEBUG
+#include "cm_backtrace.h"
+#endif
 
 void run_led(void)
 {
@@ -19,14 +21,16 @@ void main(void)
     board_init();
     led_init();
     uart_init(CONSOLE);
+    printf("\r\nN32L43x bootloader %s-%s\r\n", __DATE__, __TIME__);
     bootloader_systimer_init();
     bootloader_systimer_add_task(run_led, 1000, true);
     bootloader_wdt_init();
-
     if (*(uint32_t*)UPDATE_FLAG_ADDR != UPDATE_FLAG_MASK && app_is_valid(APP_START_ADDR)) {
         app_run((uint32_t)APP_START_ADDR);
     }
+    printf("A firmware need to flash\r\n");
     bootloader_dfu_init();
+
     while (1) {
         bootloader_wdt_feed();
         bootloader_systimer_run_tasks();

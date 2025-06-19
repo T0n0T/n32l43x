@@ -1,54 +1,99 @@
 #include "bootloader.h"
+#include "string.h"
 #include "uart.h"
 #include "flash.h"
 
-#define UART_DFU   USART2
-#define FW_BLK_LEN 2048
+#define UART_DFU       USART2
+#define DFU_PAGE_LEN   2048
+#define DFU_PREAMBLE   {0xAA, 0x55, 0xAA, 0x55}
+#define ED25519_PUBKEY {    \
+    0x42, 0xE6, 0x9B, 0x3A, \
+    0xEA, 0xE5, 0x0E, 0x7A, \
+    0x6C, 0xA9, 0x19, 0xAF, \
+    0x3C, 0xAA, 0xBF, 0x1F, \
+    0x78, 0xD6, 0x2E, 0x9F, \
+    0x52, 0xBC, 0x7C, 0xBE, \
+    0x7A, 0x84, 0x38, 0x6E, \
+    0xD8, 0x10, 0x9A, 0xAC}
 
 typedef enum {
-    RECV_STATE_IDLE,   // 空闲状态，等待开始
-    RECV_STATE_HEADER, // 接收块头（FirmwareBlockHeader）
-    RECV_STATE_DATA,   // 接收块数据
-    RECV_STATE_VERIFY, // 验签和哈希校验
-    RECV_STATE_WRITE,  // 写入Flash
-    RECV_STATE_ERROR   // 错误状态
-} RecvState;
+    DFU_STATE_IDLE,   // 空闲状态，等待开始
+    DFU_STATE_HEADER, // 接收块头
+    DFU_STATE_DATA,   // 接收块数据
+    DFU_STATE_VERIFY, // 验签
+    DFU_STATE_WRITE,  // 写入Flash
+    DFU_STATE_FINAL,  // DFU结束
+    DFU_STATE_ERROR   // 错误状态
+} dfu_state;
 
 typedef struct {
-    uint32_t block_id;      // 块序号（从0开始）
+    uint8_t  signature[64]; // 当前块的 Curve25519 签名（示例为64字节）
     uint32_t block_size;    // 当前块实际大小（字节数，≤分块最大值）
-    uint8_t  hash[32];      // 当前块的SHA-256哈希值
-    uint8_t  signature[64]; // 当前块的ECDSA签名（示例为64字节）
 } firmware_block_header;
 
 typedef struct {
-    RecvState state;
-    uint32_t  current_block_id;                             // 当前处理的块ID
-    uint32_t  total_blocks;                                 // 总块数（由首块或协议确定）
-    uint8_t   header_buf[sizeof(firmware_block_header)];    // 块头缓存
-    uint8_t   data_buf[FW_BLK_LEN];                         // 块数据缓存
-    uint32_t  data_received;                                // 当前块已接收字节数
-    uint8_t   public_key[64];                               // ECDSA公钥（预置）
-    bool      is_verified;                                  // 当前块验签结果
-    uint32_t  flash_base_addr;                              // 固件写入的起始地址（如0x08008000）
-    uint32_t  flash_offset;                                 // 当前写入偏移
-    void (*on_block_done)(uint32_t block_id, bool success); // 块处理完成回调
+    dfu_state state;
+    uint32_t  data_received;                             // 当前块已接收字节数
+    uint32_t  flash_base_addr;                           // 固件写入的起始地址（如0x08008000）
+    uint32_t  flash_offset;                              // 当前写入偏移
+    bool      is_verified;                               // 当前块验签结果
+    uint8_t*  public_key;                                // ECDSA公钥(Curve25519)
+    uint8_t   header_buf[sizeof(firmware_block_header)]; // 块头缓存
+    uint8_t   data_buf[DFU_PAGE_LEN];                    // 块数据缓存
 } firmware_updater;
 
-static uint8_t  _dfu_ch;
-static uint32_t _dfu_pos;
-static uint8_t  _dfu_buf[FW_BLK_LEN];
+static volatile uint8_t ch;
+static uint8_t          public_key[32] = ED25519_PUBKEY;
+
+static firmware_updater dfu_updater;
+static uint8_t          dfu_reset_task_index;
+static uint8_t          dfu_process_task_index;
 
 void DMA_Channel6_IRQHandler(void)
 {
     if (DMA_GetFlagStatus(DMA_FLAG_TC6, DMA) != RESET) {
-        if (_dfu_pos < FW_BLK_LEN - 1) {
-            _dfu_buf[_dfu_pos] = _dfu_ch;
-            _dfu_pos++;
+        switch (dfu_updater.state) {
+            case DFU_STATE_IDLE: {
+                static const uint8_t preamble[]    = DFU_PREAMBLE;
+                static uint8_t       preamble_idx  = 0;
+                uint8_t              received_byte = ch; // Assuming DMA writes here
+
+                if (received_byte == preamble[preamble_idx]) {
+                    preamble_idx++;
+                    if (preamble_idx == sizeof(preamble)) {
+                        dfu_updater.state         = DFU_STATE_HEADER;
+                        dfu_updater.data_received = 0;
+                        preamble_idx              = 0; // Reset for next DFU session
+                    }
+                } else {
+                    preamble_idx = 0; // Reset if mismatch
+                }
+                break;
+            }
+            case DFU_STATE_HEADER:
+                if (dfu_updater.data_received < sizeof(firmware_block_header)) {
+                    dfu_updater.header_buf[dfu_updater.data_received++] = ch;
+                }
+                break;
+            case DFU_STATE_DATA:
+                firmware_block_header* header = (firmware_block_header*)dfu_updater.header_buf;
+                if (dfu_updater.data_received < header->block_size) {
+                    dfu_updater.data_buf[dfu_updater.data_received++] = ch;
+                }
+                break;
+            default:
+                break;
         }
+
         DMA_ClrIntPendingBit(DMA_INT_TXC6, DMA);
         DMA_ClearFlag(DMA_FLAG_TC6, DMA);
     }
+}
+
+static void bootloader_response(dfu_state state)
+{
+    USART_SendData(UART_DFU, (uint16_t)state);
+    while (USART_GetFlagStatus(UART_DFU, USART_FLAG_TXC) == RESET);
 }
 
 static void bootloader_dfu_serial_init(void)
@@ -60,7 +105,7 @@ static void bootloader_dfu_serial_init(void)
     DMA_InitType DMA_InitStructure;
     DMA_DeInit(DMA_CH6);
     DMA_InitStructure.PeriphAddr     = ((uint32_t)UART_DFU + 0x04);
-    DMA_InitStructure.MemAddr        = (uint32_t)&_dfu_ch;
+    DMA_InitStructure.MemAddr        = (uint32_t)&ch;
     DMA_InitStructure.Direction      = DMA_DIR_PERIPH_SRC;
     DMA_InitStructure.BufSize        = 1;
     DMA_InitStructure.PeriphInc      = DMA_PERIPH_INC_DISABLE;
@@ -81,7 +126,72 @@ static void bootloader_dfu_serial_init(void)
     NVIC_EnableIRQ(DMA_Channel6_IRQn);
 }
 
+void bootloader_dfu_process(void)
+{
+    static dfu_state       last_state         = DFU_STATE_IDLE;
+    firmware_block_header* header             = (firmware_block_header*)dfu_updater.header_buf;
+    switch (dfu_updater.state) {
+        case DFU_STATE_HEADER:
+            if (dfu_updater.data_received >= sizeof(firmware_block_header)) {
+                dfu_updater.data_received = 0;
+                dfu_updater.state         = DFU_STATE_DATA;
+            
+            }
+            break;
+        case DFU_STATE_DATA:
+            if (dfu_updater.data_received >= header->block_size) {
+                dfu_updater.data_received = 0;
+                dfu_updater.state         = DFU_STATE_VERIFY;
+            }
+            break;
+        case DFU_STATE_VERIFY:
+            // TODO:do verify
+            dfu_updater.is_verified = true;
+            if (!dfu_updater.is_verified) {
+                dfu_updater.state = DFU_STATE_ERROR;
+            } else {
+                dfu_updater.state = DFU_STATE_WRITE;
+            }
+            break;
+        case DFU_STATE_WRITE:
+            uint32_t write_len = header->block_size < DFU_PAGE_LEN ? header->block_size : DFU_PAGE_LEN;
+            flash_erase_page(dfu_updater.flash_base_addr + dfu_updater.flash_offset);
+            for (uint32_t i = 0; i < write_len; i = i + 4) {
+                uint32_t word_data = *(uint32_t*)&dfu_updater.data_buf[i];
+                flash_program_word(dfu_updater.flash_base_addr + dfu_updater.flash_offset + i,
+                                   word_data);
+            }
+            dfu_updater.flash_offset += DFU_PAGE_LEN;
+            dfu_updater.state = DFU_STATE_HEADER; // next header
+            memset(header, 0, sizeof(firmware_block_header));
+            break;
+        default:
+            break;
+    }
+
+    if (last_state != dfu_updater.state) {
+        bootloader_response(dfu_updater.state);
+        bootloader_systimer_reset_task(dfu_reset_task_index);
+        last_state = dfu_updater.state;
+        printf("state trans to %d\r\n", dfu_updater.state);
+    }
+}
+
+void bootloader_dfu_reset(void)
+{
+    printf("long timer no byte,reset\r\n");
+    // flash_stop();
+    // NVIC_SystemReset();
+}
+
 void bootloader_dfu_init(void)
 {
+    flash_start();
+    flash_erase_page(UPDATE_FLAG_ADDR);
+    dfu_updater.state           = DFU_STATE_IDLE;
+    dfu_updater.flash_base_addr = APP_START_ADDR;
+    dfu_updater.public_key      = public_key;
     bootloader_dfu_serial_init();
+    dfu_reset_task_index   = bootloader_systimer_add_task(bootloader_dfu_reset, 30000, false);
+    dfu_process_task_index = bootloader_systimer_add_task(bootloader_dfu_process, 5, true);
 }
