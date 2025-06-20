@@ -10,7 +10,7 @@ configure the command line interface for the application.
 json template:
 {
     "count": 2,
-    "dir": -1,
+    "dir": true,
     "model": "model_name",
 }
 
@@ -36,8 +36,8 @@ int cmd_config_decode(const char* json_string, cmd_config_t* config)
     }
 
     cJSON* dir_item = cJSON_GetObjectItemCaseSensitive(root, "dir");
-    if (cJSON_IsNumber(dir_item)) {
-        config->dir = dir_item->valueint > 0 ? 1 : -1;
+    if (cJSON_IsBool(dir_item)) {
+        config->dir = cJSON_IsTrue(dir_item) ? 1 : -1;
     } else {
         cJSON_Delete(root);
         return -1; // valve_count不存在或类型不正确
@@ -65,9 +65,12 @@ char* cmd_config_encode(const cmd_config_t* config)
     }
 
     cJSON_AddNumberToObject(root, "count", config->count);
-    cJSON_AddNumberToObject(root, "dir", config->dir);
     cJSON_AddStringToObject(root, "model", config->model);
-
+    if (config->dir == 1) {
+        cJSON_AddTrueToObject(root, "dir");
+    } else if (config->dir == -1) {
+        cJSON_AddFalseToObject(root, "dir");
+    } 
     char* json_string = cJSON_Print(root);
     cJSON_Delete(root);
     return json_string; // 调用者负责释放此字符串
@@ -81,7 +84,7 @@ int cmd_config_write(int argc, char** argv)
     }
 
     // 测试用的json_string
-    // char* json_string = "{\"count\": 10, \"dir\": -1, model\": \"test_model\"}";
+    // char* json_string = "{\"count\": 10, \"dir\": false, model\": \"test_model\"}";
     // 实际使用时，请将上一行注释掉，并使用下一行
     char* json_string = argv[0];
 
