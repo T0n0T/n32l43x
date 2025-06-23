@@ -4,9 +4,17 @@
 #include <stdint.h>
 #include "n32l43x.h"
 
-#define APP_START_ADDR   0x08005000
+#ifndef APP_START_ADDR
+#define APP_START_ADDR   0x08006000
+#endif
+
+#ifndef UPDATE_FLAG_ADDR
 #define UPDATE_FLAG_ADDR 0x0801F800
+#endif
+
+#ifndef UPDATE_FLAG_MASK
 #define UPDATE_FLAG_MASK 0x12345678
+#endif
 
 // application function
 void app_run(uint32_t app_addr);
