@@ -86,14 +86,14 @@ typedef struct {
     int32_t position;
 } ValveVal;
 
-//${Shared::ValveConfig} .....................................................
-typedef struct {} ValveConfig;
-
 //${Shared::ValveEvtType} ....................................................
 enum ValveEvtType {
     VALVE_VALUE,
     VALVE_CMD,
 };
+
+//${Shared::(*EvtHandle)(void*)} .............................................
+typedef void  (*EvtHandle)(void*);
 
 //${Shared::ValveEvt} ........................................................
 typedef struct {
@@ -102,6 +102,7 @@ typedef struct {
 
 // public:
     void * msg;
+    EvtHandle handle;
     enum ValveEvtType evtType;
 } ValveEvt;
 //$enddecl${Shared} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

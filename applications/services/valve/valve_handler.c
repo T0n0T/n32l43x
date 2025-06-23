@@ -46,8 +46,8 @@
 
 cmd_config_t global_config = {
     .count = 2,              // 默认阀门数量
-    .dir         = 1,              // 默认方向
-    .model       = "default_model" // 默认模型名称
+    .dir   = 1,              // 默认方向
+    .model = "default_model" // 默认模型名称
 };
 
 //$declare${AOs::ValveHandler} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -227,8 +227,10 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_CONFIG_READ}
         case VALVE_CONFIG_READ_SIG: {
             ValveEvt const*     ve     = (ValveEvt const*)e;
-            cmd_config_t const* config = (cmd_config_t const*)ve->msg;
-            sFLASH_ReadBuffer((uint8_t*)config, CONFIG_FLASH_ADDRESS, sizeof(cmd_config_t));
+            if (ve->handle != NULL) {
+                // 调用处理函数
+                ve->handle(&global_config);
+            }
             status_ = Q_HANDLED();
             break;
         }

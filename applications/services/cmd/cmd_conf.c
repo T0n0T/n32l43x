@@ -76,6 +76,24 @@ char* cmd_config_encode(const cmd_config_t* config)
     return json_string; // 调用者负责释放此字符串
 }
 
+void cmd_read_wrapper(void* msg)
+{
+    cmd_config_t* config = (cmd_config_t*)msg;
+    char* json_string = cmd_config_encode(config);
+    if (json_string != NULL) {
+        printf("Config read: %s\r\n", json_string);
+        for (size_t i = 0; i < strlen(json_string); i++)
+        {
+            uart_putc(BLE_SERIAL, json_string[i]); // 逐字符发送JSON字符串
+        }
+        uart_putc(BLE_SERIAL, '\n'); // 发送换行符
+        uart_putc(BLE_SERIAL, '\r'); // 发送回车符
+        free(json_string); // 释放编码后的JSON字符串
+    } else {
+        printf("Error: Failed to encode command configuration.\r\n");
+    }
+}
+
 int cmd_config_write(int argc, char** argv)
 {
     if (argc != 1) {
@@ -109,7 +127,7 @@ int cmd_config_read(int argc, char** argv)
     (void)argv; // 未使用参数
 
     QEvt_ctor(&evt.super, VALVE_CONFIG_READ_SIG); // 初始化事件
-    evt.msg     = &config;                        // 将静态config数据指针赋给事件的msg字段
+    evt.handle  = cmd_read_wrapper;               // 设置事件处理函数为编码函数
     evt.evtType = VALVE_CMD;                      // 设置事件类型
 
     // 发布事件
