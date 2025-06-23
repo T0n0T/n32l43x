@@ -24,7 +24,7 @@ static inline void jump_to_application(uint32_t vector_table_addr)
 
 void app_run(uint32_t app_addr)
 {
-    printf("Jump to application running ... \r\n");
+    BOOT_LOG_INFO("Jump to application running ...");
 
     NVIC->ICER[0] = 0xFFFFFFFF;
     NVIC->ICPR[0] = 0xFFFFFFFF;
@@ -38,7 +38,7 @@ bool app_is_valid(uint32_t app_addr)
 {
     if ((((uint32_t)(*((__IO uint32_t*)(app_addr + 4))) & 0xff000000) != 0x08000000) ||
         (((*((__IO uint32_t*)app_addr) & 0x2ff00000) != 0x20000000))) {
-        printf("No legitimate application.\r\n");
+        BOOT_LOG_ERROR("No legitimate application.");
         return false;
     }
     return true;

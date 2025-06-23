@@ -75,7 +75,6 @@ void DMA_Channel6_IRQHandler(void)
                 break;
             }
             case DFU_STATE_PREPARE:
-
                 _total_block[byte_count++] = ch;
                 if (byte_count >= 4) {
                     dfu_updater.total_block = *(uint32_t*)_total_block;
@@ -107,6 +106,13 @@ static void bootloader_response(dfu_state state)
 {
     USART_SendData(UART_DFU, (uint16_t)state);
     while (USART_GetFlagStatus(UART_DFU, USART_FLAG_TXC) == RESET);
+}
+
+static void bootloader_dfu_reset(void)
+{
+    BOOT_LOG_WARN("long timer no byte,reset\r\n");
+    flash_stop();
+    NVIC_SystemReset();
 }
 
 static void bootloader_dfu_serial_init(void)
@@ -144,6 +150,9 @@ void bootloader_dfu_process(void)
     static dfu_state       last_state = DFU_STATE_IDLE;
     firmware_block_header* header     = (firmware_block_header*)dfu_updater.header_buf;
     switch (dfu_updater.state) {
+        case DFU_STATE_PREPARE:
+            dfu_reset_task_index = bootloader_systimer_add_task(bootloader_dfu_reset, 30000, false);
+            break;
         case DFU_STATE_HEADER:
             if (dfu_updater.data_received >= sizeof(firmware_block_header)) {
                 dfu_updater.data_received = 0;
@@ -191,26 +200,20 @@ void bootloader_dfu_process(void)
     if (last_state != dfu_updater.state) {
         bootloader_response(dfu_updater.state);
         bootloader_systimer_reset_task(dfu_reset_task_index);
+        BOOT_LOG_VERBOSE("DFU state %d --> %d", last_state, dfu_updater.state);
         last_state = dfu_updater.state;
-        printf("state trans to %d\r\n", dfu_updater.state);
     }
-}
-
-void bootloader_dfu_reset(void)
-{
-    printf("long timer no byte,reset\r\n");
-    // flash_stop();
-    // NVIC_SystemReset();
 }
 
 void bootloader_dfu_init(void)
 {
-    flash_start();
-    flash_erase_page(UPDATE_FLAG_ADDR);
+    if (*(uint32_t*)UPDATE_FLAG_ADDR == UPDATE_FLAG_MASK) {
+        flash_start();
+        flash_erase_page(UPDATE_FLAG_ADDR);
+    }
     dfu_updater.state           = DFU_STATE_IDLE;
     dfu_updater.flash_base_addr = APP_START_ADDR;
     dfu_updater.public_key      = public_key;
     bootloader_dfu_serial_init();
-    dfu_reset_task_index   = bootloader_systimer_add_task(bootloader_dfu_reset, 30000, false);
     dfu_process_task_index = bootloader_systimer_add_task(bootloader_dfu_process, 5, true);
 }

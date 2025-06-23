@@ -2,7 +2,44 @@
 #define __BOOTLOADER_H
 
 #include <stdint.h>
+#include <stdio.h>
 #include "n32l43x.h"
+
+// Log levels
+typedef enum
+{
+    LOG_LEVEL_NONE = 0,
+    LOG_LEVEL_ERROR,
+    LOG_LEVEL_WARN,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_DEBUG,
+    LOG_LEVEL_VERBOSE,
+} boot_log_level_t;
+
+// Default log level, can be overridden by compiler flags
+#ifndef BOOT_LOG_LEVEL
+#define BOOT_LOG_LEVEL LOG_LEVEL_INFO
+#endif
+
+// Log macro
+#define BOOT_LOG(level, fmt, ...) \
+    do { \
+        if (level <= BOOT_LOG_LEVEL) { \
+            printf("[%s] " fmt "\r\n", \
+                   level == LOG_LEVEL_ERROR ? "E" : \
+                   level == LOG_LEVEL_WARN  ? "W" : \
+                   level == LOG_LEVEL_INFO  ? "I" : \
+                   level == LOG_LEVEL_DEBUG ? "D" : \
+                   level == LOG_LEVEL_VERBOSE ? "V" : "U", \
+                   ##__VA_ARGS__); \
+        } \
+    } while (0)
+
+#define BOOT_LOG_ERROR(fmt, ...)   BOOT_LOG(LOG_LEVEL_ERROR, fmt, ##__VA_ARGS__)
+#define BOOT_LOG_WARN(fmt, ...)    BOOT_LOG(LOG_LEVEL_WARN, fmt, ##__VA_ARGS__)
+#define BOOT_LOG_INFO(fmt, ...)    BOOT_LOG(LOG_LEVEL_INFO, fmt, ##__VA_ARGS__)
+#define BOOT_LOG_DEBUG(fmt, ...)   BOOT_LOG(LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
+#define BOOT_LOG_VERBOSE(fmt, ...) BOOT_LOG(LOG_LEVEL_VERBOSE, fmt, ##__VA_ARGS__)
 
 #ifndef APP_START_ADDR
 #define APP_START_ADDR   0x08006000

@@ -21,14 +21,17 @@ void main(void)
     board_init();
     led_init();
     uart_init(CONSOLE);
-    printf("\r\nN32L43x bootloader %s-%s\r\n", __DATE__, __TIME__);
+    printf(" \r\n");
+    printf("┌──────────────────────────────────────────────┐\r\n");
+    printf("│ N32L43x bootloader %s-%s      │\r\n", __DATE__, __TIME__);
+    printf("└──────────────────────────────────────────────┘\r\n");
     bootloader_systimer_init();
     bootloader_systimer_add_task(run_led, 1000, true);
     bootloader_wdt_init();
     if (*(uint32_t*)UPDATE_FLAG_ADDR != UPDATE_FLAG_MASK && app_is_valid(APP_START_ADDR)) {
         app_run((uint32_t)APP_START_ADDR);
     }
-    printf("A firmware need to flash\r\n");
+    BOOT_LOG_INFO("A firmware need to flash\r\n");
     bootloader_dfu_init();
 
     while (1) {

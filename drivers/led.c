@@ -2,15 +2,15 @@
 
 static led_t leds[] = {
     {
-        .port         = GPIOB,
-        .clk          = RCC_APB2_PERIPH_GPIOB,
-        .pin          = GPIO_PIN_5,
+        .port         = GPIOA,
+        .clk          = RCC_APB2_PERIPH_GPIOA,
+        .pin          = GPIO_PIN_12,
         .active_level = Bit_RESET,
     },
     {
-        .port         = GPIOB,
-        .clk          = RCC_APB2_PERIPH_GPIOB,
-        .pin          = GPIO_PIN_4,
+        .port         = GPIOA,
+        .clk          = RCC_APB2_PERIPH_GPIOA,
+        .pin          = GPIO_PIN_11,
         .active_level = Bit_RESET,
     },
     {
