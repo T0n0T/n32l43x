@@ -16,26 +16,39 @@
 #define USART_CMD_IRQHandler USART2_IRQHandler
 #define CMD_BUF_LEN          64U
 
-extern int              ble_flag;
-
 static ValveEvt         _cmd_evt;
 static uint8_t          _cmd_ch;
 static uint8_t          _cmd_buf[CMD_BUF_LEN];
 static volatile uint8_t _cmd_pos;
 static const command_t  commands[] = CMD_DEFINE_LIST;
+static uint8_t          _start_match_pos;
+static const char*      START_STRING = "Start";
+static bool             _start_string_received;
 
 void DMA_Channel6_IRQHandler(void)
 {
     if (DMA_GetFlagStatus(DMA_FLAG_TC6, DMA) != RESET) {
-        if (_cmd_pos < CMD_BUF_LEN - 1) {
-            _cmd_buf[_cmd_pos] = _cmd_ch;
-            _cmd_pos++;
-            if (_cmd_buf[_cmd_pos - 1] == '\n') {
-                QACTIVE_POST(AO_ValveConf, &_cmd_evt.super, 0U);
+        if (!_start_string_received) {
+            if (_cmd_ch == START_STRING[_start_match_pos]) {
+                _start_match_pos++;
+                if (_start_match_pos == strlen(START_STRING)) {
+                    _start_string_received = true;
+                    _start_match_pos       = 0; // Reset for next potential "Start" if needed, though flag prevents further checks
+                }
+            } else {
+                _start_match_pos = 0; // Reset if mismatch
             }
-            DMA_ClrIntPendingBit(DMA_INT_TXC6, DMA);
-            DMA_ClearFlag(DMA_FLAG_TC6, DMA);
+        } else {
+            if (_cmd_pos < CMD_BUF_LEN - 1) {
+                _cmd_buf[_cmd_pos] = _cmd_ch;
+                _cmd_pos++;
+                if (_cmd_buf[_cmd_pos - 1] == '\n') {
+                    QACTIVE_POST(AO_ValveConf, &_cmd_evt.super, 0U);
+                }
+            }
         }
+        DMA_ClrIntPendingBit(DMA_INT_TXC6, DMA);
+        DMA_ClearFlag(DMA_FLAG_TC6, DMA);
     }
 }
 
@@ -50,7 +63,6 @@ void cmd_init(void)
 
     BLE_PWR_HIGH;
 
-    ble_flag = true;
     uart_init(BLE_SERIAL);
     USART_Enable(USART_CMD, DISABLE);
 
@@ -79,17 +91,25 @@ void cmd_init(void)
     NVIC_EnableIRQ(DMA_Channel6_IRQn);
 
     memset(_cmd_buf, 0, sizeof(_cmd_buf));
-    _cmd_pos = 0; // 初始化命令缓冲区位置
+    _cmd_pos               = 0;     // 初始化命令缓冲区位置
+    _start_match_pos       = 0;     // 初始化Start字符串匹配位置
+    _start_string_received = false; // 初始化Start字符串接收标志
 
     QEvt_ctor(&_cmd_evt.super, VALVE_CMD_PARSE_SIG);
     _cmd_evt.msg     = _cmd_buf;  // 设置消息指针指向命令缓冲区
     _cmd_evt.evtType = VALVE_CMD; // 设置事件类型为命令解析
+
+    if (RCC_GetFlagStatus(RCC_CTRLSTS_FLAG_SFTRSTF) == SET) {
+        printf("System is reboot from software ...\r\n");
+        _start_string_received = true;
+    }
 }
 
 void cmd_deinit(void)
 {
     BLE_PWR_LOW;
-    ble_flag = false;
+    _start_string_received = false;
+    _start_match_pos       = 0;
     NVIC_DisableIRQ(USART_CMD_IRQn);
     uart_deinit(BLE_SERIAL);
 }

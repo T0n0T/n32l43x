@@ -44,6 +44,7 @@
 
 #define CONFIG_FLASH_ADDRESS 0x0
 
+ValveVal     global_valve_value;
 cmd_config_t global_config = {
     .count = 2,              // 默认阀门数量
     .dir   = 1,              // 默认方向
@@ -159,7 +160,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             sFLASH_ReadBuffer((uint8_t*)&_read_config, CONFIG_FLASH_ADDRESS, sizeof(cmd_config_t));
             bool all_ff = true;
             for (size_t i = 0; i < sizeof(cmd_config_t); ++i) {
-                if (((uint8_t*)&_read_config)[i] != 0xFF) {
+                if (((uint8_t*)&_read_config)[i] != 0xFF && ((uint8_t*)&_read_config)[i] != 0) {
                     all_ff = false;
                     break;
                 }
@@ -185,7 +186,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_UPDATE}
         case VALVE_UPDATE_SIG: {
             ValveEvt const *ve = (ValveEvt const *)e;
-            ValveVal const *val = (ValveVal const *)ve->msg;
+            ValveVal const *val = &global_valve_value;
             printf("Position: %d/6, Rotations: %d, Total Ticks: %d\r\n",
                 val->position,
                 val->total_ticks / TICKS_PER_ROTATION,
@@ -203,10 +204,12 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             }
             #ifdef USE_MODBUS
             QF_CRIT_ENTRY();
-            extern USHORT usSRegHoldBuf[S_REG_HOLDING_NREGS];
-            usSRegHoldBuf[1] = val->total_ticks > 0 ? 1 : 2;
-            usSRegHoldBuf[2] = val->total_ticks / TICKS_PER_ROTATION;
-            usSRegHoldBuf[3] = val->total_ticks > global_config.count * 6 ? 1 : 2;
+            extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
+            if (val->total_ticks > global_config.count * 6) {
+                ucSCoilBuf[0] |= (1<<0);
+            } else {
+                ucSCoilBuf[0] &= ~(1<<0);
+            }
             QF_CRIT_EXIT();
             #endif
             status_ = Q_HANDLED();
@@ -226,9 +229,8 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_CONFIG_READ}
         case VALVE_CONFIG_READ_SIG: {
-            ValveEvt const*     ve     = (ValveEvt const*)e;
+            ValveEvt const* ve = (ValveEvt const*)e;
             if (ve->handle != NULL) {
-                // 调用处理函数
                 ve->handle(&global_config);
             }
             status_ = Q_HANDLED();
@@ -241,6 +243,15 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             sFLASH_DeInit();
             Sleep_request(HANDLER_BIT);
             status_ = Q_TRAN(&ValveHandler_Idle);
+            break;
+        }
+        //${AOs::ValveHandler::SM::Idle::Handle::VALVE_INFO_READ}
+        case VALVE_INFO_READ_SIG: {
+            ValveEvt const* ve = (ValveEvt const*)e;
+            if (ve->handle != NULL) {
+                ve->handle(&global_valve_value);
+            }
+            status_ = Q_HANDLED();
             break;
         }
         default: {

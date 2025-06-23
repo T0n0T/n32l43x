@@ -10,11 +10,11 @@
 /* -----------------------Slave Defines -------------------------------------*/
 #define S_DISCRETE_INPUT_START      0
 #define S_DISCRETE_INPUT_NDISCRETES 16
-#define S_COIL_START                0x0100
+#define S_COIL_START                0
 #define S_COIL_NCOILS               32
 #define S_REG_INPUT_START           0
 #define S_REG_INPUT_NREGS           100
-#define S_REG_HOLDING_START         0x100
+#define S_REG_HOLDING_START         0
 #define S_REG_HOLDING_NREGS         100
 /* salve mode: holding register's all address */
 #define S_HD_RESERVE                0

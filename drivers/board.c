@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "elog.h"
-#include "cm_backtrace.h"
 #include "board.h"
 #include "n32l43x_lptim.h"
 #include "n32l43x_lpuart.h"

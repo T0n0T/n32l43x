@@ -177,15 +177,9 @@ static FILE __stdio_out = FDEV_SETUP_STREAM(__fputc, NULL, NULL, _FDEV_SETUP_WRI
 FILE* const stdout = &__stdio_out;
 STDIO_ALIAS(stderr);
 
-int ble_flag = 0;
-
 static int __fputc(char ch, FILE* file)
 {
     uart_putc(CONSOLE, ch);
-    if (ble_flag) {
-        uart_putc(BLE_SERIAL, ch);
-    }
-
     return (ch);
 }
 

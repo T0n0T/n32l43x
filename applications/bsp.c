@@ -4,7 +4,9 @@
 #include "qpc.h" /* QP/C API */
 #include "bsp.h"
 #include "valve.h"
+#ifdef DEBUG
 #include "cm_backtrace.h"
+#endif
 
 /* Use for sleep judgement */
 uint32_t Sleep_bits;
@@ -13,7 +15,7 @@ uint32_t Sleep_bits;
 Q_NORETURN Q_onAssert(char const* module, int_t id)
 {
     printf("ERROR in %s:%d\r\n", module, id);
-#ifndef NDEBUG /* debug build? */
+#ifdef DEBUG /* debug build? */
     cm_backtrace_assert(cmb_get_sp());
     while (1); /* tie the CPU in this endless loop */
 #endif
@@ -24,7 +26,7 @@ Q_NORETURN Q_onAssert(char const* module, int_t id)
 void assert_failed(const uint8_t* expr, const uint8_t* file, uint32_t line)
 {
     printf("ERROR in %s:%d\r\n", file, line);
-#ifndef NDEBUG /* debug build? */
+#ifdef DEBUG /* debug build? */
     cm_backtrace_assert(cmb_get_sp());
     while (1); /* tie the CPU in this endless loop */
 #endif
@@ -64,7 +66,7 @@ void QV_onIdle(void)
 {
     QF_INT_ENABLE();
     if (!Sleep_bits) {
-        // PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);        
+        // PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
     }
 }
 
@@ -74,17 +76,23 @@ void BSP_init(void)
     /* NOTE: SystemInit() has been already called from the startup code
      *  but SystemCoreClock needs to be updated
      */
-    board_init(); /* initialize the board */
+#ifdef DEBUG
     cm_backtrace_init("N32L4", "V1.0", "1.0.0");
-    led_init(); /* initialize the LEDs */
-    hall_init();/* initialize the Hall sensor */
+#endif
+    board_init(); /* initialize the board */
+    led_init();   /* initialize the LEDs */
+    hall_init();  /* initialize the Hall sensor */
     uart_init(CONSOLE);
+    printf(" \r\n");
+    printf("┌──────────────────────────────────────────────┐\r\n");
+    printf("│   N32L43x Valve App  %s-%s    │\r\n", __DATE__, __TIME__);
+    printf("└──────────────────────────────────────────────┘\r\n");
     lcd_init(); /* initialize the LCD */
     lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
     lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
     lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
     lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
-    dump_clk();
+    // dump_clk();
     // rtc_init();
     // wakeup_pin_init(wakeup_handle);
 }

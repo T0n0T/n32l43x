@@ -16,7 +16,7 @@ json template:
 
 */
 
-static ValveEvt evt; // 使用静态事件
+static ValveEvt     evt;    // 使用静态事件
 static cmd_config_t config; // 使用静态配置数据
 
 // 解码函数：将JSON字符串解析到cmd_config_t结构体中
@@ -70,25 +70,23 @@ char* cmd_config_encode(const cmd_config_t* config)
         cJSON_AddTrueToObject(root, "dir");
     } else if (config->dir == -1) {
         cJSON_AddFalseToObject(root, "dir");
-    } 
+    }
     char* json_string = cJSON_Print(root);
     cJSON_Delete(root);
     return json_string; // 调用者负责释放此字符串
 }
 
-void cmd_read_wrapper(void* msg)
+void cmd_config_read_wrapper(void* msg)
 {
-    cmd_config_t* config = (cmd_config_t*)msg;
-    char* json_string = cmd_config_encode(config);
+    cmd_config_t* config      = (cmd_config_t*)msg;
+    char*         json_string = cmd_config_encode(config);
     if (json_string != NULL) {
-        printf("Config read: %s\r\n", json_string);
-        for (size_t i = 0; i < strlen(json_string); i++)
-        {
+        for (size_t i = 0; i < strlen(json_string); i++) {
             uart_putc(BLE_SERIAL, json_string[i]); // 逐字符发送JSON字符串
         }
         uart_putc(BLE_SERIAL, '\n'); // 发送换行符
         uart_putc(BLE_SERIAL, '\r'); // 发送回车符
-        free(json_string); // 释放编码后的JSON字符串
+        free(json_string);           // 释放编码后的JSON字符串
     } else {
         printf("Error: Failed to encode command configuration.\r\n");
     }
@@ -114,10 +112,8 @@ int cmd_config_write(int argc, char** argv)
     evt.msg     = &config;                         // 将静态config数据指针赋给事件的msg字段
     evt.evtType = VALVE_CMD;                       // 设置事件类型
 
-    // 发布事件，生命周期由发送者管理 (非0)
     QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
 
-    printf("Command configuration written and event posted.\r\n");
     return 0;
 }
 
@@ -126,14 +122,12 @@ int cmd_config_read(int argc, char** argv)
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
 
-    QEvt_ctor(&evt.super, VALVE_CONFIG_READ_SIG); // 初始化事件
-    evt.handle  = cmd_read_wrapper;               // 设置事件处理函数为编码函数
-    evt.evtType = VALVE_CMD;                      // 设置事件类型
+    QEvt_ctor(&evt.super, VALVE_CONFIG_READ_SIG);
+    evt.handle  = cmd_config_read_wrapper;
+    evt.evtType = VALVE_CMD;
 
-    // 发布事件
     QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
 
-    printf("Reading config: Request sent.\r\n");
     return 0;
 }
 
@@ -142,10 +136,53 @@ int cmd_config_reset(int argc, char** argv)
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
 
-    memset(&config, 0, sizeof(cmd_config_t));      // 重置配置数据
-    QEvt_ctor(&evt.super, VALVE_CONFIG_WRITE_SIG); // 初始化事件
-    evt.msg     = &config;                         // 将静态config数据指针赋给事件的msg字段
-    evt.evtType = VALVE_CMD;                       // 设置事件类型
+    memset(&config, 0, sizeof(cmd_config_t));
+    QEvt_ctor(&evt.super, VALVE_CONFIG_WRITE_SIG);
+    evt.msg     = &config;
+    evt.evtType = VALVE_CMD;
+
+    QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
+    return 0;
+}
+
+char* cmd_valve_info_encode(const ValveVal* val)
+{
+    cJSON* root = cJSON_CreateObject();
+    if (root == NULL) {
+        return NULL;
+    }
+
+    cJSON_AddNumberToObject(root, "total_ticks", val->total_ticks);
+    cJSON_AddNumberToObject(root, "position", val->position);
+    cJSON_AddNumberToObject(root, "rotation", val->position / TICKS_PER_ROTATION); // 计算旋转次数
+    char* json_string = cJSON_Print(root);
+    cJSON_Delete(root);
+    return json_string; // 调用者负责释放此字符串
+}
+
+void cmd_valve_info_wrapper(void* msg)
+{
+    char* json_string = cmd_valve_info_encode((const ValveVal*)msg);
+    if (json_string != NULL) {
+        for (size_t i = 0; i < strlen(json_string); i++) {
+            uart_putc(BLE_SERIAL, json_string[i]); // 逐字符发送JSON字符串
+        }
+        uart_putc(BLE_SERIAL, '\n'); // 发送换行符
+        uart_putc(BLE_SERIAL, '\r'); // 发送回车符
+        free(json_string);           // 释放编码后的JSON字符串
+    } else {
+        printf("Error: Failed to encode valve info.\r\n");
+    }
+}
+
+int cmd_valve_info(int argc, char** argv)
+{
+    (void)argc; // 未使用参数
+    (void)argv; // 未使用参数
+
+    QEvt_ctor(&evt.super, VALVE_INFO_READ_SIG);
+    evt.handle  = cmd_valve_info_wrapper;
+    evt.evtType = VALVE_CMD;
 
     QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
     return 0;

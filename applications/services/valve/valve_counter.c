@@ -48,6 +48,9 @@ typedef struct {
 } TransitionRule;
 
 extern cmd_config_t global_config;
+extern ValveVal     global_valve_value;
+
+static ValveEvt evt;
 
 //$declare${AOs::ValveCounter} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -275,8 +278,6 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
         //${AOs::ValveCounter::SM::Work::TIMEOUT}
         case TIMEOUT_SIG: {
             static uint8_t last_state = 0;
-            static ValveVal _val = {0};
-            static ValveEvt _ve  = {0};
             uint8_t new_state    = read_sensor_state();
 
             if (new_state != last_state && is_valid_state(&new_state)) {
@@ -293,15 +294,11 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
                                        new_state & 0x01,
                                        dir);
                     if (dir != 0) {
-                        _val.total_ticks += dir;
-
-                        // 更新位置计数
-                        _val.position = (_val.total_ticks % TICKS_PER_ROTATION + TICKS_PER_ROTATION) % TICKS_PER_ROTATION;
-                        QEvt const se  = QEVT_INITIALIZER(VALVE_UPDATE_SIG);
-                        _ve.super      = se;
-                        _ve.evtType    = VALVE_VALUE;
-                        _ve.msg        = &_val;
-                        QACTIVE_PUBLISH(&_ve.super, &me->super);
+                        global_valve_value.total_ticks += dir;
+                        global_valve_value.position = (global_valve_value.total_ticks % TICKS_PER_ROTATION + TICKS_PER_ROTATION) % TICKS_PER_ROTATION;
+                        QEvt_ctor(&evt.super, VALVE_UPDATE_SIG);
+                        evt.evtType = VALVE_VALUE;
+                        QACTIVE_PUBLISH(&evt.super, &me->super);
                     } else {
                         // 处理错误（如复位状态）
                     }
