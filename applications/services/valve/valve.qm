@@ -206,8 +206,7 @@ break;</entry>
        </tran_glyph>
       </tran>
       <tran trig="VALVE_UPDATE">
-       <action brief="handle data write flash action and lcd refresh">ValveEvt const *ve = (ValveEvt const *)e;
-ValveVal const *val = &amp;global_valve_value;
+       <action brief="handle data write flash action and lcd refresh">ValveVal const *val = &amp;global_valve_value;
 printf(&quot;Position: %d/6, Rotations: %d, Total Ticks: %d\r\n&quot;,
     val-&gt;position,
     val-&gt;total_ticks / TICKS_PER_ROTATION,
@@ -223,6 +222,10 @@ if (val-&gt;total_ticks &gt; global_config.count * 6) {
     lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
     lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
 }
+if (update_handle != NULL) {
+    update_handle(val);
+}
+
 #ifdef USE_MODBUS
 QF_CRIT_ENTRY();
 extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
@@ -269,8 +272,15 @@ Sleep_request(HANDLER_BIT);</action>
       </tran>
       <tran trig="VALVE_INFO_READ">
        <action>ValveEvt const* ve = (ValveEvt const*)e;
-if (ve-&gt;handle != NULL) {
-    ve-&gt;handle(&amp;global_valve_value);
+if (ve-&gt;handle != NULL &amp;&amp; ve-&gt;msg != NULL) {
+    int is_enable = (intptr_t)ve-&gt;msg;
+    if (is_enable) {
+        update_handle = ve-&gt;handle;
+        QEvt_ctor(&amp;self_evt, VALVE_UPDATE_SIG);
+        QACTIVE_POST(AO_ValveHandler, &amp;self_evt, 0U);
+    }else{
+        update_handle = NULL;
+    }
 }</action>
        <tran_glyph conn="24,44,3,-1,14">
         <action box="0,-2,17,2"/>
@@ -563,6 +573,8 @@ cmd_config_t global_config = {
     .dir   = 1,              // 默认方向
     .model = &quot;default_model&quot; // 默认模型名称
 };
+static QEvt      self_evt;
+static EvtHandle update_handle;
 
 $declare ${AOs::ValveHandler}
 

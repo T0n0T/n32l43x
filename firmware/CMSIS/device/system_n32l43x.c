@@ -192,7 +192,7 @@
 #endif
 
 /* #define VECT_TAB_SRAM */
-#define VECT_TAB_OFFSET 0 /*!< Vector Table base offset field. This value must be a multiple of 0x200. */
+#define VECT_TAB_OFFSET 0x6000 /*!< Vector Table base offset field. This value must be a multiple of 0x200. */
 
 /*******************************************************************************
  *  Clock Definitions

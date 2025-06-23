@@ -6,7 +6,7 @@
 /* Program Entry, set to mark it as "used" and avoid gc */
 MEMORY
 {
-    CODE (rx) : ORIGIN = 0x08000000, LENGTH = 128k /* 128KB flash */
+    CODE (rx) : ORIGIN = 0x08006000, LENGTH = 128k /* 128KB flash */
     SRAM1 (rw) : ORIGIN = 0x20000000, LENGTH = 24k  /* 16KB sram1 */
     SRAM2 (rw) : ORIGIN = 0x20004000, LENGTH = 8k   /* 8KB sram2 */
 }

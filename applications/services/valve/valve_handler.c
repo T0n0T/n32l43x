@@ -50,6 +50,8 @@ cmd_config_t global_config = {
     .dir   = 1,              // 默认方向
     .model = "default_model" // 默认模型名称
 };
+static QEvt      self_evt;
+static EvtHandle update_handle;
 
 //$declare${AOs::ValveHandler} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -185,7 +187,6 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_UPDATE}
         case VALVE_UPDATE_SIG: {
-            ValveEvt const *ve = (ValveEvt const *)e;
             ValveVal const *val = &global_valve_value;
             printf("Position: %d/6, Rotations: %d, Total Ticks: %d\r\n",
                 val->position,
@@ -202,6 +203,10 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
                 lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
                 lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
             }
+            if (update_handle != NULL) {
+                update_handle(val);
+            }
+
             #ifdef USE_MODBUS
             QF_CRIT_ENTRY();
             extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
@@ -248,8 +253,15 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_INFO_READ}
         case VALVE_INFO_READ_SIG: {
             ValveEvt const* ve = (ValveEvt const*)e;
-            if (ve->handle != NULL) {
-                ve->handle(&global_valve_value);
+            if (ve->handle != NULL && ve->msg != NULL) {
+                int is_enable = (intptr_t)ve->msg;
+                if (is_enable) {
+                    update_handle = ve->handle;
+                    QEvt_ctor(&self_evt, VALVE_UPDATE_SIG);
+                    QACTIVE_POST(AO_ValveHandler, &self_evt, 0U);
+                }else{
+                    update_handle = NULL;
+                }
             }
             status_ = Q_HANDLED();
             break;

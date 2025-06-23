@@ -11,7 +11,7 @@
     {"config_read", cmd_config_read, 0}, \    
     {"reboot", cmd_reboot, 0},             \
     {"update", cmd_update, 0},             \
-    {"valve_info", cmd_valve_info, 0},     \
+    {"valve_info", cmd_valve_info, 1},     \
 }
 
 // 命令处理函数类型定义

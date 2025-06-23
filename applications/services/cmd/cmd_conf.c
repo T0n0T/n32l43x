@@ -177,11 +177,20 @@ void cmd_valve_info_wrapper(void* msg)
 
 int cmd_valve_info(int argc, char** argv)
 {
-    (void)argc; // 未使用参数
-    (void)argv; // 未使用参数
+    if (argc != 1) {
+        printf("Usage: valve_info <0/1>\r\n");
+        return -1;
+    }
 
+    int is_enable = atoi(argv[0]);
+    if (is_enable != 0 && is_enable != 1) {
+        printf("Error: Invalid argument. Use 0 or 1.\r\n");
+        return -1;
+    }
+    
     QEvt_ctor(&evt.super, VALVE_INFO_READ_SIG);
     evt.handle  = cmd_valve_info_wrapper;
+    evt.msg     = (void*)(intptr_t)is_enable; // 将is_enable转换为void*传递
     evt.evtType = VALVE_CMD;
 
     QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
