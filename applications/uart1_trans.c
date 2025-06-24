@@ -6,7 +6,7 @@ extern uint32_t tick_count;
 extern transport_ctrl_t* uart2_ctrl; // Add this line
 
 transport_ctrl_t*       uart1_ctrl;
-static volatile uint8_t ch;
+static volatile uint8_t rx_buffer[256];
 
 // Define callbacks
 void uart1_rx_callback(const uint8_t* data, uint16_t len)
@@ -46,9 +46,31 @@ uint32_t uart1_timestamp_function()
 void DMA_Channel4_IRQHandler(void)
 {
     if (DMA_GetFlagStatus(DMA_FLAG_TC4, DMA) != RESET) {
-        transport_notify_rx(uart1_ctrl, &ch, 1);
         DMA_ClrIntPendingBit(DMA_INT_TXC4, DMA);
         DMA_ClearFlag(DMA_FLAG_TC4, DMA);
+    }
+}
+
+void UART4_IRQHandler(void)
+{
+    if (USART_GetIntStatus(UART4, USART_INT_IDLEF) != RESET) {
+        (void)UART4->STS;
+        (void)UART4->DAT;
+        DMA_EnableChannel(DMA_CH4, DISABLE); // Disable DMA to get current count
+        uint16_t len = sizeof(rx_buffer) - DMA_GetCurrDataCounter(DMA_CH4);
+        transport_notify_rx(uart1_ctrl, (uint8_t*)rx_buffer, len);
+        DMA_SetCurrDataCounter(DMA_CH4, sizeof(rx_buffer)); // Reset DMA buffer size
+        DMA_EnableChannel(DMA_CH4, ENABLE); // Re-enable DMA
+    }
+    if ((USART_GetFlagStatus(UART4, USART_FLAG_OREF) != RESET) ||
+        (USART_GetFlagStatus(UART4, USART_FLAG_NEF) != RESET) ||
+        (USART_GetFlagStatus(UART4, USART_FLAG_PEF) != RESET) ||
+        (USART_GetFlagStatus(UART4, USART_FLAG_FEF) != RESET)) {
+        /*Read the sts register first,and the read the DAT register to clear the all error flag*/
+        (void)UART4->STS;
+        (void)UART4->DAT;
+        /* Under normal circumstances, all error flags will be cleared when the upper data is read and will not be executed here;
+           users can add their own processing according to the actual scenario. */
     }
 }
 
@@ -85,9 +107,9 @@ void uart1_transport_init(void)
     DMA_InitType DMA_InitStructure;
     DMA_DeInit(DMA_CH4);
     DMA_InitStructure.PeriphAddr     = ((uint32_t)UART4 + 0x04);
-    DMA_InitStructure.MemAddr        = (uint32_t)&ch;
+    DMA_InitStructure.MemAddr        = (uint32_t)rx_buffer;
     DMA_InitStructure.Direction      = DMA_DIR_PERIPH_SRC;
-    DMA_InitStructure.BufSize        = 1;
+    DMA_InitStructure.BufSize        = sizeof(rx_buffer);
     DMA_InitStructure.PeriphInc      = DMA_PERIPH_INC_DISABLE;
     DMA_InitStructure.DMA_MemoryInc  = DMA_MEM_INC_ENABLE;
     DMA_InitStructure.PeriphDataSize = DMA_PERIPH_DATA_SIZE_BYTE;
@@ -101,7 +123,9 @@ void uart1_transport_init(void)
     USART_EnableDMA(UART4, USART_DMAREQ_RX, ENABLE);
     DMA_EnableChannel(DMA_CH4, ENABLE);
     USART_Enable(UART4, ENABLE);
+    USART_ConfigInt(UART4, USART_INT_IDLEF, ENABLE); // Enable UART IDLE interrupt
 
     NVIC_SetPriority(DMA_Channel4_IRQn, 0U);
     NVIC_EnableIRQ(DMA_Channel4_IRQn);
+    NVIC_EnableIRQ(UART4_IRQn);
 }

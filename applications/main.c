@@ -29,6 +29,7 @@ void main(void)
     cm_backtrace_init("bootloader", "N32L43x", "1.0.0");
 #endif
     board_init();
+    led_init();
     SysTick_Config(SystemCoreClock / 1000); // 1ms tick
     led_init();
     uart1_transport_init();

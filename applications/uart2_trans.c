@@ -12,7 +12,7 @@ extern uint32_t tick_count;
 extern transport_ctrl_t* uart1_ctrl; // Add this line
 
 transport_ctrl_t*       uart2_ctrl;
-static volatile uint8_t ch;
+static volatile uint8_t rx_buffer[256];
 
 // Define callbacks
 void uart2_rx_callback(const uint8_t* data, uint16_t len)
@@ -49,10 +49,31 @@ uint32_t uart2_timestamp_function()
 void DMA_Channel6_IRQHandler(void)
 {
     if (DMA_GetFlagStatus(DMA_FLAG_TC6, DMA) != RESET) {
-        // printf("%c", ch);
-        transport_notify_rx(uart2_ctrl, &ch, 1);
         DMA_ClrIntPendingBit(DMA_INT_TXC6, DMA);
         DMA_ClearFlag(DMA_FLAG_TC6, DMA);
+    }
+}
+
+void USART2_IRQHandler(void)
+{
+    if (USART_GetIntStatus(USART2, USART_INT_IDLEF) != RESET) {
+        (void)USART2->STS;
+        (void)USART2->DAT;
+        DMA_EnableChannel(DMA_CH6, DISABLE); // Disable DMA to get current count
+        uint16_t len = sizeof(rx_buffer) - DMA_GetCurrDataCounter(DMA_CH6);
+        transport_notify_rx(uart2_ctrl, (uint8_t*)rx_buffer, len);
+        DMA_SetCurrDataCounter(DMA_CH6, sizeof(rx_buffer)); // Reset DMA buffer size
+        DMA_EnableChannel(DMA_CH6, ENABLE); // Re-enable DMA
+    }
+    if ((USART_GetFlagStatus(USART2, USART_FLAG_OREF) != RESET) ||
+        (USART_GetFlagStatus(USART2, USART_FLAG_NEF) != RESET) ||
+        (USART_GetFlagStatus(USART2, USART_FLAG_PEF) != RESET) ||
+        (USART_GetFlagStatus(USART2, USART_FLAG_FEF) != RESET)) {
+        /*Read the sts register first,and the read the DAT register to clear the all error flag*/
+        (void)USART2->STS;
+        (void)USART2->DAT;
+        /* Under normal circumstances, all error flags will be cleared when the upper data is read and will not be executed here;
+           users can add their own processing according to the actual scenario. */
     }
 }
 
@@ -98,9 +119,9 @@ void uart2_transport_init(void)
     DMA_InitType DMA_InitStructure;
     DMA_DeInit(DMA_CH6);
     DMA_InitStructure.PeriphAddr     = ((uint32_t)USART2 + 0x04);
-    DMA_InitStructure.MemAddr        = (uint32_t)&ch;
+    DMA_InitStructure.MemAddr        = (uint32_t)rx_buffer;
     DMA_InitStructure.Direction      = DMA_DIR_PERIPH_SRC;
-    DMA_InitStructure.BufSize        = 1;
+    DMA_InitStructure.BufSize        = sizeof(rx_buffer);
     DMA_InitStructure.PeriphInc      = DMA_PERIPH_INC_DISABLE;
     DMA_InitStructure.DMA_MemoryInc  = DMA_MEM_INC_ENABLE;
     DMA_InitStructure.PeriphDataSize = DMA_PERIPH_DATA_SIZE_BYTE;
@@ -114,7 +135,9 @@ void uart2_transport_init(void)
     USART_EnableDMA(USART2, USART_DMAREQ_RX, ENABLE);
     DMA_EnableChannel(DMA_CH6, ENABLE);
     USART_Enable(USART2, ENABLE);
+    USART_ConfigInt(USART2, USART_INT_IDLEF, ENABLE); // Enable USART IDLE interrupt
 
     NVIC_SetPriority(DMA_Channel6_IRQn, 0U);
     NVIC_EnableIRQ(DMA_Channel6_IRQn);
+    NVIC_EnableIRQ(USART2_IRQn);
 }
