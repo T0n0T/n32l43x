@@ -145,33 +145,11 @@ int cmd_config_reset(int argc, char** argv)
     return 0;
 }
 
-char* cmd_valve_info_encode(const ValveVal* val)
-{
-    cJSON* root = cJSON_CreateObject();
-    if (root == NULL) {
-        return NULL;
-    }
-
-    cJSON_AddNumberToObject(root, "total_ticks", val->total_ticks);
-    cJSON_AddNumberToObject(root, "position", val->position);
-    cJSON_AddNumberToObject(root, "rotation", val->position / TICKS_PER_ROTATION); // 计算旋转次数
-    char* json_string = cJSON_Print(root);
-    cJSON_Delete(root);
-    return json_string; // 调用者负责释放此字符串
-}
-
 void cmd_valve_info_wrapper(void* msg)
 {
-    char* json_string = cmd_valve_info_encode((const ValveVal*)msg);
-    if (json_string != NULL) {
-        for (size_t i = 0; i < strlen(json_string); i++) {
-            uart_putc(BLE_SERIAL, json_string[i]); // 逐字符发送JSON字符串
-        }
-        uart_putc(BLE_SERIAL, '\n'); // 发送换行符
-        uart_putc(BLE_SERIAL, '\r'); // 发送回车符
-        free(json_string);           // 释放编码后的JSON字符串
-    } else {
-        printf("Error: Failed to encode valve info.\r\n");
+    uint8_t* valptr = (uint8_t*)msg;
+    for (size_t i = 0; i < sizeof(ValveVal); i++) {
+        uart_putc(BLE_SERIAL, valptr[i]); 
     }
 }
 
@@ -187,7 +165,7 @@ int cmd_valve_info(int argc, char** argv)
         printf("Error: Invalid argument. Use 0 or 1.\r\n");
         return -1;
     }
-    
+    printf("Valve info command received with is_enable: %d\r\n", is_enable);
     QEvt_ctor(&evt.super, VALVE_INFO_READ_SIG);
     evt.handle  = cmd_valve_info_wrapper;
     evt.msg     = (void*)(intptr_t)is_enable; // 将is_enable转换为void*传递
