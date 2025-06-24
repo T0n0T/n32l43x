@@ -16,39 +16,57 @@
 #define USART_CMD_IRQHandler USART2_IRQHandler
 #define CMD_BUF_LEN          64U
 
-static ValveEvt         _cmd_evt;
-static uint8_t          _cmd_ch;
-static uint8_t          _cmd_buf[CMD_BUF_LEN];
-static volatile uint8_t _cmd_pos;
-static const command_t  commands[] = CMD_DEFINE_LIST;
-static uint8_t          _start_match_pos;
-static const char*      START_STRING = "Start";
-static bool             _start_string_received;
+static ValveEvt          _cmd_evt;
+static uint8_t           _cmd_buf[CMD_BUF_LEN];
+static volatile uint16_t _cmd_len; // Change to uint16_t for length
+static const command_t   commands[] = CMD_DEFINE_LIST;
+static uint8_t           _start_match_pos;
+static const char*       START_STRING = "Start";
+static bool              _start_string_received;
 
-void DMA_Channel6_IRQHandler(void)
+void USART_CMD_IRQHandler(void)
 {
-    if (DMA_GetFlagStatus(DMA_FLAG_TC6, DMA) != RESET) {
+    if (USART_GetIntStatus(USART_CMD, USART_INT_IDLEF) != RESET) {
+        (void)USART_CMD->STS;
+        (void)USART_CMD->DAT;
+        DMA_EnableChannel(DMA_CH6, DISABLE); // Disable DMA to get current count
+        _cmd_len = CMD_BUF_LEN - DMA_GetCurrDataCounter(DMA_CH6);
+
         if (!_start_string_received) {
-            if (_cmd_ch == START_STRING[_start_match_pos]) {
-                _start_match_pos++;
-                if (_start_match_pos == strlen(START_STRING)) {
-                    _start_string_received = true;
-                    _start_match_pos       = 0; // Reset for next potential "Start" if needed, though flag prevents further checks
+            // Check for "Start" string in the received data
+            for (uint16_t i = 0; i < _cmd_len; i++) {
+                if (_cmd_buf[i] == START_STRING[_start_match_pos]) {
+                    _start_match_pos++;
+                    if (_start_match_pos == strlen(START_STRING)) {
+                        _start_string_received = true;
+                        _start_match_pos       = 0; // Reset for next potential "Start" if needed
+                        break;                      // Found "Start", no need to check further in this packet
+                    }
+                } else {
+                    _start_match_pos = 0; // Reset if mismatch
                 }
-            } else {
-                _start_match_pos = 0; // Reset if mismatch
             }
         } else {
-            if (_cmd_pos < CMD_BUF_LEN - 1) {
-                _cmd_buf[_cmd_pos] = _cmd_ch;
-                _cmd_pos++;
-                if (_cmd_buf[_cmd_pos - 1] == '\n') {
-                    QACTIVE_POST(AO_ValveConf, &_cmd_evt.super, 0U);
-                }
+            // Process the received command
+            // Assuming command ends with '\n'
+            if (_cmd_len > 0 && _cmd_buf[_cmd_len - 1] == '\n') {
+                _cmd_buf[_cmd_len] = '\0'; // Null-terminate the string
+                QACTIVE_POST(AO_ValveConf, &_cmd_evt.super, 0U);
             }
         }
-        DMA_ClrIntPendingBit(DMA_INT_TXC6, DMA);
-        DMA_ClearFlag(DMA_FLAG_TC6, DMA);
+
+        DMA_SetCurrDataCounter(DMA_CH6, CMD_BUF_LEN);       // Reset DMA buffer size
+        DMA_EnableChannel(DMA_CH6, ENABLE);                 // Re-enable DMA
+    }
+    if ((USART_GetFlagStatus(USART_CMD, USART_FLAG_OREF) != RESET) ||
+        (USART_GetFlagStatus(USART_CMD, USART_FLAG_NEF) != RESET) ||
+        (USART_GetFlagStatus(USART_CMD, USART_FLAG_PEF) != RESET) ||
+        (USART_GetFlagStatus(USART_CMD, USART_FLAG_FEF) != RESET)) {
+        /*Read the sts register first,and the read the DAT register to clear the all error flag*/
+        (void)USART_CMD->STS;
+        (void)USART_CMD->DAT;
+        /* Under normal circumstances, all error flags will be cleared when the upper data is read and will not be executed here;
+           users can add their own processing according to the actual scenario. */
     }
 }
 
@@ -70,9 +88,9 @@ void cmd_init(void)
     DMA_InitType DMA_InitStructure;
     DMA_DeInit(DMA_CH6);
     DMA_InitStructure.PeriphAddr     = (USART2_BASE + 0x04);
-    DMA_InitStructure.MemAddr        = (uint32_t)&_cmd_ch;
+    DMA_InitStructure.MemAddr        = (uint32_t)_cmd_buf;
     DMA_InitStructure.Direction      = DMA_DIR_PERIPH_SRC;
-    DMA_InitStructure.BufSize        = 1;
+    DMA_InitStructure.BufSize        = CMD_BUF_LEN;
     DMA_InitStructure.PeriphInc      = DMA_PERIPH_INC_DISABLE;
     DMA_InitStructure.DMA_MemoryInc  = DMA_MEM_INC_ENABLE;
     DMA_InitStructure.PeriphDataSize = DMA_PERIPH_DATA_SIZE_BYTE;
@@ -86,14 +104,14 @@ void cmd_init(void)
     USART_EnableDMA(USART_CMD, USART_DMAREQ_RX, ENABLE);
     DMA_EnableChannel(DMA_CH6, ENABLE);
     USART_Enable(USART_CMD, ENABLE);
+    USART_ConfigInt(USART_CMD, USART_INT_IDLEF, ENABLE); // Enable USART IDLE interrupt
 
-    NVIC_SetPriority(DMA_Channel6_IRQn, 0U);
-    NVIC_EnableIRQ(DMA_Channel6_IRQn);
+    NVIC_EnableIRQ(USART_CMD_IRQn); // Enable USART2 interrupt
 
     memset(_cmd_buf, 0, sizeof(_cmd_buf));
-    _cmd_pos               = 0;     // 初始化命令缓冲区位置
-    _start_match_pos       = 0;     // 初始化Start字符串匹配位置
-    _start_string_received = false; // 初始化Start字符串接收标志
+    _cmd_len               = 0;     // Initialize command buffer length
+    _start_match_pos       = 0;     // Initialize Start string match position
+    _start_string_received = false; // Initialize Start string received flag
 
     QEvt_ctor(&_cmd_evt.super, VALVE_CMD_PARSE_SIG);
     _cmd_evt.msg     = _cmd_buf;  // 设置消息指针指向命令缓冲区
@@ -161,8 +179,8 @@ void cmd_execute(char* input)
     printf("Error: Unknown command '%s'\r\n", args[0]);
 
 _clear:
-    _cmd_pos = 0;
-    memset(_cmd_buf, 0, sizeof(_cmd_buf)); // 清空命令缓冲区
+    _cmd_len = 0;
+    memset(_cmd_buf, 0, sizeof(_cmd_buf)); // Clear command buffer
 }
 
 int cmd_reboot(int argc, char** argv)
