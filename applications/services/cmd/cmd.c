@@ -196,11 +196,12 @@ int cmd_update(int argc, char** argv)
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
     extern uint32_t __heap_end;
-    flash_start();
+
     flash_erase_page((uint32_t)&__heap_end);
     flash_program_word((uint32_t)&__heap_end, 0x12345678); // 擦除堆区
-    flash_stop();
-    printf("System  updating...\r\n");
+
+    printf("Go to Boot...\r\n");
+    NVIC_SystemReset(); // 调用系统重启函数
     // 这里可以添加实际的更新逻辑
     return 0;
 }
