@@ -3,10 +3,18 @@
 #include "uart.h"
 #include "flash.h"
 
-#define UART_DFU       USART2
-#define DFU_PAGE_LEN   2048
-#define DFU_PREAMBLE   {0xAA, 0x55, 0xAA, 0x55}
-#define ED25519_PUBKEY {    \
+#define UART_DFU         USART2
+#define UART_DFU_HANDLER USART2_IRQHandler
+
+#define BLE_PWR_PORT     GPIOB
+#define BLE_PWR_CLK      RCC_APB2_PERIPH_GPIOB
+#define BLE_PWR_PIN      GPIO_PIN_6
+#define BLE_PWR_HIGH     BLE_PWR_PORT->PBSC = BLE_PWR_PIN;
+#define BLE_PWR_LOW      BLE_PWR_PORT->PBC = BLE_PWR_PIN;
+
+#define DFU_PAGE_LEN     2048
+#define DFU_PREAMBLE     {0xAA, 0x55, 0xAA, 0x55}
+#define ED25519_PUBKEY   {  \
     0x42, 0xE6, 0x9B, 0x3A, \
     0xEA, 0xE5, 0x0E, 0x7A, \
     0x6C, 0xA9, 0x19, 0xAF, \
@@ -45,60 +53,90 @@ typedef struct {
     uint8_t   data_buf[DFU_PAGE_LEN];                    // 块数据缓存
 } firmware_updater;
 
-static volatile uint8_t ch;
-static uint8_t          public_key[32] = ED25519_PUBKEY;
+#define DFU_RX_BUF_SIZE (DFU_PAGE_LEN > sizeof(firmware_block_header) ? DFU_PAGE_LEN : sizeof(firmware_block_header))
+static uint8_t dfu_rx_buf[DFU_RX_BUF_SIZE];
+static uint8_t public_key[32] = ED25519_PUBKEY;
 
 static firmware_updater dfu_updater;
 static uint8_t          dfu_reset_task_index;
 static uint8_t          dfu_process_task_index;
 
-static uint8_t byte_count      = 0;
-static uint8_t _total_block[4] = {0};
-
-void DMA_Channel6_IRQHandler(void)
+// UART 空闲中断处理函数
+void USART2_IRQHandler(void)
 {
-    if (DMA_GetFlagStatus(DMA_FLAG_TC6, DMA) != RESET) {
+    if (USART_GetIntStatus(UART_DFU, USART_INT_IDLEF) != RESET) {
+        (void)UART_DFU->STS;
+        (void)UART_DFU->DAT;
+        // 停止 DMA 传输
+        DMA_EnableChannel(DMA_CH6, DISABLE);
+
+        // 获取当前 DMA 传输的剩余数据量
+        uint16_t received_len = DFU_RX_BUF_SIZE - DMA_GetCurrDataCounter(DMA_CH6);
+
+        // 根据 DFU 状态处理接收到的数据
         switch (dfu_updater.state) {
             case DFU_STATE_IDLE: {
                 static const uint8_t preamble[]   = DFU_PREAMBLE;
                 static uint8_t       preamble_idx = 0;
-                if (ch == preamble[preamble_idx++]) {
-                    if (preamble_idx == sizeof(preamble)) {
-                        dfu_updater.state               = DFU_STATE_PREPARE;
-                        dfu_updater.data_received       = 0;
-                        dfu_updater.current_block_index = 0;
-                        preamble_idx                    = 0; // Reset for next DFU session
+                if (received_len > 0) {
+                    for (uint16_t i = 0; i < received_len; i++) {
+                        if (dfu_rx_buf[i] == preamble[preamble_idx]) {
+                            preamble_idx++;
+                            if (preamble_idx == sizeof(preamble)) {
+                                dfu_updater.state         = DFU_STATE_PREPARE;
+                                dfu_updater.data_received = 0;
+                                preamble_idx              = 0; // Reset for next potential "Start" if needed
+                                break;                         // Found "Start", no need to check further in this packet
+                            }
+                        } else {
+                            preamble_idx = 0; // Reset if mismatch
+                        }
                     }
-                } else {
-                    preamble_idx = 0; // Reset if mismatch
-                }
+                } 
                 break;
             }
             case DFU_STATE_PREPARE:
-                _total_block[byte_count++] = ch;
-                if (byte_count >= 4) {
-                    dfu_updater.total_block = *(uint32_t*)_total_block;
+                if (received_len >= 4) {
+                    memcpy(&dfu_updater.total_block, dfu_rx_buf, 4);
                     dfu_updater.state       = DFU_STATE_HEADER;
-                    byte_count              = 0;
                 }
                 break;
             case DFU_STATE_HEADER:
-                if (dfu_updater.data_received < sizeof(firmware_block_header)) {
-                    dfu_updater.header_buf[dfu_updater.data_received++] = ch;
+                if (dfu_updater.data_received + received_len <= sizeof(firmware_block_header)) {
+                    memcpy(&dfu_updater.header_buf[dfu_updater.data_received], dfu_rx_buf, received_len);
+                    dfu_updater.data_received += received_len;
+                } else {
+                    // 错误处理：接收数据超出块头大小
+                    dfu_updater.state = DFU_STATE_ERROR;
                 }
                 break;
             case DFU_STATE_DATA:
                 firmware_block_header* header = (firmware_block_header*)dfu_updater.header_buf;
-                if (dfu_updater.data_received < header->block_size) {
-                    dfu_updater.data_buf[dfu_updater.data_received++] = ch;
+                if (dfu_updater.data_received + received_len <= header->block_size) {
+                    memcpy(&dfu_updater.data_buf[dfu_updater.data_received], dfu_rx_buf, received_len);
+                    dfu_updater.data_received += received_len;
+                } else {
+                    // 错误处理：接收数据超出块头大小
+                    dfu_updater.state = DFU_STATE_ERROR;
                 }
                 break;
             default:
                 break;
         }
 
-        DMA_ClrIntPendingBit(DMA_INT_TXC6, DMA);
-        DMA_ClearFlag(DMA_FLAG_TC6, DMA);
+        // 重新配置 DMA 并启动 DMA 接收
+        DMA_SetCurrDataCounter(DMA_CH6, DFU_RX_BUF_SIZE);
+        DMA_EnableChannel(DMA_CH6, ENABLE);
+    }
+    if ((USART_GetFlagStatus(UART_DFU, USART_FLAG_OREF) != RESET) ||
+        (USART_GetFlagStatus(UART_DFU, USART_FLAG_NEF) != RESET) ||
+        (USART_GetFlagStatus(UART_DFU, USART_FLAG_PEF) != RESET) ||
+        (USART_GetFlagStatus(UART_DFU, USART_FLAG_FEF) != RESET)) {
+        /*Read the sts register first,and the read the DAT register to clear the all error flag*/
+        (void)UART_DFU->STS;
+        (void)UART_DFU->DAT;
+        /* Under normal circumstances, all error flags will be cleared when the upper data is read and will not be executed here;
+           users can add their own processing according to the actual scenario. */
     }
 }
 
@@ -111,12 +149,20 @@ static void bootloader_response(dfu_state state)
 static void bootloader_dfu_reset(void)
 {
     BOOT_LOG_WARN("long timer no byte,reset\r\n");
-    flash_stop();
     NVIC_SystemReset();
 }
 
 static void bootloader_dfu_serial_init(void)
 {
+    GPIO_InitType GPIO_InitStructure;
+    GPIO_InitStruct(&GPIO_InitStructure);
+    RCC_EnableAPB2PeriphClk(BLE_PWR_CLK, ENABLE);
+    GPIO_InitStructure.Pin       = BLE_PWR_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitPeripheral(BLE_PWR_PORT, &GPIO_InitStructure);
+
+    BLE_PWR_HIGH;
+
     uart_init(BLE_SERIAL);
     USART_Enable(UART_DFU, DISABLE);
 
@@ -124,25 +170,28 @@ static void bootloader_dfu_serial_init(void)
     DMA_InitType DMA_InitStructure;
     DMA_DeInit(DMA_CH6);
     DMA_InitStructure.PeriphAddr     = ((uint32_t)UART_DFU + 0x04);
-    DMA_InitStructure.MemAddr        = (uint32_t)&ch;
+    DMA_InitStructure.MemAddr        = (uint32_t)dfu_rx_buf;
     DMA_InitStructure.Direction      = DMA_DIR_PERIPH_SRC;
-    DMA_InitStructure.BufSize        = 1;
+    DMA_InitStructure.BufSize        = DFU_RX_BUF_SIZE;
     DMA_InitStructure.PeriphInc      = DMA_PERIPH_INC_DISABLE;
     DMA_InitStructure.DMA_MemoryInc  = DMA_MEM_INC_ENABLE;
     DMA_InitStructure.PeriphDataSize = DMA_PERIPH_DATA_SIZE_BYTE;
     DMA_InitStructure.MemDataSize    = DMA_MemoryDataSize_Byte;
-    DMA_InitStructure.CircularMode   = DMA_MODE_CIRCULAR;
+    DMA_InitStructure.CircularMode   = DMA_MODE_NORMAL; // 修改为普通模式
     DMA_InitStructure.Priority       = DMA_PRIORITY_VERY_HIGH;
     DMA_InitStructure.Mem2Mem        = DMA_M2M_DISABLE;
     DMA_Init(DMA_CH6, &DMA_InitStructure);
-    DMA_ConfigInt(DMA_CH6, DMA_INT_TXC, ENABLE);
     DMA_RequestRemap(DMA_REMAP_USART2_RX, DMA, DMA_CH6, ENABLE);
     USART_EnableDMA(UART_DFU, USART_DMAREQ_RX, ENABLE);
     DMA_EnableChannel(DMA_CH6, ENABLE);
     USART_Enable(UART_DFU, ENABLE);
 
-    NVIC_SetPriority(DMA_Channel6_IRQn, 0U);
-    NVIC_EnableIRQ(DMA_Channel6_IRQn);
+    // 启用 UART 空闲中断
+    USART_ConfigInt(UART_DFU, USART_INT_IDLEF, ENABLE);
+
+    // 启用 UART 中断
+    NVIC_SetPriority(USART2_IRQn, 0U);
+    NVIC_EnableIRQ(USART2_IRQn);
 }
 
 void bootloader_dfu_process(void)
@@ -151,7 +200,7 @@ void bootloader_dfu_process(void)
     firmware_block_header* header     = (firmware_block_header*)dfu_updater.header_buf;
     switch (dfu_updater.state) {
         case DFU_STATE_PREPARE:
-            dfu_reset_task_index = bootloader_systimer_add_task(bootloader_dfu_reset, 30000, false);
+            // dfu_reset_task_index = bootloader_systimer_add_task(bootloader_dfu_reset, 30000, false);
             break;
         case DFU_STATE_HEADER:
             if (dfu_updater.data_received >= sizeof(firmware_block_header)) {
@@ -178,7 +227,10 @@ void bootloader_dfu_process(void)
             uint32_t write_len = header->block_size < DFU_PAGE_LEN ? header->block_size : DFU_PAGE_LEN;
             flash_erase_page(dfu_updater.flash_base_addr + dfu_updater.flash_offset);
             for (uint32_t i = 0; i < write_len; i = i + 4) {
-                uint32_t word_data = *(uint32_t*)&dfu_updater.data_buf[i];
+                uint32_t word_data = dfu_updater.data_buf[i] & 0xFF |
+                                     (dfu_updater.data_buf[i + 1] & 0xFF) << 8 |
+                                     (dfu_updater.data_buf[i + 2] & 0xFF) << 16 |
+                                     (dfu_updater.data_buf[i + 3] & 0xFF) << 24;
                 flash_program_word(dfu_updater.flash_base_addr + dfu_updater.flash_offset + i,
                                    word_data);
             }
@@ -190,7 +242,6 @@ void bootloader_dfu_process(void)
             }
             break;
         case DFU_STATE_FINAL:
-            flash_stop();
             NVIC_SystemReset();
             break;
         default:
@@ -208,7 +259,6 @@ void bootloader_dfu_process(void)
 void bootloader_dfu_init(void)
 {
     if (*(uint32_t*)UPDATE_FLAG_ADDR == UPDATE_FLAG_MASK) {
-        flash_start();
         flash_erase_page(UPDATE_FLAG_ADDR);
     }
     dfu_updater.state           = DFU_STATE_IDLE;

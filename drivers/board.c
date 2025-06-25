@@ -13,16 +13,6 @@ void board_init(void)
     RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
 }
 
-void assert_failed(const uint8_t* expr, const uint8_t* file, uint32_t line)
-{
-    printf("Assert failed: %s, file %s, line %d\r\n", expr, file, line);
-#ifdef DEBUG /* debug build? */
-    cm_backtrace_assert(cmb_get_sp());
-    while (1); /* tie the CPU in this endless loop */
-#endif
-    NVIC_SystemReset(); /* reset the CPU */
-}
-
 void dump_clk(void)
 {
     RCC_ClocksType RCC_ClockFreq;
