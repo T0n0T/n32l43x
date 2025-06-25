@@ -55,8 +55,8 @@ void USART_CMD_IRQHandler(void)
             }
         }
 
-        DMA_SetCurrDataCounter(DMA_CH6, CMD_BUF_LEN);       // Reset DMA buffer size
-        DMA_EnableChannel(DMA_CH6, ENABLE);                 // Re-enable DMA
+        DMA_SetCurrDataCounter(DMA_CH6, CMD_BUF_LEN); // Reset DMA buffer size
+        DMA_EnableChannel(DMA_CH6, ENABLE);           // Re-enable DMA
     }
     if ((USART_GetFlagStatus(USART_CMD, USART_FLAG_OREF) != RESET) ||
         (USART_GetFlagStatus(USART_CMD, USART_FLAG_NEF) != RESET) ||
@@ -99,7 +99,6 @@ void cmd_init(void)
     DMA_InitStructure.Priority       = DMA_PRIORITY_VERY_HIGH;
     DMA_InitStructure.Mem2Mem        = DMA_M2M_DISABLE;
     DMA_Init(DMA_CH6, &DMA_InitStructure);
-    DMA_ConfigInt(DMA_CH6, DMA_INT_TXC, ENABLE);
     DMA_RequestRemap(DMA_REMAP_USART2_RX, DMA, DMA_CH6, ENABLE);
     USART_EnableDMA(USART_CMD, USART_DMAREQ_RX, ENABLE);
     DMA_EnableChannel(DMA_CH6, ENABLE);
