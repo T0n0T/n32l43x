@@ -9,12 +9,11 @@ typedef struct {
     uint32_t interval_ms;    // 定时周期，单位毫秒
     uint32_t current_count;  // 当前计数
     uint8_t  is_active;      // 任务是否激活
-    uint8_t  is_running;     // 任务是否正在执行
     bool     is_periodic;    // 是否周期性任务 (1: 周期性, 0: 单次)
 } systimer_task_t;
 
 // 最多维护三个定时器任务
-#define MAX_SYSTIMER_TASKS 3
+#define MAX_SYSTIMER_TASKS 5
 static systimer_task_t systimer_tasks[MAX_SYSTIMER_TASKS];
 
 void SysTick_Handler(void)
@@ -33,13 +32,11 @@ void SysTick_Handler(void)
 void bootloader_systimer_run_tasks(void)
 {
     for (int i = 0; i < MAX_SYSTIMER_TASKS; i++) {
-        if (systimer_tasks[i].is_active && !systimer_tasks[i].is_running) {
+        if (systimer_tasks[i].is_active) {
             if (systimer_tasks[i].current_count >= systimer_tasks[i].interval_ms) {
                 systimer_tasks[i].current_count = 0; // 重置计数
                 if (systimer_tasks[i].task_func) {
-                    systimer_tasks[i].is_running = 1; // 标记任务正在执行
                     systimer_tasks[i].task_func();
-                    systimer_tasks[i].is_running = 0; // 标记任务执行完毕
                 }
                 if (!systimer_tasks[i].is_periodic) {
                     systimer_tasks[i].is_active = 0; // 单次任务执行完毕后停用
@@ -71,13 +68,27 @@ int bootloader_systimer_add_task(void (*task_func)(void), uint32_t interval_ms, 
             systimer_tasks[i].task_func     = task_func;
             systimer_tasks[i].interval_ms   = interval_ms;
             systimer_tasks[i].current_count = 0;
-            systimer_tasks[i].is_active     = 1;
-            systimer_tasks[i].is_running    = 0; // 初始化为未运行
+            systimer_tasks[i].is_active     = 1;            
             systimer_tasks[i].is_periodic   = is_periodic;
             return i; // 返回任务索引
         }
     }
     return -1; // 没有可用槽位
+}
+
+/**
+ * @brief 移除指定索引的定时器任务
+ *
+ * @param task_index 任务索引
+ * @return int 0成功，-1失败（索引无效）
+ */
+int bootloader_systimer_del_task(int task_index)
+{
+    if (task_index >= 0 && task_index < MAX_SYSTIMER_TASKS) {
+        memset(&systimer_tasks[task_index], 0, sizeof(systimer_task_t));
+        return 0;
+    }
+    return -1;
 }
 
 /**
@@ -99,8 +110,7 @@ void bootloader_systimer_init(void)
 {
     // 初始化所有任务为非激活状态
     for (int i = 0; i < MAX_SYSTIMER_TASKS; i++) {
-        systimer_tasks[i].is_active  = 0;
-        systimer_tasks[i].is_running = 0;
+        systimer_tasks[i].is_active  = 0;        
     }
     // 配置SysTick中断，每SYSTICK_PERIOD_MS毫秒触发一次
     SysTick_Config(SystemCoreClock / (1000 / SYSTICK_PERIOD_MS));

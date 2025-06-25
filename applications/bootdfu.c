@@ -1,5 +1,4 @@
 #include "bootloader.h"
-#include "string.h"
 #include "uart.h"
 #include "flash.h"
 
@@ -11,6 +10,10 @@
 #define BLE_PWR_PIN      GPIO_PIN_6
 #define BLE_PWR_HIGH     BLE_PWR_PORT->PBSC = BLE_PWR_PIN;
 #define BLE_PWR_LOW      BLE_PWR_PORT->PBC = BLE_PWR_PIN;
+
+#define ACK_PATTERN      0x12345678 // 示例ACK模式
+#define ACK_TIMEOUT_MS   1000       // ACK超时时间（毫秒）
+#define MAX_RETRY_COUNT  3          // 最大重试次数
 
 #define DFU_PAGE_LEN     2048
 #define DFU_PREAMBLE     {0xAA, 0x55, 0xAA, 0x55}
@@ -25,14 +28,15 @@
     0xD8, 0x10, 0x9A, 0xAC}
 
 typedef enum {
-    DFU_STATE_IDLE,    // 空闲状态，等待开始
-    DFU_STATE_PREPARE, // 准备阶段
-    DFU_STATE_HEADER,  // 接收块头
-    DFU_STATE_DATA,    // 接收块数据
-    DFU_STATE_VERIFY,  // 验签
-    DFU_STATE_WRITE,   // 写入Flash
-    DFU_STATE_FINAL,   // DFU结束
-    DFU_STATE_ERROR    // 错误状态
+    DFU_STATE_IDLE,     // 空闲状态，等待开始
+    DFU_STATE_PREPARE,  // 准备阶段
+    DFU_STATE_HEADER,   // 接收块头
+    DFU_STATE_DATA,     // 接收块数据
+    DFU_STATE_VERIFY,   // 验签
+    DFU_STATE_WRITE,    // 写入Flash
+    DFU_STATE_FINAL,    // DFU结束
+    DFU_SATTE_WAIT_ACK, // 等待ACK
+    DFU_STATE_ERROR     // 错误状态
 } dfu_state;
 
 typedef struct {
@@ -42,6 +46,9 @@ typedef struct {
 
 typedef struct {
     dfu_state state;
+    dfu_state target_state;                              // 目标状态
+    bool      ack_waiting;                               // 是否在等待ACK
+    uint32_t  ack_pattern;                               // ACK模式
     uint32_t  current_block_index;                       // 当前块
     uint32_t  total_block;                               // 总块数
     uint32_t  data_received;                             // 当前块已接收字节数
@@ -58,8 +65,12 @@ static uint8_t dfu_rx_buf[DFU_RX_BUF_SIZE];
 static uint8_t public_key[32] = ED25519_PUBKEY;
 
 static firmware_updater dfu_updater;
-static uint8_t          dfu_reset_task_index;
-static uint8_t          dfu_process_task_index;
+static int              dfu_reset_task_index;
+static int              dfu_process_task_index;
+static int              dfu_ack_timeout_task_index; // ACK超时任务索引
+static uint8_t          dfu_ack_retry_count;        // ACK重试次数
+
+static void bootloader_dfu_preset_state(dfu_state new_state);
 
 // UART 空闲中断处理函数
 void USART2_IRQHandler(void)
@@ -83,7 +94,7 @@ void USART2_IRQHandler(void)
                         if (dfu_rx_buf[i] == preamble[preamble_idx]) {
                             preamble_idx++;
                             if (preamble_idx == sizeof(preamble)) {
-                                dfu_updater.state         = DFU_STATE_PREPARE;
+                                bootloader_dfu_preset_state(DFU_STATE_PREPARE);
                                 dfu_updater.data_received = 0;
                                 preamble_idx              = 0; // Reset for next potential "Start" if needed
                                 break;                         // Found "Start", no need to check further in this packet
@@ -98,7 +109,7 @@ void USART2_IRQHandler(void)
             case DFU_STATE_PREPARE:
                 if (received_len >= 4) {
                     memcpy(&dfu_updater.total_block, dfu_rx_buf, 4);
-                    dfu_updater.state = DFU_STATE_HEADER;
+                    bootloader_dfu_preset_state(DFU_STATE_HEADER);
                 }
                 break;
             case DFU_STATE_HEADER:
@@ -120,6 +131,18 @@ void USART2_IRQHandler(void)
                     dfu_updater.state = DFU_STATE_ERROR;
                 }
                 break;
+            case DFU_SATTE_WAIT_ACK:
+                if (received_len >= sizeof(uint32_t)) {
+                    uint32_t received_ack;
+                    memcpy(&received_ack, dfu_rx_buf, sizeof(uint32_t));
+                    if (received_ack == dfu_updater.ack_pattern) {
+                        BOOT_LOG_DEBUG("ACK received for state %d", dfu_updater.target_state);
+                        bootloader_systimer_del_task(dfu_ack_timeout_task_index); // 取消超时任务
+                        dfu_updater.state       = dfu_updater.target_state;
+                        dfu_updater.ack_waiting = false;
+                    }
+                }
+                break;
             default:
                 break;
         }
@@ -138,12 +161,6 @@ void USART2_IRQHandler(void)
         /* Under normal circumstances, all error flags will be cleared when the upper data is read and will not be executed here;
            users can add their own processing according to the actual scenario. */
     }
-}
-
-static void bootloader_response(dfu_state state)
-{
-    USART_SendData(UART_DFU, (uint16_t)state);
-    while (USART_GetFlagStatus(UART_DFU, USART_FLAG_TXC) == RESET);
 }
 
 static void bootloader_dfu_reset(void)
@@ -194,24 +211,45 @@ static void bootloader_dfu_serial_init(void)
     NVIC_EnableIRQ(USART2_IRQn);
 }
 
+static void bootloader_dfu_ack_timeout(void)
+{
+    if (dfu_updater.state == DFU_SATTE_WAIT_ACK && dfu_ack_retry_count < MAX_RETRY_COUNT - 1) {
+        dfu_ack_retry_count++;
+        BOOT_LOG_WARN("ACK timeout, retrying %d/%d", dfu_ack_retry_count, MAX_RETRY_COUNT);
+        USART_SendData(UART_DFU, (uint16_t)dfu_updater.target_state);
+        while (USART_GetFlagStatus(UART_DFU, USART_FLAG_TXC) == RESET);
+    } else {
+        BOOT_LOG_ERROR("ACK timeout exceeded max retries, entering error state.");
+        dfu_updater.state = DFU_STATE_ERROR;
+    }
+}
+
+static void bootloader_dfu_preset_state(dfu_state new_state)
+{
+    dfu_updater.target_state = new_state;
+    dfu_updater.state        = DFU_SATTE_WAIT_ACK;
+    dfu_ack_retry_count      = 0;
+}
+
 void bootloader_dfu_process(void)
 {
     static dfu_state       last_state = DFU_STATE_IDLE;
     firmware_block_header* header     = (firmware_block_header*)dfu_updater.header_buf;
+
     switch (dfu_updater.state) {
         case DFU_STATE_PREPARE:
-            dfu_reset_task_index = bootloader_systimer_add_task(bootloader_dfu_reset, 30000, false);
+            // dfu_reset_task_index = bootloader_systimer_add_task(bootloader_dfu_reset, 10000, false);
             break;
         case DFU_STATE_HEADER:
             if (dfu_updater.data_received >= sizeof(firmware_block_header)) {
                 dfu_updater.data_received = 0;
-                dfu_updater.state         = DFU_STATE_DATA;
+                bootloader_dfu_preset_state(DFU_STATE_DATA);
             }
             break;
         case DFU_STATE_DATA:
             if (dfu_updater.data_received >= header->block_size) {
                 dfu_updater.data_received = 0;
-                dfu_updater.state         = DFU_STATE_VERIFY;
+                bootloader_dfu_preset_state(DFU_STATE_VERIFY);
             }
             break;
         case DFU_STATE_VERIFY:
@@ -220,7 +258,7 @@ void bootloader_dfu_process(void)
             if (!dfu_updater.is_verified) {
                 dfu_updater.state = DFU_STATE_ERROR;
             } else {
-                dfu_updater.state = DFU_STATE_WRITE;
+                bootloader_dfu_preset_state(DFU_STATE_WRITE);
             }
             break;
         case DFU_STATE_WRITE:
@@ -235,29 +273,34 @@ void bootloader_dfu_process(void)
                                    word_data);
             }
             dfu_updater.flash_offset += DFU_PAGE_LEN;
-            dfu_updater.state = DFU_STATE_HEADER; // next header
+            bootloader_dfu_preset_state(DFU_STATE_HEADER); // next header
             memset(header, 0, sizeof(firmware_block_header));
             if (++dfu_updater.current_block_index == dfu_updater.total_block) {
-                dfu_updater.state = DFU_STATE_FINAL;
+                bootloader_dfu_preset_state(DFU_STATE_FINAL);
             }
+            break;
+        case DFU_SATTE_WAIT_ACK:
+            if (!dfu_updater.ack_waiting) {
+                dfu_updater.ack_waiting = true;
+                BOOT_LOG_VERBOSE("DFU state change requested to %d, entering WAIT_ACK state.", dfu_updater.target_state);
+                USART_SendData(UART_DFU, (uint16_t)dfu_updater.target_state);
+                while (USART_GetFlagStatus(UART_DFU, USART_FLAG_TXC) == RESET);
+                dfu_ack_timeout_task_index = bootloader_systimer_add_task(
+                    bootloader_dfu_ack_timeout, ACK_TIMEOUT_MS, true);
+            }
+
+            break;
+        case DFU_STATE_FINAL:
+            BOOT_LOG_INFO("DFU completed, rebooting to application...");
+            NVIC_SystemReset();
             break;
         default:
             break;
     }
-
-    if (last_state != dfu_updater.state) {
-        bootloader_response(dfu_updater.state);
-        bootloader_systimer_reset_task(dfu_reset_task_index);
+    if (last_state != dfu_updater.state && dfu_updater.state != DFU_SATTE_WAIT_ACK) {
         BOOT_LOG_VERBOSE("DFU state %d --> %d", last_state, dfu_updater.state);
+        bootloader_systimer_reset_task(dfu_reset_task_index);
         last_state = dfu_updater.state;
-    }
-
-    if (dfu_updater.state == DFU_STATE_FINAL) {
-        BOOT_LOG_INFO("DFU completed, rebooting to application...");
-        for (volatile int i = 0; i < SystemCoreClock / 50; i++)
-            __NOP();
-
-        NVIC_SystemReset();
     }
 }
 
@@ -269,6 +312,8 @@ void bootloader_dfu_init(void)
     dfu_updater.state           = DFU_STATE_IDLE;
     dfu_updater.flash_base_addr = APP_START_ADDR;
     dfu_updater.public_key      = public_key;
+    dfu_updater.ack_pattern     = ACK_PATTERN; // 初始化ACK模式
+    dfu_ack_retry_count         = 0;           // 初始化重试次数
     bootloader_dfu_serial_init();
     dfu_process_task_index = bootloader_systimer_add_task(bootloader_dfu_process, 5, true);
 }
