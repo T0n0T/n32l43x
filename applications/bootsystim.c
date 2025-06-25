@@ -7,8 +7,8 @@
 typedef struct {
     void (*task_func)(void); // 任务函数指针
     uint32_t interval_ms;    // 定时周期，单位毫秒
-    uint32_t current_count;  // 当前计数
-    uint8_t  is_active;      // 任务是否激活
+    volatile uint32_t current_count;  // 当前计数
+    volatile uint8_t   is_active;      // 任务是否激活
     bool     is_periodic;    // 是否周期性任务 (1: 周期性, 0: 单次)
 } systimer_task_t;
 
@@ -85,7 +85,9 @@ int bootloader_systimer_add_task(void (*task_func)(void), uint32_t interval_ms, 
 int bootloader_systimer_del_task(int task_index)
 {
     if (task_index >= 0 && task_index < MAX_SYSTIMER_TASKS) {
-        memset(&systimer_tasks[task_index], 0, sizeof(systimer_task_t));
+        __disable_irq();
+        systimer_tasks[task_index].is_active = 0;
+        __enable_irq();
         return 0;
     }
     return -1;
@@ -100,8 +102,24 @@ int bootloader_systimer_del_task(int task_index)
 int bootloader_systimer_reset_task(int task_index)
 {
     if (task_index >= 0 && task_index < MAX_SYSTIMER_TASKS && systimer_tasks[task_index].is_active) {
+        __disable_irq();
         systimer_tasks[task_index].current_count = 0;
+        __enable_irq();
         return 0;
+    }
+    return -1;
+}
+
+/**
+ * @brief 获取指定索引的定时器任务当前计数
+ *
+ * @param task_index 任务索引
+ * @return int 当前计数，-1表示索引无效或任务未激活
+ */
+uint32_t bootloader_systimer_get_task_count(int task_index)
+{
+    if (task_index >= 0 && task_index < MAX_SYSTIMER_TASKS && systimer_tasks[task_index].is_active) {
+        return systimer_tasks[task_index].current_count;
     }
     return -1;
 }
@@ -112,6 +130,7 @@ void bootloader_systimer_init(void)
     for (int i = 0; i < MAX_SYSTIMER_TASKS; i++) {
         systimer_tasks[i].is_active  = 0;        
     }
+
     // 配置SysTick中断，每SYSTICK_PERIOD_MS毫秒触发一次
     SysTick_Config(SystemCoreClock / (1000 / SYSTICK_PERIOD_MS));
 }

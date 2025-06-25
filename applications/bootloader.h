@@ -53,16 +53,21 @@ typedef enum {
 #define UPDATE_FLAG_MASK 0x12345678
 #endif
 
+#ifndef APP_FLAG_MASK
+#define APP_FLAG_MASK 0xcafecafe
+#endif
+
 // application function
 void app_run(uint32_t app_addr);
 bool app_is_valid(uint32_t app_addr);
 
 // systimer function
-void bootloader_systimer_init(void);
-void bootloader_systimer_run_tasks(void);
-int  bootloader_systimer_add_task(void (*task_func)(void), uint32_t interval_ms, bool is_periodic);
-int  bootloader_systimer_del_task(int task_index);
-int  bootloader_systimer_reset_task(int task_index);
+void     bootloader_systimer_init(void);
+void     bootloader_systimer_run_tasks(void);
+int      bootloader_systimer_add_task(void (*task_func)(void), uint32_t interval_ms, bool is_periodic);
+int      bootloader_systimer_del_task(int task_index);
+uint32_t bootloader_systimer_get_task_count(int task_index);
+int      bootloader_systimer_reset_task(int task_index);
 
 // watch dog function
 void bootloader_wdt_init(void);

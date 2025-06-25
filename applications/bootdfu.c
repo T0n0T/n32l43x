@@ -65,9 +65,9 @@ static uint8_t dfu_rx_buf[DFU_RX_BUF_SIZE];
 static uint8_t public_key[32] = ED25519_PUBKEY;
 
 static firmware_updater dfu_updater;
-static int              dfu_reset_task_index;
-static int              dfu_process_task_index;
-static int              dfu_ack_timeout_task_index; // ACK超时任务索引
+static volatile int     dfu_reset_task_index;
+static volatile int     dfu_process_task_index;
+static volatile int     dfu_ack_timeout_task_index; // ACK超时任务索引
 static uint8_t          dfu_ack_retry_count;        // ACK重试次数
 
 static void bootloader_dfu_preset_state(dfu_state new_state);
@@ -273,6 +273,9 @@ void bootloader_dfu_process(void)
                                    word_data);
             }
             dfu_updater.flash_offset += DFU_PAGE_LEN;
+            BOOT_LOG_INFO("Wrote block %d/%d to flash at address 0x%08X",
+                          dfu_updater.current_block_index + 1, dfu_updater.total_block,
+                          dfu_updater.flash_base_addr + dfu_updater.flash_offset - DFU_PAGE_LEN);
             bootloader_dfu_preset_state(DFU_STATE_HEADER); // next header
             memset(header, 0, sizeof(firmware_block_header));
             if (++dfu_updater.current_block_index == dfu_updater.total_block) {
@@ -292,6 +295,7 @@ void bootloader_dfu_process(void)
             break;
         case DFU_STATE_FINAL:
             BOOT_LOG_INFO("DFU completed, rebooting to application...");
+            flash_program_word(UPDATE_FLAG_ADDR, APP_FLAG_MASK);
             NVIC_SystemReset();
             break;
         default:

@@ -38,8 +38,13 @@ bool app_is_valid(uint32_t app_addr)
 {
     if ((((uint32_t)(*((__IO uint32_t*)(app_addr + 4))) & 0xff000000) != 0x08000000) ||
         (((*((__IO uint32_t*)app_addr) & 0x2ff00000) != 0x20000000))) {
-        BOOT_LOG_ERROR("No legitimate application.");
+        BOOT_LOG_WARN("No legitimate application.");
         return false;
     }
+    if (*(uint32_t*)UPDATE_FLAG_ADDR != APP_FLAG_MASK) {
+        BOOT_LOG_WARN("Application valid flag is not set.");
+        return false;
+    }
+
     return true;
 }
