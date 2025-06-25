@@ -238,7 +238,7 @@ void bootloader_dfu_process(void)
 
     switch (dfu_updater.state) {
         case DFU_STATE_PREPARE:
-            // dfu_reset_task_index = bootloader_systimer_add_task(bootloader_dfu_reset, 10000, false);
+            dfu_reset_task_index = bootloader_systimer_add_task(bootloader_dfu_reset, 10000, false);
             break;
         case DFU_STATE_HEADER:
             if (dfu_updater.data_received >= sizeof(firmware_block_header)) {
