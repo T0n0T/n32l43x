@@ -19,5 +19,5 @@ void flash_program_word(uint32_t address, uint32_t data)
         printf("Flash ProgramWord Error at address 0x%08X. Please Deal With This Error Promptly\r\n", address);
     }
     FLASH_Lock();
-    printf("Flash Program 0x%08X 0x%08X\r\n", address, data);
+    // printf("Flash Program 0x%08X 0x%08X\r\n", address, data);
 }
