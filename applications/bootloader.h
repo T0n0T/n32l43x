@@ -18,7 +18,7 @@ typedef enum {
 
 // Default log level, can be overridden by compiler flags
 #ifndef BOOT_LOG_LEVEL
-#define BOOT_LOG_LEVEL LOG_LEVEL_VERBOSE
+#define BOOT_LOG_LEVEL LOG_LEVEL_INFO
 #endif
 
 // Log macro
@@ -42,7 +42,7 @@ typedef enum {
 #define BOOT_LOG_VERBOSE(fmt, ...) BOOT_LOG(LOG_LEVEL_VERBOSE, fmt, ##__VA_ARGS__)
 
 #ifndef APP_START_ADDR
-#define APP_START_ADDR 0x08007000
+#define APP_START_ADDR 0x08006000
 #endif
 
 #ifndef UPDATE_FLAG_ADDR

@@ -13,7 +13,7 @@
 
 #define ACK_PATTERN      0x12345678 // 示例ACK模式
 #define ACK_TIMEOUT_MS   1000       // ACK超时时间（毫秒）
-#define MAX_RETRY_COUNT  3          // 最大重试次数
+#define MAX_RETRY_COUNT  5          // 最大重试次数
 
 #define DFU_PAGE_LEN     2048
 #define DFU_PREAMBLE     {0xAA, 0x55, 0xAA, 0x55}
