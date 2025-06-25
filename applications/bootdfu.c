@@ -92,13 +92,13 @@ void USART2_IRQHandler(void)
                             preamble_idx = 0; // Reset if mismatch
                         }
                     }
-                } 
+                }
                 break;
             }
             case DFU_STATE_PREPARE:
                 if (received_len >= 4) {
                     memcpy(&dfu_updater.total_block, dfu_rx_buf, 4);
-                    dfu_updater.state       = DFU_STATE_HEADER;
+                    dfu_updater.state = DFU_STATE_HEADER;
                 }
                 break;
             case DFU_STATE_HEADER:
@@ -200,7 +200,7 @@ void bootloader_dfu_process(void)
     firmware_block_header* header     = (firmware_block_header*)dfu_updater.header_buf;
     switch (dfu_updater.state) {
         case DFU_STATE_PREPARE:
-            // dfu_reset_task_index = bootloader_systimer_add_task(bootloader_dfu_reset, 30000, false);
+            dfu_reset_task_index = bootloader_systimer_add_task(bootloader_dfu_reset, 30000, false);
             break;
         case DFU_STATE_HEADER:
             if (dfu_updater.data_received >= sizeof(firmware_block_header)) {
@@ -241,9 +241,6 @@ void bootloader_dfu_process(void)
                 dfu_updater.state = DFU_STATE_FINAL;
             }
             break;
-        case DFU_STATE_FINAL:
-            NVIC_SystemReset();
-            break;
         default:
             break;
     }
@@ -253,6 +250,14 @@ void bootloader_dfu_process(void)
         bootloader_systimer_reset_task(dfu_reset_task_index);
         BOOT_LOG_VERBOSE("DFU state %d --> %d", last_state, dfu_updater.state);
         last_state = dfu_updater.state;
+    }
+
+    if (dfu_updater.state == DFU_STATE_FINAL) {
+        BOOT_LOG_INFO("DFU completed, rebooting to application...");
+        for (volatile int i = 0; i < SystemCoreClock / 50; i++)
+            __NOP();
+
+        NVIC_SystemReset();
     }
 }
 

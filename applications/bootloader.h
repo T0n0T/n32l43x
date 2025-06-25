@@ -18,7 +18,7 @@ typedef enum
 
 // Default log level, can be overridden by compiler flags
 #ifndef BOOT_LOG_LEVEL
-#define BOOT_LOG_LEVEL LOG_LEVEL_INFO
+#define BOOT_LOG_LEVEL LOG_LEVEL_VERBOSE
 #endif
 
 // Log macro
