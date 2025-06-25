@@ -29,7 +29,7 @@ static uart_t uarts[] = {
         .handle      = USART2,
         .irqn        = USART2_IRQn,
         .clk_src     = RCC_APB1_PERIPH_USART2,
-        .baudrate    = 921600,
+        .baudrate    = 115200,
         .parity      = USART_PE_NO,
         .stop_bits   = USART_STPB_1,
     },

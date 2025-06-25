@@ -111,6 +111,14 @@ custom_target('hex',
   build_by_default: true
 )
 
+# 添加bin文件生成目标
+custom_target('bin',
+  input: n32l43x_elf,
+  output: 'n32l43x.bin',
+  command: [objcopy, '-O', 'binary', '@INPUT@', '@OUTPUT@'],
+  build_by_default: true
+)
+
 run_target('disasm',
   command: [
     'sh', '-c',
@@ -145,4 +153,3 @@ else
     ]
   )
 endif
-
