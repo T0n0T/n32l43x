@@ -214,11 +214,37 @@ static void bootloader_dfu_serial_init(void)
     NVIC_EnableIRQ(USART2_IRQn);
 }
 
+static const char* dfu_state_to_string(dfu_state state)
+{
+    switch (state) {
+        case DFU_STATE_IDLE:
+            return "IDLE";
+        case DFU_STATE_PREPARE:
+            return "PREPARE";
+        case DFU_STATE_HEADER:
+            return "HEADER";
+        case DFU_STATE_DATA:
+            return "DATA";
+        case DFU_STATE_VERIFY:
+            return "VERIFY";
+        case DFU_STATE_WRITE:
+            return "WRITE";
+        case DFU_STATE_FINAL:
+            return "FINAL";
+        case DFU_SATTE_WAIT_ACK:
+            return "WAIT_ACK";
+        case DFU_STATE_ERROR:
+            return "ERROR";
+        default:
+            return "UNKNOWN";
+    }
+}
+
 static void bootloader_dfu_ack_timeout(void)
 {
     if (dfu_updater.state == DFU_SATTE_WAIT_ACK && dfu_ack_retry_count < MAX_RETRY_COUNT - 1) {
         dfu_ack_retry_count++;
-        BOOT_LOG_WARN("ACK %d timeout, retrying %d/%d", dfu_updater.target_state, dfu_ack_retry_count, MAX_RETRY_COUNT);
+        BOOT_LOG_WARN("ACK %s timeout, retrying %d/%d", dfu_state_to_string(dfu_updater.target_state), dfu_ack_retry_count, MAX_RETRY_COUNT);
         USART_SendData(UART_DFU, (uint16_t)dfu_updater.target_state);
         while (USART_GetFlagStatus(UART_DFU, USART_FLAG_TXC) == RESET);
     } else {
