@@ -5,7 +5,9 @@
 #include <stdio.h>
 #include "string.h"
 #include "n32l43x.h"
-
+#ifdef DEBUG
+#include "cm_backtrace.h"
+#endif
 // Log levels
 typedef enum {
     LOG_LEVEL_NONE = 0,

@@ -57,7 +57,7 @@ typedef struct {
     bool      is_verified;                               // 当前块验签结果
     uint8_t*  public_key;                                // ECDSA公钥(Curve25519)
     uint8_t   header_buf[sizeof(firmware_block_header)]; // 块头缓存
-    uint8_t   data_buf[DFU_PAGE_LEN];                    // 块数据缓存
+    uint8_t   data_buf[DFU_PAGE_LEN];             // 块数据缓存
 } firmware_updater;
 
 #define DFU_RX_BUF_SIZE (DFU_PAGE_LEN > sizeof(firmware_block_header) ? DFU_PAGE_LEN : sizeof(firmware_block_header))
@@ -65,9 +65,8 @@ static uint8_t dfu_rx_buf[DFU_RX_BUF_SIZE];
 static uint8_t public_key[32] = ED25519_PUBKEY;
 
 static firmware_updater dfu_updater;
-static volatile int     dfu_reset_task_index;
-static volatile int     dfu_process_task_index;
-static volatile int     dfu_ack_timeout_task_index; // ACK超时任务索引
+static int              dfu_reset_task_index;
+static int              dfu_ack_timeout_task_index; // ACK超时任务索引
 static uint8_t          dfu_ack_retry_count;        // ACK重试次数
 
 static void bootloader_dfu_preset_state(dfu_state new_state);
@@ -166,7 +165,11 @@ void USART2_IRQHandler(void)
 static void bootloader_dfu_reset(void)
 {
     BOOT_LOG_WARN("long timer no byte,reset\r\n");
-    NVIC_SystemReset();
+#ifdef DEBUG /* debug build? */
+    cm_backtrace_assert(cmb_get_sp());
+    while (1); /* tie the CPU in this endless loop */
+#endif
+    NVIC_SystemReset(); /* reset the CPU */
 }
 
 static void bootloader_dfu_serial_init(void)
@@ -215,7 +218,7 @@ static void bootloader_dfu_ack_timeout(void)
 {
     if (dfu_updater.state == DFU_SATTE_WAIT_ACK && dfu_ack_retry_count < MAX_RETRY_COUNT - 1) {
         dfu_ack_retry_count++;
-        BOOT_LOG_WARN("ACK timeout, retrying %d/%d", dfu_ack_retry_count, MAX_RETRY_COUNT);
+        BOOT_LOG_WARN("ACK %d timeout, retrying %d/%d", dfu_updater.target_state, dfu_ack_retry_count, MAX_RETRY_COUNT);
         USART_SendData(UART_DFU, (uint16_t)dfu_updater.target_state);
         while (USART_GetFlagStatus(UART_DFU, USART_FLAG_TXC) == RESET);
     } else {
@@ -238,7 +241,9 @@ void bootloader_dfu_process(void)
 
     switch (dfu_updater.state) {
         case DFU_STATE_PREPARE:
-            dfu_reset_task_index = bootloader_systimer_add_task(bootloader_dfu_reset, 10000, false);
+            if (dfu_reset_task_index == -1) {
+                dfu_reset_task_index = bootloader_systimer_add_task(bootloader_dfu_reset, 10000, false);
+            }
             break;
         case DFU_STATE_HEADER:
             if (dfu_updater.data_received >= sizeof(firmware_block_header)) {
@@ -288,15 +293,28 @@ void bootloader_dfu_process(void)
                 BOOT_LOG_VERBOSE("DFU state change requested to %d, entering WAIT_ACK state.", dfu_updater.target_state);
                 USART_SendData(UART_DFU, (uint16_t)dfu_updater.target_state);
                 while (USART_GetFlagStatus(UART_DFU, USART_FLAG_TXC) == RESET);
-                dfu_ack_timeout_task_index = bootloader_systimer_add_task(
-                    bootloader_dfu_ack_timeout, ACK_TIMEOUT_MS, true);
+                dfu_ack_timeout_task_index = bootloader_systimer_add_task(bootloader_dfu_ack_timeout, ACK_TIMEOUT_MS, true);
             }
 
             break;
         case DFU_STATE_FINAL:
             BOOT_LOG_INFO("DFU completed, rebooting to application...");
             flash_program_word(UPDATE_FLAG_ADDR, APP_FLAG_MASK);
-            NVIC_SystemReset();
+#ifdef DEBUG /* debug build? */
+            cm_backtrace_assert(cmb_get_sp());
+            while (1); /* tie the CPU in this endless loop */
+#endif
+            NVIC_SystemReset(); /* reset the CPU */
+            break;
+        case DFU_STATE_ERROR:
+            BOOT_LOG_ERROR("DFU process encountered an error, resetting...");
+            USART_SendData(UART_DFU, DFU_STATE_ERROR);
+            while (USART_GetFlagStatus(UART_DFU, USART_FLAG_TXC) == RESET);
+#ifdef DEBUG /* debug build? */
+            cm_backtrace_assert(cmb_get_sp());
+            while (1); /* tie the CPU in this endless loop */
+#endif
+            NVIC_SystemReset(); /* reset the CPU */
             break;
         default:
             break;
@@ -317,7 +335,9 @@ void bootloader_dfu_init(void)
     dfu_updater.flash_base_addr = APP_START_ADDR;
     dfu_updater.public_key      = public_key;
     dfu_updater.ack_pattern     = ACK_PATTERN; // 初始化ACK模式
-    dfu_ack_retry_count         = 0;           // 初始化重试次数
+    dfu_reset_task_index        = -1;
+    dfu_ack_timeout_task_index  = -1;
+    dfu_ack_retry_count         = 0; // 初始化重试次数
     bootloader_dfu_serial_init();
-    dfu_process_task_index = bootloader_systimer_add_task(bootloader_dfu_process, 5, true);
+    bootloader_systimer_add_task(bootloader_dfu_process, 5, true);
 }

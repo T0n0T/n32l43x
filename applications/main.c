@@ -4,9 +4,6 @@
 #include "led.h"
 #include "uart.h"
 #include "bootloader.h"
-#ifdef DEBUG
-#include "cm_backtrace.h"
-#endif
 
 void run_led(void)
 {

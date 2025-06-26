@@ -7,8 +7,8 @@
 typedef struct {
     void (*task_func)(void); // 任务函数指针
     uint32_t interval_ms;    // 定时周期，单位毫秒
-    volatile uint32_t current_count;  // 当前计数
-    volatile uint8_t   is_active;      // 任务是否激活
+    uint32_t current_count;  // 当前计数
+    uint8_t   is_active;      // 任务是否激活
     bool     is_periodic;    // 是否周期性任务 (1: 周期性, 0: 单次)
 } systimer_task_t;
 
@@ -65,11 +65,13 @@ int bootloader_systimer_add_task(void (*task_func)(void), uint32_t interval_ms, 
 {
     for (int i = 0; i < MAX_SYSTIMER_TASKS; i++) {
         if (!systimer_tasks[i].is_active) {
+            __disable_irq();
             systimer_tasks[i].task_func     = task_func;
             systimer_tasks[i].interval_ms   = interval_ms;
             systimer_tasks[i].current_count = 0;
             systimer_tasks[i].is_active     = 1;            
             systimer_tasks[i].is_periodic   = is_periodic;
+            __enable_irq();
             return i; // 返回任务索引
         }
     }
