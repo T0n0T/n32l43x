@@ -1,6 +1,75 @@
 #include "bootloader.h"
 #include "uart.h"
-#include "flash.h"
+
+// Cortex-M4 内联汇编实现的 memcpy
+void* memcpy(void* __restrict dest, const void* __restrict src, size_t n)
+{
+    unsigned char*       d = dest;
+    const unsigned char* s = src;
+    asm volatile(
+        "cmp %[n], #0\n"  // 比较 n 和 0
+        "beq 9f\n"        // 如果 n 为 0，则跳转到结束
+        "cmp %[n], #32\n" // 比较 n 和 32
+        "blt 2f\n"        // 如果 n < 32，则跳转到字节复制
+        "1:\n"
+        "ldmia %[s]!, {r0-r7}\n" // 从 src 加载 8 个字 (32 字节)
+        "stmia %[d]!, {r0-r7}\n" // 将 8 个字存储到 dest
+        "subs %[n], #32\n"       // n 减去 32
+        "cmp %[n], #32\n"
+        "bge 1b\n" // 如果 n >= 32，则继续循环
+        "2:\n"
+        "cmp %[n], #0\n" // 检查是否还有剩余字节
+        "beq 9f\n"       // 如果 n 为 0，则跳转到结束
+        "3:\n"
+        "ldrb r0, [%[s]], #1\n" // 加载一个字节
+        "strb r0, [%[d]], #1\n" // 存储一个字节
+        "subs %[n], #1\n"       // n 减去 1
+        "bne 3b\n"              // 如果 n 不为 0，则继续循环
+        "9:\n"
+        : [d] "+r"(d), [s] "+r"(s), [n] "+r"(n)
+        :
+        : "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "memory", "cc");
+    return dest;
+}
+
+// Cortex-M4 内联汇编实现的 memset
+void* memset(void* s, int c, size_t n)
+{
+    unsigned char* p   = s;
+    unsigned char  val = (unsigned char)c;
+    asm volatile(
+        "cmp %[n], #0\n"            // 比较 n 和 0
+        "beq 9f\n"                  // 如果 n 为 0，则跳转到结束
+        "cmp %[n], #32\n"           // 比较 n 和 32
+        "blt 2f\n"                  // 如果 n < 32，则跳转到字节填充
+        "mov r0, %[val]\n"          // 将 val 移动到 r0
+        "orr r0, r0, r0, lsl #8\n"  // 复制 val 到 r0 的高 8 位
+        "orr r0, r0, r0, lsl #16\n" // 复制 val 到 r0 的高 16 位 (形成 0xVVVVVVVV)
+        "mov r1, r0\n"
+        "mov r2, r0\n"
+        "mov r3, r0\n"
+        "mov r4, r0\n"
+        "mov r5, r0\n"
+        "mov r6, r0\n"
+        "mov r7, r0\n"
+        "1:\n"
+        "stmia %[p]!, {r0-r7}\n" // 存储 8 个字 (32 字节)
+        "subs %[n], #32\n"       // n 减去 32
+        "cmp %[n], #32\n"
+        "bge 1b\n" // 如果 n >= 32，则继续循环
+        "2:\n"
+        "cmp %[n], #0\n" // 检查是否还有剩余字节
+        "beq 9f\n"       // 如果 n 为 0，则跳转到结束
+        "3:\n"
+        "strb %[val], [%[p]], #1\n" // 存储一个字节
+        "subs %[n], #1\n"           // n 减去 1
+        "bne 3b\n"                  // 如果 n 不为 0，则继续循环
+        "9:\n"
+        : [p] "+r"(p), [n] "+r"(n)
+        : [val] "r"(val)
+        : "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "memory", "cc");
+    return s;
+}
 
 #define UART_DFU         USART2
 #define UART_DFU_HANDLER USART2_IRQHandler
@@ -57,7 +126,7 @@ typedef struct {
     bool      is_verified;                               // 当前块验签结果
     uint8_t*  public_key;                                // ECDSA公钥(Curve25519)
     uint8_t   header_buf[sizeof(firmware_block_header)]; // 块头缓存
-    uint8_t   data_buf[DFU_PAGE_LEN];             // 块数据缓存
+    uint8_t   data_buf[DFU_PAGE_LEN];                    // 块数据缓存
 } firmware_updater;
 
 #define DFU_RX_BUF_SIZE (DFU_PAGE_LEN > sizeof(firmware_block_header) ? DFU_PAGE_LEN : sizeof(firmware_block_header))
@@ -268,7 +337,7 @@ void bootloader_dfu_process(void)
     switch (dfu_updater.state) {
         case DFU_STATE_PREPARE:
             if (dfu_reset_task_index == -1) {
-                dfu_reset_task_index = bootloader_systimer_add_task(bootloader_dfu_reset, 10000, false);
+                dfu_reset_task_index = bootloader_systimer_add_task(bootloader_dfu_reset, 60000, false);
             }
             break;
         case DFU_STATE_HEADER:
@@ -304,7 +373,7 @@ void bootloader_dfu_process(void)
                                    word_data);
             }
             dfu_updater.flash_offset += DFU_PAGE_LEN;
-            BOOT_LOG_INFO("Wrote block %d/%d to flash at address 0x%08X",
+            BOOT_LOG_INFO("Wrote block %d/%d to flash at address 0x%X",
                           dfu_updater.current_block_index + 1, dfu_updater.total_block,
                           dfu_updater.flash_base_addr + dfu_updater.flash_offset - DFU_PAGE_LEN);
             bootloader_dfu_preset_state(DFU_STATE_HEADER); // next header
@@ -325,7 +394,8 @@ void bootloader_dfu_process(void)
             break;
         case DFU_STATE_FINAL:
             BOOT_LOG_INFO("DFU completed, rebooting to application...");
-            flash_program_word(UPDATE_FLAG_ADDR, APP_FLAG_MASK);
+            flash_program_option(APP_FLAG_MASK);
+
 #ifdef DEBUG /* debug build? */
             cm_backtrace_assert(cmb_get_sp());
             while (1); /* tie the CPU in this endless loop */
@@ -353,9 +423,9 @@ void bootloader_dfu_process(void)
 }
 
 void bootloader_dfu_init(void)
-{
-    if (*(uint32_t*)UPDATE_FLAG_ADDR == UPDATE_FLAG_MASK) {
-        flash_erase_page(UPDATE_FLAG_ADDR);
+{  
+    if (*(uint32_t*)0x1FFFF804 == UPDATE_FLAG_MASK) {
+        flash_erase_option();
     }
     dfu_updater.state           = DFU_STATE_IDLE;
     dfu_updater.flash_base_addr = APP_START_ADDR;

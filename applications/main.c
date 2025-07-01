@@ -35,7 +35,7 @@ void main(void)
     bootloader_systimer_init();
     bootloader_systimer_add_task(run_led, 1000, true);
     bootloader_wdt_init();
-    if (*(uint32_t*)UPDATE_FLAG_ADDR != UPDATE_FLAG_MASK && app_is_valid(APP_START_ADDR)) {
+    if (flash_option_get() != UPDATE_FLAG_MASK && app_is_valid(APP_START_ADDR)) {
         app_run((uint32_t)APP_START_ADDR);
     }
     BOOT_LOG_INFO("A firmware need to flash\r\n");

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "string.h"
 #include "n32l43x.h"
+#include "flash.h"
 #ifdef DEBUG
 #include "cm_backtrace.h"
 #endif
@@ -47,16 +48,12 @@ typedef enum {
 #define APP_START_ADDR 0x08006000
 #endif
 
-#ifndef UPDATE_FLAG_ADDR
-#define UPDATE_FLAG_ADDR 0x0801F800
-#endif
-
 #ifndef UPDATE_FLAG_MASK
-#define UPDATE_FLAG_MASK 0x12345678
+#define UPDATE_FLAG_MASK 0x1234
 #endif
 
 #ifndef APP_FLAG_MASK
-#define APP_FLAG_MASK 0xcafecafe
+#define APP_FLAG_MASK 0xcafe
 #endif
 
 // application function

@@ -12,6 +12,7 @@ cross_file = 'tools/toolchains/arm-none-eabi-gcc.txt'
 # 全局编译参数
 c_args = [
   '-D__FPU_PRESENT',
+  '-DPICOLIBC_MINIMAL_PRINTF_SCANF',
   '-mcpu=cortex-m4',
   '-mthumb',
   '-mfpu=fpv4-sp-d16',
@@ -33,6 +34,7 @@ link_args = [
   '-mfloat-abi=hard',
   '-Wl,--gc-sections',
   '-specs=picolibc.specs',
+  '-nolibc',
   '-Xlinker',
   '-Map=' + meson.current_build_dir() + '/n32l43x.map',
   '-T', meson.current_source_dir() + '/n32l43x.ld',

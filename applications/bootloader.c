@@ -41,7 +41,7 @@ bool app_is_valid(uint32_t app_addr)
         BOOT_LOG_WARN("No legitimate application.");
         return false;
     }
-    if (*(uint32_t*)UPDATE_FLAG_ADDR != APP_FLAG_MASK) {
+    if (flash_option_get() != APP_FLAG_MASK) {
         BOOT_LOG_WARN("Application valid flag is not set.");
         return false;
     }
