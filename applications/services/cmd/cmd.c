@@ -191,12 +191,8 @@ int cmd_reboot(int argc, char** argv)
     return 0;
 }
 
-#ifndef UPDATE_FLAG_ADDR
-#define UPDATE_FLAG_ADDR 0x0801F800
-#endif
-
 #ifndef UPDATE_FLAG_MASK
-#define UPDATE_FLAG_MASK 0x12345678
+#define UPDATE_FLAG_MASK 0x1234
 #endif
 
 int cmd_update(int argc, char** argv)
@@ -204,8 +200,8 @@ int cmd_update(int argc, char** argv)
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
 
-    flash_erase_page((uint32_t)UPDATE_FLAG_ADDR);
-    flash_program_word((uint32_t)UPDATE_FLAG_ADDR, UPDATE_FLAG_MASK); // 擦除堆区
+    flash_erase_option();
+    flash_program_option(UPDATE_FLAG_MASK);
 
     printf("Go to Boot...\r\n");
     NVIC_SystemReset(); // 调用系统重启函数
