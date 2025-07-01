@@ -423,8 +423,8 @@ void bootloader_dfu_process(void)
 }
 
 void bootloader_dfu_init(void)
-{  
-    if (*(uint32_t*)0x1FFFF804 == UPDATE_FLAG_MASK) {
+{
+    if (flash_option_get() == UPDATE_FLAG_MASK) {
         flash_erase_option();
     }
     dfu_updater.state           = DFU_STATE_IDLE;

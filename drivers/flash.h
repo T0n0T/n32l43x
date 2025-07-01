@@ -9,7 +9,7 @@ void flash_program_option(uint16_t data0_data1);
 
 static inline uint16_t flash_option_get(void)
 {
-    return (uint8_t)(OBT->Data1_Data0 & 0xff) | (uint8_t)((OBT->Data1_Data0 >> 16) & 0xff);
+    return (uint16_t)(OBT->Data1_Data0 & 0xff) | (uint16_t)((OBT->Data1_Data0 >> 8) & 0xff00);
 }
 
 #endif /* __FLASH_H__ */
