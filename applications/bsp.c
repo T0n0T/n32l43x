@@ -6,7 +6,9 @@
 #include "board.h"
 #include "hello.h" /* Blinky Application interface */
 #include "cmd.h"   /* Command interface */
+#ifdef DEBUG
 #include "cm_backtrace.h"
+#endif
 
 #define BTN_SW1 (1U << 4)
 #define BTN_SW2 (1U << 0)
@@ -15,7 +17,7 @@
 Q_NORETURN Q_onAssert(char const* module, int_t id)
 {
     printf("ERROR in %s:%d\r\n", module, id);
-#ifndef NDEBUG /* debug build? */
+#ifdef DEBUG /* debug build? */
     cm_backtrace_assert(cmb_get_sp());
     while (1); /* tie the CPU in this endless loop */
 #endif
@@ -26,7 +28,7 @@ Q_NORETURN Q_onAssert(char const* module, int_t id)
 void assert_failed(const uint8_t* expr, const uint8_t* file, uint32_t line)
 {
     printf("ERROR in %s:%d\r\n", file, line);
-#ifndef NDEBUG /* debug build? */
+#ifdef DEBUG /* debug build? */
     cm_backtrace_assert(cmb_get_sp());
     while (1); /* tie the CPU in this endless loop */
 #endif
@@ -52,15 +54,16 @@ void QV_onIdle(void)
 /* BSP functions ===========================================================*/
 void BSP_init(void)
 {
-    /* NOTE: SystemInit() has been already called from the startup code
-     *  but SystemCoreClock needs to be updated
-     */
-    board_init(); /* initialize the board */
+/* NOTE: SystemInit() has been already called from the startup code
+ *  but SystemCoreClock needs to be updated
+ */
+#ifdef DEBUG
     cm_backtrace_init("N32L4", "V1.0", "1.0.0");
+#endif
+    board_init();       /* initialize the board */
     led_init();         /* initialize the LEDs */
     uart_init(CONSOLE); /* initialize the console UART */
     dump_clk();         /* dump the clock configuration */
-    printf("UPDATE FLAG: 0x%x\r\n", *(uint32_t*)0x0801F800);
 }
 
 void BSP_start(void)

@@ -134,11 +134,8 @@ int cmd_update(int argc, char** argv)
 {
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
-#define UPDATE_FLAG_ADDR 0x0801F800 // 假设的更新标志地址
-    flash_start();
-    flash_erase_page((uint32_t)UPDATE_FLAG_ADDR);
-    flash_program_word((uint32_t)UPDATE_FLAG_ADDR, 0x12345678); // 擦除堆区
-    flash_stop();
+    flash_erase_option();
+    flash_program_option(0x1234);
     printf("System  updating...\r\n");
     NVIC_SystemReset();
     // 这里可以添加实际的更新逻辑
