@@ -1,32 +1,32 @@
 #include "flash.h"
 
-void flash_start(void)
-{
-    if (FLASH_HSICLOCK_DISABLE == FLASH_ClockInit()) {
-        printf("HSI oscillator not yet ready\r\n");
-        while (1);
-    }
-
-    FLASH_Unlock();
-}
-
-void flash_stop(void)
-{
-    FLASH_Lock();
-}
-
 void flash_erase_page(uint32_t address)
-{    
+{
     /* Erase the page */
-    if (FLASH_COMPL != FLASH_EraseOnePage(address)) {
-        printf("Flash EraseOnePage Error at address 0x%08X. Please Deal With This Error Promptly\r\n", address);
-    }
+    FLASH_Unlock();
+    assert_param(FLASH_COMPL == FLASH_EraseOnePage(address));
+    FLASH_Lock();
 }
 
 void flash_program_word(uint32_t address, uint32_t data)
 {
     /* Program the word */
-    if (FLASH_COMPL != FLASH_ProgramWord(address, data)) {
-        printf("Flash ProgramWord Error at address 0x%08X. Please Deal With This Error Promptly\r\n", address);
-    }
+    FLASH_Unlock();
+    assert_param(FLASH_COMPL == FLASH_ProgramWord(address, data));
+    FLASH_Lock();
+}
+
+void flash_erase_option(void)
+{
+    FLASH_Unlock();
+    assert_param(FLASH_COMPL == FLASH_EraseOB());
+    FLASH_Lock();
+}
+
+void flash_program_option(uint16_t data0_data1)
+{
+    uint32_t data0data1_tmp = (uint32_t)data0_data1 & 0xff | (uint32_t)(data0_data1 & 0xff00) << 8;
+    FLASH_Unlock();
+    assert_param(FLASH_COMPL == FLASH_ProgramOBData(0x1FFFF804, data0data1_tmp));
+    FLASH_Lock();
 }

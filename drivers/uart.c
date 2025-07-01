@@ -99,6 +99,20 @@ void uart_init(uart_index_t index)
     USART_Enable(uarts[index].handle, ENABLE);
 }
 
+void uart_deinit(uart_index_t index)
+{
+    if (index >= UART_MAX) {
+        return;
+    }
+
+    USART_Module* usart = uarts[index].handle;
+
+    /* Disable the USARTx */
+    USART_Enable(usart, DISABLE);
+    /* Deinitialize the USARTx peripheral */
+    USART_DeInit(usart);
+}
+
 void uart_control(uart_index_t index, uint16_t int_flag, bool state)
 {
     if (index >= UART_MAX) {
@@ -130,7 +144,7 @@ void uart_putc(uart_index_t index, const uint8_t data)
     USART_Module* usart = uarts[index].handle;
 
     USART_SendData(usart, data);
-    while (USART_GetFlagStatus(usart, USART_FLAG_TXDE) == RESET);
+    while (USART_GetFlagStatus(usart, USART_FLAG_TXC) == RESET);
 }
 
 char uart_getc(uart_index_t index)
