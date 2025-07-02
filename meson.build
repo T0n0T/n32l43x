@@ -20,7 +20,7 @@ c_args = [
   '-specs=picolibc.specs',
   '-ffunction-sections',
   '-fdata-sections',
-  '-O2',                    # 优化等级2
+  '-O0',                    # 优化等级2
   '-fdata-sections',        # 将数据放入独立段
   '-ffunction-sections',    # 将函数放入独立段
 ]
@@ -104,7 +104,7 @@ custom_target('hex',
 run_target('disasm',
   command: [
     'sh', '-c',
-    objdump.full_path() + ' -d -S -l -C ' + n32l43x_elf.full_path() + ' > ' + 
+    objdump.full_path() + ' -d -l -C ' + n32l43x_elf.full_path() + ' > ' + 
     meson.current_build_dir() / 'n32l43x.dis'
   ]
 )

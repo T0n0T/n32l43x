@@ -1,4 +1,5 @@
 h
 loadfile n32l43x.hex
+loadfile hello.bin 0x08010000
 r
 q

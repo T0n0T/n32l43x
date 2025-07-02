@@ -23,6 +23,10 @@
             "servertype": "jlink",
             "cwd": "${workspaceRoot}",
             "executable": "${workspaceRoot}/build/n32l43x.elf",
+            "symbolFiles": [
+                "${workspaceRoot}/build/n32l43x.elf",
+                "${workspaceRoot}/hello/hello.elf",
+            ],
             "device": "N32L436RB",
             "interface": "swd",
             "svdFile": "${workspaceRoot}/tools/svd/N32L436.svd",

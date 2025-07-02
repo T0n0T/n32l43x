@@ -3,15 +3,10 @@
 #include "flash.h"
 #include "led.h"
 #include "uart.h"
-#include "transport.h"
+#include "../hello/hello.h"
 #ifdef DEBUG
 #include "cm_backtrace.h"
 #endif
-
-extern transport_ctrl_t* uart1_ctrl;
-extern transport_ctrl_t* uart2_ctrl;
-extern void              uart1_transport_init(void);
-extern void              uart2_transport_init(void);
 
 void assert_failed(const uint8_t* expr, const uint8_t* file, uint32_t line)
 {
@@ -32,11 +27,13 @@ void main(void)
     led_init();
     SysTick_Config(SystemCoreClock / 1000); // 1ms tick
     led_init();
-    uart1_transport_init();
-    uart2_transport_init();
+    uart_init(CONSOLE);
+    func_instance* func_table = (func_instance*)0x08010000;
+
+    printf("hello %s\r\n", func_table[0].func.const_char_ptr());
+
     while (1) {
-        transport_process(uart1_ctrl);
-        transport_process(uart2_ctrl);
+
         // Wait for an event.
         __WFE();
         // Clear the internal event register.

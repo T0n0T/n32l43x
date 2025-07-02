@@ -6,8 +6,5 @@ applications_incdirs = include_directories(
 # 源文件
 applications_sources = files(
   'main.c',
-  'transport.c',
-  'uart1_trans.c',
-  'uart2_trans.c',
   'interrupt.c',
 )
