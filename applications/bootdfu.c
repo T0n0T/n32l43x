@@ -71,6 +71,26 @@ void* memset(void* s, int c, size_t n)
     return s;
 }
 
+char* strncpy(char* dest, const char* src, size_t n)
+{
+    if (dest == NULL || src == NULL || n == 0) {
+        return dest;
+    }
+
+    char* original_dest = dest;
+    while (n > 0 && *src != '\0') {
+        *dest++ = *src++;
+        n--;
+    }
+
+    while (n > 0) {
+        *dest++ = '\0';
+        n--;
+    }
+
+    return original_dest;
+}
+
 #define UART_DFU         USART2
 #define UART_DFU_HANDLER USART2_IRQHandler
 
