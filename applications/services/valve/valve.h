@@ -44,8 +44,8 @@
 
 //${Shared::AppSignals} ......................................................
 enum AppSignals {
-    LOCK_ON_SIG = Q_USER_SIG,
-    LOCK_OFF_SIG,
+    LOCK_SIG = Q_USER_SIG,
+    UNLOCK_SIG,
     VALVE_DAILY_SIG,
     VALVE_UPDATE_SIG,
     VALVE_EXIT_SIG,
@@ -84,7 +84,6 @@ static inline void Sleep_release(uint32_t bit) {
 typedef struct {
 // public:
     int32_t total_ticks;
-    int32_t position;
 } ValveVal;
 
 //${Shared::ValveEvtType} ....................................................

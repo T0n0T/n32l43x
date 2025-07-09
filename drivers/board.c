@@ -13,6 +13,7 @@ ErrorStatus SetSysClockToPLL(uint32_t freq, uint8_t src);
 void board_init(void)
 {
     SetSysClockToHSI();
+    // SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
     RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
 }
 
@@ -517,6 +518,8 @@ void wakeup_pin_init(wakeup_handle_func h)
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_InitPeripheral(&EXTI_InitStructure);
 
+    handler = h;
+
     /*Set key input interrupt priority*/
     NVIC_InitStructure.NVIC_IRQChannel                   = EXTI15_10_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
@@ -528,7 +531,7 @@ void wakeup_pin_init(wakeup_handle_func h)
 
 void EXTI15_10_IRQHandler(void)
 {
-    if (RESET != EXTI_GetITStatus(EXTI_LINE3)) {
+    if (RESET != EXTI_GetITStatus(EXTI_LINE13)) {
         uint8_t bit = GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13);
         if (handler != NULL) {
             handler(bit);

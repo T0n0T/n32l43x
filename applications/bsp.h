@@ -39,6 +39,9 @@
 #include "spi_flash.h"
 #include "uart.h"
 
+#define TICK_RATE 10000
+#define MS_TO_TICK(ms) ((ms) * TICK_RATE / 1000)
+
 void BSP_init(void);
 void BSP_start(void);
 

@@ -218,8 +218,8 @@ ValveCounter ValveCounter_inst;
 //${AOs::ValveCounter::SM} ...................................................
 static QState ValveCounter_initial(ValveCounter * const me, void const * const par) {
     //${AOs::ValveCounter::SM::initial}
-    QActive_subscribe(&me->super, LOCK_ON_SIG);
-    QActive_subscribe(&me->super, LOCK_OFF_SIG);
+    QActive_subscribe(&me->super, LOCK_SIG);
+    QActive_subscribe(&me->super, UNLOCK_SIG);
     return Q_TRAN(&ValveCounter_Wait);
 }
 
@@ -229,18 +229,18 @@ static QState ValveCounter_Wait(ValveCounter * const me, QEvt const * const e) {
     switch (e->sig) {
         //${AOs::ValveCounter::SM::Wait}
         case Q_ENTRY_SIG: {
-            Sleep_request(COUNTER_BIT);
+            Sleep_release(COUNTER_BIT);
             status_ = Q_HANDLED();
             break;
         }
         //${AOs::ValveCounter::SM::Wait}
         case Q_EXIT_SIG: {
-            Sleep_release(COUNTER_BIT);
+            Sleep_request(COUNTER_BIT);
             status_ = Q_HANDLED();
             break;
         }
-        //${AOs::ValveCounter::SM::Wait::LOCK_OFF}
-        case LOCK_OFF_SIG: {
+        //${AOs::ValveCounter::SM::Wait::UNLOCK}
+        case UNLOCK_SIG: {
             status_ = Q_TRAN(&ValveCounter_Work);
             break;
         }
@@ -270,8 +270,8 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
             status_ = Q_HANDLED();
             break;
         }
-        //${AOs::ValveCounter::SM::Work::LOCK_ON}
-        case LOCK_ON_SIG: {
+        //${AOs::ValveCounter::SM::Work::LOCK}
+        case LOCK_SIG: {
             status_ = Q_TRAN(&ValveCounter_Wait);
             break;
         }
@@ -284,18 +284,8 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
                 // 检查方向并更新旋转计数
                 if (is_valid_state(&last_state)) {
                     int8_t dir = check_direction(&last_state, &new_state);
-                    printf("State change: %02X -> %02X Bits: %d%d%d%d%d%d Direction: %d\r\n",
-                                       last_state, new_state,
-                                       (new_state & 0x20) >> 5,
-                                       (new_state & 0x10) >> 4,
-                                       (new_state & 0x08) >> 3,
-                                       (new_state & 0x04) >> 2,
-                                       (new_state & 0x02) >> 1,
-                                       new_state & 0x01,
-                                       dir);
                     if (dir != 0) {
                         global_valve_value.total_ticks += dir;
-                        global_valve_value.position = (global_valve_value.total_ticks % TICKS_PER_ROTATION + TICKS_PER_ROTATION) % TICKS_PER_ROTATION;
                         QEvt_ctor(&evt.super, VALVE_UPDATE_SIG);
                         evt.evtType = VALVE_VALUE;
                         QACTIVE_PUBLISH(&evt.super, &me->super);

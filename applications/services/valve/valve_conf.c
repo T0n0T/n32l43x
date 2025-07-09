@@ -87,8 +87,8 @@ ValveConf ValveConf_inst;
 //${AOs::ValveConf::SM} ......................................................
 static QState ValveConf_initial(ValveConf * const me, void const * const par) {
     //${AOs::ValveConf::SM::initial}
-    QActive_subscribe(&me->super, LOCK_ON_SIG);
-    QActive_subscribe(&me->super, LOCK_OFF_SIG);
+    QActive_subscribe(&me->super, LOCK_SIG);
+    QActive_subscribe(&me->super, UNLOCK_SIG);
     return Q_TRAN(&ValveConf_Wait);
 }
 
@@ -120,8 +120,8 @@ static QState ValveConf_Active(ValveConf * const me, QEvt const * const e) {
             status_ = Q_HANDLED();
             break;
         }
-        //${AOs::ValveConf::SM::Active::LOCK_ON}
-        case LOCK_ON_SIG: {
+        //${AOs::ValveConf::SM::Active::LOCK}
+        case LOCK_SIG: {
             status_ = Q_TRAN(&ValveConf_Wait);
             break;
         }
@@ -148,18 +148,18 @@ static QState ValveConf_Wait(ValveConf * const me, QEvt const * const e) {
     switch (e->sig) {
         //${AOs::ValveConf::SM::Wait}
         case Q_ENTRY_SIG: {
-            Sleep_request(CONFIG_BIT);
+            Sleep_release(CONFIG_BIT);
             status_ = Q_HANDLED();
             break;
         }
         //${AOs::ValveConf::SM::Wait}
         case Q_EXIT_SIG: {
-            Sleep_release(CONFIG_BIT);
+            Sleep_request(CONFIG_BIT);
             status_ = Q_HANDLED();
             break;
         }
-        //${AOs::ValveConf::SM::Wait::LOCK_OFF}
-        case LOCK_OFF_SIG: {
+        //${AOs::ValveConf::SM::Wait::UNLOCK}
+        case UNLOCK_SIG: {
             status_ = Q_TRAN(&ValveConf_Active);
             break;
         }

@@ -5,7 +5,7 @@
  */
 void sFLASH_LowLevel_DeInit(void)
 {
-    GPIO_InitType GPIO_InitStructure;
+    GPIO_InitType GPIO_InitStructure = {0};
 
     /*!< Disable the sFLASH_SPI  */
     SPI_Enable(sFLASH_SPI, DISABLE);
@@ -39,7 +39,7 @@ void sFLASH_LowLevel_DeInit(void)
  */
 void sFLASH_LowLevel_Init(void)
 {
-    GPIO_InitType GPIO_InitStructure;
+    GPIO_InitType GPIO_InitStructure = {0};
 
     GPIO_InitStruct(&GPIO_InitStructure);
 
@@ -96,7 +96,7 @@ void sFLASH_DeInit(void)
  */
 void sFLASH_Init(void)
 {
-    SPI_InitType SPI_InitStructure;
+    SPI_InitType SPI_InitStructure = {0};
 
     sFLASH_LowLevel_Init();
     // GPIO_SetBits(sFLASH_PWR_GPIO_PORT, sFLASH_PWR_PIN);

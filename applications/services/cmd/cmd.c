@@ -23,6 +23,7 @@ static const command_t   commands[] = CMD_DEFINE_LIST;
 static uint8_t           _start_match_pos;
 static const char*       START_STRING = "Start";
 static bool              _start_string_received;
+static bool              _module_already_off;
 
 void USART_CMD_IRQHandler(void)
 {
@@ -38,6 +39,7 @@ void USART_CMD_IRQHandler(void)
                 if (_cmd_buf[i] == START_STRING[_start_match_pos]) {
                     _start_match_pos++;
                     if (_start_match_pos == strlen(START_STRING)) {
+                        printf("Start CMD\r\n");
                         _start_string_received = true;
                         _start_match_pos       = 0; // Reset for next potential "Start" if needed
                         break;                      // Found "Start", no need to check further in this packet
@@ -116,7 +118,7 @@ void cmd_init(void)
     _cmd_evt.msg     = _cmd_buf;  // 设置消息指针指向命令缓冲区
     _cmd_evt.evtType = VALVE_CMD; // 设置事件类型为命令解析
 
-    if (RCC_GetFlagStatus(RCC_CTRLSTS_FLAG_SFTRSTF) == SET) {
+    if (RCC_GetFlagStatus(RCC_CTRLSTS_FLAG_SFTRSTF) == SET && !_module_already_off) {
         printf("System is reboot from software ...\r\n");
         _start_string_received = true;
     }
@@ -126,6 +128,7 @@ void cmd_deinit(void)
 {
     BLE_PWR_LOW;
     _start_string_received = false;
+    _module_already_off    = true;
     _start_match_pos       = 0;
     NVIC_DisableIRQ(USART_CMD_IRQn);
     uart_deinit(BLE_SERIAL);

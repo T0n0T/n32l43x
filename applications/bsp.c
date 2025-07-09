@@ -10,6 +10,7 @@
 
 /* Use for sleep judgement */
 uint32_t Sleep_bits;
+static QEvt _lock_evt;
 
 /* Assertion handler  ======================================================*/
 Q_NORETURN Q_onAssert(char const* module, int_t id)
@@ -52,12 +53,13 @@ void SysTick_Handler(void)
 
 static void wakeup_handle(uint8_t bit)
 {
+    printf("bit: %d\r\n", bit);
     if (bit == Bit_RESET) {
-        static QEvt const wakeEvt = QEVT_INITIALIZER(LOCK_ON_SIG);
-        QACTIVE_PUBLISH(&wakeEvt, &me->super);
+        QEvt_ctor(&_lock_evt, LOCK_SIG);
+        QACTIVE_PUBLISH(&_lock_evt, 0);
     } else {
-        static QEvt const wakeEvt = QEVT_INITIALIZER(LOCK_OFF_SIG);
-        QACTIVE_PUBLISH(&wakeEvt, &me->super);
+        QEvt_ctor(&_lock_evt, UNLOCK_SIG);
+        QACTIVE_PUBLISH(&_lock_evt, 0);
     }
 }
 
@@ -77,7 +79,7 @@ void BSP_init(void)
      *  but SystemCoreClock needs to be updated
      */
 #ifdef DEBUG
-    cm_backtrace_init("N32L4", "V1.0", "1.0.0");
+    cm_backtrace_init("build/n32l43x", "V1.0", "1.0.0");
 #endif
     board_init(); /* initialize the board */
     led_init();   /* initialize the LEDs */
@@ -94,7 +96,8 @@ void BSP_init(void)
     lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
     // dump_clk();
     // rtc_init();
-    // wakeup_pin_init(wakeup_handle);
+    wakeup_pin_init(wakeup_handle);
+
 }
 
 void BSP_start(void)
@@ -138,10 +141,12 @@ void BSP_start(void)
 /*..........................................................................*/
 void QF_onStartup(void)
 {
-    SysTick_Config(SystemCoreClock / 1000);
-    NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + 1U);
-    static QEvt const wakeEvt = QEVT_INITIALIZER(LOCK_OFF_SIG);
-    QACTIVE_PUBLISH(&wakeEvt, &me->super);
+    SysTick_Config(SystemCoreClock / TICK_RATE);
+    NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + 0xf);
+    if(GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
+        QEvt_ctor(&_lock_evt, UNLOCK_SIG);
+        QACTIVE_PUBLISH(&_lock_evt, 0);
+    }
 }
 /*..........................................................................*/
 void QF_onCleanup(void)
