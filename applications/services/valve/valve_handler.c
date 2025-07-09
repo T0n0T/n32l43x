@@ -44,14 +44,16 @@
 #include "user_mb_app.h"
 #endif
 
-#define FLASH_CONFIG_ADDRESS 0x0
+#define CONF_ADDR_EXFLASH 0x0
+#define DATA_ADDR_FLASH   0x0801F800
 
 ValveVal     global_valve_value;
 cmd_config_t global_config = {
-    .tick  = 12,             // 默认阀门数量
+    .tick  = 12,             // 默认旋转阈值
     .dir   = 1,              // 默认方向
     .model = "default_model" // 默认模型名称
 };
+static bool      use_flash_data;
 static QEvt      self_evt;
 static EvtHandle update_handle;
 
@@ -73,6 +75,7 @@ extern ValveHandler ValveHandler_inst;
 static QState ValveHandler_initial(ValveHandler * const me, void const * const par);
 static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e);
 static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e);
+static QState ValveHandler_Tuning(ValveHandler * const me, QEvt const * const e);
 //$enddecl${AOs::ValveHandler} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 //$skip${QP_VERSION} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -104,11 +107,14 @@ ValveHandler ValveHandler_inst;
 //${AOs::ValveHandler::SM} ...................................................
 static QState ValveHandler_initial(ValveHandler * const me, void const * const par) {
     //${AOs::ValveHandler::SM::initial}
+    use_flash_data = true;
     QActive_subscribe(&me->super, LOCK_SIG);
     QActive_subscribe(&me->super, UNLOCK_SIG);
     QActive_subscribe(&me->super, VALVE_UPDATE_SIG);
     QActive_subscribe(&me->super, VALVE_CONFIG_WRITE_SIG);
     QActive_subscribe(&me->super, VALVE_CONFIG_READ_SIG);
+    QActive_subscribe(&me->super, VALVE_TUNNING_START_SIG);
+    QActive_subscribe(&me->super, VALVE_TUNNING_END_SIG);
     #ifdef USE_MODBUS
     eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
     eMBEnable();
@@ -136,13 +142,35 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
         //${AOs::ValveHandler::SM::Idle::UNLOCK}
         case UNLOCK_SIG: {
             QF_CRIT_ENTRY();
+            if (use_flash_data) {
+                memcpy(&global_valve_value, (void*)DATA_ADDR_FLASH, sizeof(ValveVal));
+                use_flash_data = false;
+            }
+
             ValveVal *val = &global_valve_value;
             if (val->total_ticks >= global_config.tick) {
                 val->total_ticks = global_config.tick;
             } else if (val->total_ticks <= 0) {
                 val->total_ticks = 0;
             }
+            sFLASH_Init();
+            cmd_config_t _read_config = {0};
+            sFLASH_ReadBuffer((uint8_t*)&_read_config, CONF_ADDR_EXFLASH, sizeof(cmd_config_t));
+            bool all_ff = true;
+            for (size_t i = 0; i < sizeof(cmd_config_t); ++i) {
+                if (((uint8_t*)&_read_config)[i] != 0xFF && ((uint8_t*)&_read_config)[i] != 0) {
+                    all_ff = false;
+                    break;
+                }
+            }
             QF_CRIT_EXIT();
+            if (!all_ff) {
+                // 数据合法，复制到全局变量_config
+                global_config = _read_config;
+                printf("Config read from flash and applied.\r\n");
+                } else {
+                printf("Flash config is empty (all FF), using default config.\r\n");
+            }
             QTimeEvt_disarm(&me->exitEvt);
             status_ = Q_TRAN(&ValveHandler_Handle);
             break;
@@ -172,32 +200,6 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
 static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        //${AOs::ValveHandler::SM::Idle::Handle}
-        case Q_ENTRY_SIG: {
-            QF_CRIT_ENTRY();
-            sFLASH_Init();
-            cmd_config_t _read_config = {0};
-            sFLASH_ReadBuffer((uint8_t*)&_read_config, FLASH_CONFIG_ADDRESS, sizeof(cmd_config_t));
-            bool all_ff = true;
-            for (size_t i = 0; i < sizeof(cmd_config_t); ++i) {
-                if (((uint8_t*)&_read_config)[i] != 0xFF && ((uint8_t*)&_read_config)[i] != 0) {
-                    all_ff = false;
-                    break;
-                }
-            }
-            QF_CRIT_EXIT();
-            if (!all_ff) {
-                // 数据合法，复制到全局变量_config
-                global_config = _read_config;
-                printf("Config read from flash and applied.\r\n");
-                } else {
-                printf("Flash config is empty (all FF), using default config.\r\n");
-            }
-            status_ = Q_HANDLED();
-            break;
-            status_ = Q_HANDLED();
-            break;
-        }
         //${AOs::ValveHandler::SM::Idle::Handle::LOCK}
         case LOCK_SIG: {
             if (QTimeEvt_wasDisarmed(&me->exitEvt)) {
@@ -223,9 +225,6 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
                 lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
                 lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
             }
-            if (update_handle != NULL) {
-                update_handle(val);
-            }
 
             #ifdef USE_MODBUS
             extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
@@ -236,16 +235,19 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             }
             #endif
             QF_CRIT_EXIT();
+            if (update_handle != NULL) {
+                update_handle(val);
+            }
             status_ = Q_HANDLED();
             break;
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_CONFIG_WRITE}
         case VALVE_CONFIG_WRITE_SIG: {
             ValveEvt const *ve = (ValveEvt const *)e;
-            cmd_config_t const *config = (cmd_config_t const *)ve->msg;
+            memcpy(&global_config, ve->msg, sizeof(cmd_config_t));
             QF_CRIT_ENTRY();
-            sFLASH_EraseSector(FLASH_CONFIG_ADDRESS);
-            sFLASH_WriteBuffer((uint8_t*)config, FLASH_CONFIG_ADDRESS, sizeof(cmd_config_t));
+            sFLASH_EraseSector(CONF_ADDR_EXFLASH);
+            sFLASH_WriteBuffer((uint8_t*)&global_config, CONF_ADDR_EXFLASH, sizeof(cmd_config_t));
             QF_CRIT_EXIT();
             printf("Config written to flash.\r\n");
             status_ = Q_HANDLED();
@@ -263,9 +265,15 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_EXIT}
         case VALVE_EXIT_SIG: {
             QF_CRIT_ENTRY();
-            //sFLASH_WriteBuffer
             printf("write flash\r\n");
+            uint32_t *p = (uint32_t *)&global_valve_value;
+            size_t len = sizeof(global_valve_value) / sizeof(uint32_t);
+            flash_erase_page(DATA_ADDR_FLASH);
+            for (size_t i = 0; i < len; ++i) {
+                flash_program_word(DATA_ADDR_FLASH + i * 4, p[i]);
+            }
             sFLASH_DeInit();
+            use_flash_data = true;
             QF_CRIT_EXIT();
             status_ = Q_TRAN(&ValveHandler_Idle);
             break;
@@ -286,8 +294,54 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             status_ = Q_HANDLED();
             break;
         }
+        //${AOs::ValveHandler::SM::Idle::Handle::VALVE_TUNNING_START}
+        case VALVE_TUNNING_START_SIG: {
+            QF_CRIT_ENTRY();
+            global_valve_value.total_ticks = 0;
+            lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
+            lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
+            lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
+            lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
+            QF_CRIT_EXIT();
+            status_ = Q_TRAN(&ValveHandler_Tuning);
+            break;
+        }
         default: {
             status_ = Q_SUPER(&ValveHandler_Idle);
+            break;
+        }
+    }
+    return status_;
+}
+
+//${AOs::ValveHandler::SM::Idle::Handle::Tuning} .............................
+static QState ValveHandler_Tuning(ValveHandler * const me, QEvt const * const e) {
+    QState status_;
+    switch (e->sig) {
+        //${AOs::ValveHandler::SM::Idle::Handle::Tuning::VALVE_TUNNING_END}
+        case VALVE_TUNNING_END_SIG: {
+            QF_CRIT_ENTRY();
+            global_config.tick = global_valve_value.total_ticks;
+            sFLASH_EraseSector(CONF_ADDR_EXFLASH);
+            sFLASH_WriteBuffer((uint8_t*)&global_valve_value, CONF_ADDR_EXFLASH, sizeof(cmd_config_t));
+            QF_CRIT_EXIT();
+            QEvt_ctor(&self_evt, VALVE_UPDATE_SIG);
+            QACTIVE_POST(AO_ValveHandler, &self_evt, 0U);
+            printf("calibration Done\r\n");
+            status_ = Q_TRAN(&ValveHandler_Handle);
+            break;
+        }
+        //${AOs::ValveHandler::SM::Idle::Handle::Tuning::VALVE_UPDATE}
+        case VALVE_UPDATE_SIG: {
+            ValveVal const *val = &global_valve_value;
+            if (update_handle != NULL) {
+                update_handle(val);
+            }
+            status_ = Q_HANDLED();
+            break;
+        }
+        default: {
+            status_ = Q_SUPER(&ValveHandler_Handle);
             break;
         }
     }

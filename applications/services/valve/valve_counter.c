@@ -293,9 +293,7 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
                         // 处理错误（如复位状态）
                     }
                 }
-                QF_CRIT_ENTRY();
                 last_state = new_state;
-                QF_CRIT_EXIT();
             }
             status_ = Q_HANDLED();
             break;

@@ -9,7 +9,7 @@
 #endif
 
 /* Use for sleep judgement */
-uint32_t Sleep_bits;
+uint32_t    Sleep_bits;
 static QEvt _lock_evt;
 
 /* Assertion handler  ======================================================*/
@@ -97,7 +97,6 @@ void BSP_init(void)
     // dump_clk();
     // rtc_init();
     wakeup_pin_init(wakeup_handle);
-
 }
 
 void BSP_start(void)
@@ -112,7 +111,7 @@ void BSP_start(void)
 
     // instantiate and start AOs/threads...
 
-    static QEvtPtr valveCounterQueueSto[10];
+    static QEvtPtr valveCounterQueueSto[16];
     ValveCounter_ctor();
     QActive_start(AO_ValveCounter,
                   1U,
@@ -120,7 +119,7 @@ void BSP_start(void)
                   Q_DIM(valveCounterQueueSto),
                   (void*)0, 0U,
                   (void*)0);
-    static QEvtPtr valveHandlerQueueSto[10];
+    static QEvtPtr valveHandlerQueueSto[128];
     ValveHandler_ctor();
     QActive_start(AO_ValveHandler,
                   2U,
@@ -128,7 +127,7 @@ void BSP_start(void)
                   Q_DIM(valveHandlerQueueSto),
                   (void*)0, 0U,
                   (void*)0);
-    static QEvtPtr valveConfQueueSto[10];
+    static QEvtPtr valveConfQueueSto[16];
     ValveConf_ctor();
     QActive_start(AO_ValveConf,
                   3U,
@@ -143,7 +142,7 @@ void QF_onStartup(void)
 {
     SysTick_Config(SystemCoreClock / TICK_RATE);
     NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + 0xf);
-    if(GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
+    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
         QEvt_ctor(&_lock_evt, UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
     }

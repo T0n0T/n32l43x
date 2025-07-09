@@ -1,6 +1,7 @@
 #include "qpc.h" // QP/C real-time embedded framework
 #include "bsp.h" // Board Support Package interface
 #include "stdio.h"
+#include "stdlib.h"
 #include "string.h"
 #include "cmd.h"
 #include "valve.h"
@@ -25,14 +26,6 @@ int cmd_config_decode(const char* json_string, cmd_config_t* config)
     cJSON* root = cJSON_Parse(json_string);
     if (root == NULL) {
         return -1; // 解析失败
-    }
-
-    cJSON* valve_count_item = cJSON_GetObjectItemCaseSensitive(root, "count");
-    if (cJSON_IsNumber(valve_count_item)) {
-        config->count = valve_count_item->valueint;
-    } else {
-        cJSON_Delete(root);
-        return -1; // valve_count不存在或类型不正确
     }
 
     cJSON* dir_item = cJSON_GetObjectItemCaseSensitive(root, "dir");
@@ -64,7 +57,7 @@ char* cmd_config_encode(const cmd_config_t* config)
         return NULL;
     }
 
-    cJSON_AddNumberToObject(root, "count", config->count);
+    cJSON_AddNumberToObject(root, "count", config->tick);
     cJSON_AddStringToObject(root, "model", config->model);
     if (config->dir == 1) {
         cJSON_AddTrueToObject(root, "dir");
@@ -100,10 +93,11 @@ int cmd_config_write(int argc, char** argv)
     }
 
     // 测试用的json_string
-    // char* json_string = "{\"count\": 10, \"dir\": false, model\": \"test_model\"}";
+    // char* json_string = "{\"tick\": 10, \"dir\": false, model\": \"test_model\"}";
     // 实际使用时，请将上一行注释掉，并使用下一行
     char* json_string = argv[0];
 
+    memset(&config, 0, sizeof(cmd_config_t));
     if (cmd_config_decode(json_string, &config) != 0) {
         printf("Error: Failed to decode command configuration.\r\n");
         return -1;

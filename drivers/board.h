@@ -1,10 +1,9 @@
 #ifndef __BOARD_H__
 #define __BOARD_H__
 
-#include <stddef.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include "n32l43x.h"
 
 typedef enum {
