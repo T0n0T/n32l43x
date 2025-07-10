@@ -28,6 +28,14 @@ int cmd_config_decode(const char* json_string, cmd_config_t* config)
         return -1; // 解析失败
     }
 
+    cJSON* tick_item = cJSON_GetObjectItemCaseSensitive(root, "tick");
+    if (cJSON_IsNumber(tick_item)) {
+        config->tick = tick_item->valueint;
+    } else {
+        cJSON_Delete(root);
+        return -1; // valve_count不存在或类型不正确
+    }
+
     cJSON* dir_item = cJSON_GetObjectItemCaseSensitive(root, "dir");
     if (cJSON_IsBool(dir_item)) {
         config->dir = cJSON_IsTrue(dir_item) ? 1 : -1;
@@ -57,7 +65,7 @@ char* cmd_config_encode(const cmd_config_t* config)
         return NULL;
     }
 
-    cJSON_AddNumberToObject(root, "count", config->tick);
+    cJSON_AddNumberToObject(root, "tick", config->tick);
     cJSON_AddStringToObject(root, "model", config->model);
     if (config->dir == 1) {
         cJSON_AddTrueToObject(root, "dir");
@@ -102,6 +110,7 @@ int cmd_config_write(int argc, char** argv)
         printf("Error: Failed to decode command configuration.\r\n");
         return -1;
     }
+    config.flag = FLAG_VAILD;
     QEvt_ctor(&evt.super, VALVE_CONFIG_WRITE_SIG); // 初始化事件
     evt.msg     = &config;                         // 将静态config数据指针赋给事件的msg字段
     evt.evtType = VALVE_CMD;                       // 设置事件类型
@@ -125,14 +134,13 @@ int cmd_config_read(int argc, char** argv)
     return 0;
 }
 
-int cmd_config_reset(int argc, char** argv)
+int cmd_config_refactory(int argc, char** argv)
 {
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
 
     memset(&config, 0, sizeof(cmd_config_t));
-    QEvt_ctor(&evt.super, VALVE_CONFIG_WRITE_SIG);
-    evt.msg     = &config;
+    QEvt_ctor(&evt.super, VALVE_REFACTORY_SIG);
     evt.evtType = VALVE_CMD;
 
     QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
@@ -143,7 +151,7 @@ void cmd_valve_info_wrapper(void* msg)
 {
     uint8_t* valptr = (uint8_t*)msg;
     for (size_t i = 0; i < sizeof(ValveVal); i++) {
-        uart_putc(BLE_SERIAL, valptr[i]); 
+        uart_putc(BLE_SERIAL, valptr[i]);
     }
 }
 
@@ -163,6 +171,30 @@ int cmd_valve_info(int argc, char** argv)
     QEvt_ctor(&evt.super, VALVE_INFO_READ_SIG);
     evt.handle  = cmd_valve_info_wrapper;
     evt.msg     = (void*)(intptr_t)is_enable; // 将is_enable转换为void*传递
+    evt.evtType = VALVE_CMD;
+
+    QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
+    return 0;
+}
+
+int cmd_valve_tunning(int argc, char** argv)
+{
+    if (argc != 1) {
+        printf("Usage: valve_tunning <0/1>\r\n");
+        return -1;
+    }
+    int is_enable = atoi(argv[0]);
+    if (is_enable != 0 && is_enable != 1) {
+        printf("Error: Invalid argument. Use 0 or 1.\r\n");
+        return -1;
+    }
+    printf("Valve tunning command received with is_enable: %d\r\n", is_enable);
+    if (is_enable) {
+        QEvt_ctor(&evt.super, VALVE_TUNNING_START_SIG);
+    } else {
+        QEvt_ctor(&evt.super, VALVE_TUNNING_END_SIG);
+    }
+
     evt.evtType = VALVE_CMD;
 
     QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);

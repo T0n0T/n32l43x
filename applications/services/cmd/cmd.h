@@ -5,13 +5,14 @@
 
 #define CMD_DEFINE(func) int cmd_##func(int argc, char** argv);
 
-#define CMD_DEFINE_LIST  {                 \
-    {"config_write", cmd_config_write, 1}, \
-    {"config_reset", cmd_config_reset, 0}, \
-    {"config_read", cmd_config_read, 0}, \    
-    {"reboot", cmd_reboot, 0},             \
-    {"update", cmd_update, 0},             \
-    {"valve_info", cmd_valve_info, 1},     \
+#define CMD_DEFINE_LIST  {                         \
+    {"config_refactory", cmd_config_refactory, 0}, \
+    {"config_write", cmd_config_write, 1},         \
+    {"config_read", cmd_config_read, 0},           \    
+    {"reboot", cmd_reboot, 0},                     \
+    {"update", cmd_update, 0},                     \
+    {"valve_info", cmd_valve_info, 1},             \
+    {"valve_tunning", cmd_valve_tunning, 1},       \
 }
 
 // 命令处理函数类型定义
@@ -28,11 +29,12 @@ void cmd_init(void);
 void cmd_deinit(void);
 void cmd_execute(char* input);
 
+CMD_DEFINE(config_refactory)
 CMD_DEFINE(config_write)
-CMD_DEFINE(config_reset)
 CMD_DEFINE(config_read)
 CMD_DEFINE(reboot)
 CMD_DEFINE(update)
 CMD_DEFINE(valve_info)
+CMD_DEFINE(valve_tunning)
 
 #endif // __CMD_H__

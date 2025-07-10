@@ -12,6 +12,28 @@
 uint32_t    Sleep_bits;
 static QEvt _lock_evt;
 
+static unsigned int crit_nesting_counter;
+static uint32_t     interrupt_level;
+
+void QF_crit_entry_(void)
+{
+    uint32_t basepri;
+    __asm volatile("MRS %0, BASEPRI" : "=r"(basepri));      // 保存当前BASEPRI
+    __asm volatile("MSR BASEPRI, %0" : : "r"(SYSTICK_PRI)); // 设置新阈值
+    if (crit_nesting_counter == 0) {
+        interrupt_level = basepri; // 保存原始优先级
+    }
+    crit_nesting_counter++;
+}
+
+void QF_crit_exit_(void)
+{
+    crit_nesting_counter--;
+    if (crit_nesting_counter == 0) {
+        __asm volatile("MSR BASEPRI, %0" : : "r"(interrupt_level)); // 恢复原始优先级
+    }
+}
+
 /* Assertion handler  ======================================================*/
 Q_NORETURN Q_onAssert(char const* module, int_t id)
 {
@@ -53,7 +75,6 @@ void SysTick_Handler(void)
 
 static void wakeup_handle(uint8_t bit)
 {
-    printf("bit: %d\r\n", bit);
     if (bit == Bit_RESET) {
         QEvt_ctor(&_lock_evt, LOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
@@ -111,7 +132,7 @@ void BSP_start(void)
 
     // instantiate and start AOs/threads...
 
-    static QEvtPtr valveCounterQueueSto[16];
+    static QEvtPtr valveCounterQueueSto[128];
     ValveCounter_ctor();
     QActive_start(AO_ValveCounter,
                   1U,
@@ -140,11 +161,13 @@ void BSP_start(void)
 /*..........................................................................*/
 void QF_onStartup(void)
 {
-    SysTick_Config(SystemCoreClock / TICK_RATE);
-    NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + 0xf);
+    RCC_ClocksType RCC_ClockFreq;
+    RCC_GetClocksFreqValue(&RCC_ClockFreq);
+    SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
+    NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + SYSTICK_PRI);
     if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
-        QEvt_ctor(&_lock_evt, UNLOCK_SIG);
-        QACTIVE_PUBLISH(&_lock_evt, 0);
+    QEvt_ctor(&_lock_evt, UNLOCK_SIG);
+    QACTIVE_PUBLISH(&_lock_evt, 0);
     }
 }
 /*..........................................................................*/

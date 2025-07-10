@@ -278,8 +278,8 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
         //${AOs::ValveCounter::SM::Work::TIMEOUT}
         case TIMEOUT_SIG: {
             static uint8_t last_state = 0;
+            QF_CRIT_ENTRY();
             uint8_t new_state    = read_sensor_state();
-
             if (new_state != last_state && is_valid_state(&new_state)) {
                 // 检查方向并更新旋转计数
                 if (is_valid_state(&last_state)) {
@@ -295,6 +295,7 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
                 }
                 last_state = new_state;
             }
+            QF_CRIT_EXIT();
             status_ = Q_HANDLED();
             break;
         }

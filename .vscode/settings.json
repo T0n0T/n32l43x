@@ -5,7 +5,11 @@
         "*.inc": "shellscript",
         "*.h": "c",
         "algorithm": "c",
-        "format": "c"
+        "format": "c",
+        "numbers": "c",
+        "cstdint": "c",
+        "random": "c"
     },
-    "cortex-debug.variableUseNaturalFormat": true
+    "cortex-debug.variableUseNaturalFormat": true,
+    "cmake.sourceDirectory": "/workspaces/middlewares/qpc"
 }

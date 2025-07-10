@@ -48,8 +48,10 @@ enum AppSignals {
     UNLOCK_SIG,
     VALVE_DAILY_SIG,
     VALVE_UPDATE_SIG,
+    VALVE_PERSIST_SIG,
     VALVE_EXIT_SIG,
     VALVE_CMD_PARSE_SIG,
+    VALVE_REFACTORY_SIG,
     VALVE_CONFIG_WRITE_SIG,
     VALVE_CONFIG_READ_SIG,
     VALVE_TUNNING_START_SIG,
@@ -107,6 +109,13 @@ typedef struct {
     EvtHandle handle;
     enum ValveEvtType evtType;
 } ValveEvt;
+
+//${Shared::ValveValStore} ...................................................
+typedef struct {
+// public:
+    uint32_t flag;
+    ValveVal val;
+} ValveValStore;
 //$enddecl${Shared} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$declare${AOs::AO_ValveCounter} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
