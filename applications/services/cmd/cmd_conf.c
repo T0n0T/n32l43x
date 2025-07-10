@@ -93,7 +93,7 @@ void cmd_config_read_wrapper(void* msg)
     }
 }
 
-int cmd_config_write(int argc, char** argv)
+uint8_t cmd_config_write(int argc, char** argv)
 {
     if (argc != 1) {
         printf("Usage: config_write <json_string>\r\n");
@@ -120,7 +120,7 @@ int cmd_config_write(int argc, char** argv)
     return 0;
 }
 
-int cmd_config_read(int argc, char** argv)
+uint8_t cmd_config_read(int argc, char** argv)
 {
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
@@ -134,7 +134,7 @@ int cmd_config_read(int argc, char** argv)
     return 0;
 }
 
-int cmd_config_refactory(int argc, char** argv)
+uint8_t cmd_config_refactory(int argc, char** argv)
 {
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
@@ -155,7 +155,7 @@ void cmd_valve_info_wrapper(void* msg)
     }
 }
 
-int cmd_valve_info(int argc, char** argv)
+uint8_t cmd_valve_info(int argc, char** argv)
 {
     if (argc != 1) {
         printf("Usage: valve_info <0/1>\r\n");
@@ -177,7 +177,7 @@ int cmd_valve_info(int argc, char** argv)
     return 0;
 }
 
-int cmd_valve_tunning(int argc, char** argv)
+uint8_t cmd_valve_tunning(int argc, char** argv)
 {
     if (argc != 1) {
         printf("Usage: valve_tunning <0/1>\r\n");

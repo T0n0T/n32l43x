@@ -134,6 +134,11 @@ void cmd_deinit(void)
     uart_deinit(BLE_SERIAL);
 }
 
+void cmd_response(uint8_t result)
+{
+    uart_putc(BLE_SERIAL, result);
+}
+
 // 解析并执行命令
 void cmd_execute(char* input)
 {
@@ -173,7 +178,7 @@ void cmd_execute(char* input)
             }
 
             // 调用处理函数(跳过命令名)
-            commands[i].handler(argc - 1, args + 1);
+            cmd_response(commands[i].handler(argc - 1, args + 1));
             goto _clear;
         }
     }
@@ -185,7 +190,7 @@ _clear:
     memset(_cmd_buf, 0, sizeof(_cmd_buf)); // Clear command buffer
 }
 
-int cmd_reboot(int argc, char** argv)
+uint8_t cmd_reboot(int argc, char** argv)
 {
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
@@ -198,7 +203,7 @@ int cmd_reboot(int argc, char** argv)
 #define UPDATE_FLAG_MASK 0x1234
 #endif
 
-int cmd_update(int argc, char** argv)
+uint8_t cmd_update(int argc, char** argv)
 {
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
@@ -209,5 +214,14 @@ int cmd_update(int argc, char** argv)
     printf("Go to Boot...\r\n");
     NVIC_SystemReset(); // 调用系统重启函数
     // 这里可以添加实际的更新逻辑
+    return 0;
+}
+
+uint8_t cmd_ping(int argc, char** argv)
+{
+    (void)argc; // 未使用参数
+    (void)argv; // 未使用参数
+
+    printf("Pong!\r\n");
     return 0;
 }

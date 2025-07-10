@@ -8,7 +8,8 @@
 #define CMD_DEFINE_LIST  {                         \
     {"config_refactory", cmd_config_refactory, 0}, \
     {"config_write", cmd_config_write, 1},         \
-    {"config_read", cmd_config_read, 0},           \    
+    {"config_read", cmd_config_read, 0},           \
+    {"ping", cmd_ping, 0},                         \
     {"reboot", cmd_reboot, 0},                     \
     {"update", cmd_update, 0},                     \
     {"valve_info", cmd_valve_info, 1},             \
@@ -16,7 +17,7 @@
 }
 
 // 命令处理函数类型定义
-typedef int (*cmd_handler_t)(int argc, char** argv);
+typedef uint8_t (*cmd_handler_t)(int argc, char** argv);
 
 // 命令结构体
 typedef struct {
@@ -32,6 +33,7 @@ void cmd_execute(char* input);
 CMD_DEFINE(config_refactory)
 CMD_DEFINE(config_write)
 CMD_DEFINE(config_read)
+CMD_DEFINE(ping)
 CMD_DEFINE(reboot)
 CMD_DEFINE(update)
 CMD_DEFINE(valve_info)
