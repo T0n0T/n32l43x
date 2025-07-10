@@ -12,28 +12,6 @@
 uint32_t    Sleep_bits;
 static QEvt _lock_evt;
 
-static unsigned int crit_nesting_counter;
-static uint32_t     interrupt_level;
-
-void QF_crit_entry_(void)
-{
-    uint32_t basepri;
-    __asm volatile("MRS %0, BASEPRI" : "=r"(basepri));      // 保存当前BASEPRI
-    __asm volatile("MSR BASEPRI, %0" : : "r"(SYSTICK_PRI)); // 设置新阈值
-    if (crit_nesting_counter == 0) {
-        interrupt_level = basepri; // 保存原始优先级
-    }
-    crit_nesting_counter++;
-}
-
-void QF_crit_exit_(void)
-{
-    crit_nesting_counter--;
-    if (crit_nesting_counter == 0) {
-        __asm volatile("MSR BASEPRI, %0" : : "r"(interrupt_level)); // 恢复原始优先级
-    }
-}
-
 /* Assertion handler  ======================================================*/
 Q_NORETURN Q_onAssert(char const* module, int_t id)
 {
@@ -102,6 +80,13 @@ void BSP_init(void)
 #ifdef DEBUG
     cm_backtrace_init("build/n32l43x", "V1.0", "1.0.0");
 #endif
+    NVIC_SetPriorityGrouping(4);
+    NVIC_SetPriority(SysTick_IRQn, DEF_ISR_PRI);
+    NVIC_SetPriority(RTC_IRQn, DEF_ISR_PRI);
+    NVIC_SetPriority(USART2_IRQn, DEF_ISR_PRI - 1);
+    NVIC_SetPriority(UART5_IRQn, DEF_ISR_PRI - 2);
+    NVIC_SetPriority(TIM1_UP_IRQn, DEF_ISR_PRI - 2);
+    NVIC_SetPriority(EXTI15_10_IRQn, DEF_ISR_PRI - 2);
     board_init(); /* initialize the board */
     led_init();   /* initialize the LEDs */
     hall_init();  /* initialize the Hall sensor */
@@ -111,10 +96,6 @@ void BSP_init(void)
     printf("│   N32L43x Valve App  %s-%s    │\r\n", __DATE__, __TIME__);
     printf("└──────────────────────────────────────────────┘\r\n");
     lcd_init(); /* initialize the LCD */
-    lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
-    lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
-    lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
-    lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
     // dump_clk();
     // rtc_init();
     wakeup_pin_init(wakeup_handle);
@@ -123,8 +104,8 @@ void BSP_init(void)
 void BSP_start(void)
 {
     // initialize event pools
-    static QF_MPOOL_EL(QEvt) smlPoolSto[10];
-    QF_poolInit(smlPoolSto, sizeof(smlPoolSto), sizeof(smlPoolSto[0]));
+    // static QF_MPOOL_EL(QEvt) smlPoolSto[10];
+    // QF_poolInit(smlPoolSto, sizeof(smlPoolSto), sizeof(smlPoolSto[0]));
 
     // initialize publish-subscribe
     static QSubscrList subscrSto[MAX_PUB_SIG];
@@ -164,11 +145,10 @@ void QF_onStartup(void)
     RCC_ClocksType RCC_ClockFreq;
     RCC_GetClocksFreqValue(&RCC_ClockFreq);
     SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
-    NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + SYSTICK_PRI);
-    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
-    QEvt_ctor(&_lock_evt, UNLOCK_SIG);
-    QACTIVE_PUBLISH(&_lock_evt, 0);
-    }
+    // if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
+        QEvt_ctor(&_lock_evt, UNLOCK_SIG);
+        QACTIVE_PUBLISH(&_lock_evt, 0);
+    // }
 }
 /*..........................................................................*/
 void QF_onCleanup(void)

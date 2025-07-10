@@ -20,11 +20,8 @@ static void LPTIMNVIC_Config(FunctionalState Cmd)
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_InitPeripheral(&EXTI_InitStructure);
 
-    NVIC_InitStructure.NVIC_IRQChannel                   = LPTIM_WKUP_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 1;
-    NVIC_InitStructure.NVIC_IRQChannelCmd                = Cmd;
-    NVIC_Init(&NVIC_InitStructure);
+    NVIC_SetPriority(LPTIM_WKUP_IRQn, 5);
+    NVIC_EnableIRQ(LPTIM_WKUP_IRQn);
 }
 
 void LPTIM_WKUP_IRQHandler(void)

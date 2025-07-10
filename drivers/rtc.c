@@ -33,11 +33,7 @@ void rtc_init(void)
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_InitPeripheral(&EXTI_InitStructure);
     /* Enable the RTC WakeUp Interrupt */
-    NVIC_InitStructure.NVIC_IRQChannel                   = RTC_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 0;
-    NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
-    NVIC_Init(&NVIC_InitStructure);
+    NVIC_EnableIRQ(RTC_IRQn);
 
     /* Enable the RTC Wakeup Interrupt */
     RTC_ClrIntPendingBit(RTC_INT_WUT);

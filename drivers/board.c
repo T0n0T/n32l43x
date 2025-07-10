@@ -521,12 +521,7 @@ void wakeup_pin_init(wakeup_handle_func h)
     handler = h;
 
     /*Set key input interrupt priority*/
-    NVIC_InitStructure.NVIC_IRQChannel                   = EXTI15_10_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 1;
-    NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
-
-    NVIC_Init(&NVIC_InitStructure);
+    NVIC_EnableIRQ(EXTI15_10_IRQn);
 }
 
 void EXTI15_10_IRQHandler(void)

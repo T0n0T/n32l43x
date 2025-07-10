@@ -39,7 +39,7 @@
 #include "spi_flash.h"
 #include "uart.h"
 
-#define SYSTICK_PRI 0xf
+#define DEF_ISR_PRI 5
 #define TICK_RATE 10000
 #define MS_TO_TICK(ms) ((ms) * TICK_RATE / 1000)
 
