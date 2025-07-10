@@ -149,15 +149,9 @@ static const int8_t rules[64][64] = {
 
 // ======================== 核心逻辑 ========================
 // 读取传感器状态（6-bit编码）
-static uint8_t read_sensor_state(void)
+static inline uint8_t read_sensor_state(void)
 {
-    uint8_t state = 0;
-    for (int i = 0; i < HALL_MAX; i++) {
-        if (hall_read(i) == true) {
-            state |= (1 << i);
-        }
-    }
-    return state;
+    return (uint8_t)(GPIOC->PID & 0xf | ((GPIOA->PID & 0x6) << 4));
 }
 
 // 检查是否为合法状态（单或双传感器触发）
@@ -278,8 +272,7 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
         //${AOs::ValveCounter::SM::Work::TIMEOUT}
         case TIMEOUT_SIG: {
             static uint8_t last_state = 0;
-            QF_CRIT_ENTRY();
-            uint8_t new_state    = read_sensor_state();
+            uint8_t        new_state  = read_sensor_state();
             if (new_state != last_state && is_valid_state(&new_state)) {
                 // 检查方向并更新旋转计数
                 if (is_valid_state(&last_state)) {
@@ -295,7 +288,7 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
                 }
                 last_state = new_state;
             }
-            QF_CRIT_EXIT();
+
             status_ = Q_HANDLED();
             break;
         }

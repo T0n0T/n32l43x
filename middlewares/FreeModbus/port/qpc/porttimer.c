@@ -33,14 +33,7 @@ static void prvvTIMERExpiredISR(void);
 BOOL xMBPortTimersInit(USHORT usTim1Timerout50us)
 {
     /* Initializes the module. */
-    NVIC_InitType NVIC_InitStructure;
-
-    /* Enable the TIM1 global Interrupt */
-    NVIC_InitStructure.NVIC_IRQChannel            = TIM1_UP_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-    NVIC_InitStructure.NVIC_IRQChannelCmd         = ENABLE;
-
-    NVIC_Init(&NVIC_InitStructure);
+    NVIC_EnableIRQ(TIM1_UP_IRQn);
     TIM_TimeBaseInitType TIM_TimeBaseStructure;
 
     /* TIM1 clock enable */

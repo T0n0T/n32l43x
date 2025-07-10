@@ -64,6 +64,7 @@ if get_option('buildtype').startswith('debug')
 endif
 
 c_args += '-DUSE_MODBUS'
+# c_args += '-DQF_USE_BASEPRI=7'
 
 firmware_dep = dependency('firmware')
 

@@ -114,7 +114,6 @@ ValveHandler ValveHandler_inst;
 //${AOs::ValveHandler::SM} ...................................................
 static QState ValveHandler_initial(ValveHandler * const me, void const * const par) {
     //${AOs::ValveHandler::SM::initial}
-    use_flash_data = true;
     QActive_subscribe(&me->super, LOCK_SIG);
     QActive_subscribe(&me->super, UNLOCK_SIG);
     QActive_subscribe(&me->super, VALVE_UPDATE_SIG);
@@ -123,6 +122,36 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
     QActive_subscribe(&me->super, VALVE_CONFIG_READ_SIG);
     QActive_subscribe(&me->super, VALVE_TUNNING_START_SIG);
     QActive_subscribe(&me->super, VALVE_TUNNING_END_SIG);
+
+    //get valve data from flash
+    ValveValStore* _valve_store = (ValveValStore*)DATA_ADDR_FLASH;
+    if (_valve_store->flag == FLAG_VAILD) {
+        memcpy(&global_valve_store, (void*)DATA_ADDR_FLASH, sizeof(ValveValStore));
+        printf("Load valve value from flash.\r\n");
+    }
+    if (global_valve_value->total_ticks >= global_config.tick) {
+        lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
+        lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
+        lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
+        lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
+    } else if (global_valve_value->total_ticks <= 0) {
+        lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
+        lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
+        lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
+        lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
+    }
+
+    //get valve config from spi flash
+    sFLASH_Init();
+    cmd_config_t _read_config = {0};
+    sFLASH_ReadBuffer((uint8_t*)&_read_config, CONF_ADDR_EXFLASH, sizeof(cmd_config_t));
+    if (_read_config.flag == FLAG_VAILD) {
+        memcpy(&global_config, &_read_config, sizeof(cmd_config_t));
+        printf("Config read from flash and applied.\r\n");
+    } else {
+        printf("Flash config is invaild, using default config.\r\n");
+    }
+    sFLASH_DeInit();
     #ifdef USE_MODBUS
     eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
     eMBEnable();
@@ -150,14 +179,6 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
         //${AOs::ValveHandler::SM::Idle::UNLOCK}
         case UNLOCK_SIG: {
             QF_CRIT_ENTRY();
-            if (use_flash_data) {
-                ValveValStore* _valve_store = (ValveValStore*)DATA_ADDR_FLASH;
-                if (_valve_store->flag == FLAG_VAILD) {
-                    memcpy(&global_valve_store, (void*)DATA_ADDR_FLASH, sizeof(ValveValStore));
-                    printf("Load valve value from flash.\r\n");
-                }
-                use_flash_data = false;
-            }
             if (global_valve_value->total_ticks >= global_config.tick) {
                 global_valve_value->total_ticks = global_config.tick;
             } else if (global_valve_value->total_ticks <= 0) {
@@ -165,14 +186,6 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
             }
             last_total_ticks = global_valve_value->total_ticks;
             sFLASH_Init();
-            cmd_config_t _read_config = {0};
-            sFLASH_ReadBuffer((uint8_t*)&_read_config, CONF_ADDR_EXFLASH, sizeof(cmd_config_t));
-            if (_read_config.flag == FLAG_VAILD) {
-                memcpy(&global_config, &_read_config, sizeof(cmd_config_t));
-                printf("Config read from flash and applied.\r\n");
-            } else {
-                printf("Flash config is empty (all FF), using default config.\r\n");
-            }
             QF_CRIT_EXIT();
             QEvt_ctor(&self_evt, VALVE_UPDATE_SIG);
             QACTIVE_POST(AO_ValveHandler, &self_evt, 0U);
@@ -230,9 +243,9 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             #ifdef USE_MODBUS
             extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
             if (val->total_ticks >= global_config.tick) {
-                ucSCoilBuf[0] &= ~(1<<0);
-            } else if (val->total_ticks <= 0) {
                 ucSCoilBuf[0] |= (1<<0);
+            } else if (val->total_ticks <= 0) {
+                ucSCoilBuf[0] &= ~(1<<0);
             }
             #endif
             QF_CRIT_EXIT();
