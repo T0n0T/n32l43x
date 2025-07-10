@@ -88,6 +88,7 @@ static inline void Sleep_release(uint32_t bit) {
 typedef struct {
 // public:
     int32_t total_ticks;
+    uint32_t current_status;
 } ValveVal;
 
 //${Shared::ValveEvtType} ....................................................

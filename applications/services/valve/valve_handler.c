@@ -47,6 +47,9 @@
 #define CONF_ADDR_EXFLASH 0x0
 #define DATA_ADDR_FLASH   0x0801F800
 
+#define VALVE_STATUS_OFF  0
+#define VALVE_STATUS_ON   1
+
 ValveValStore global_valve_store = {
     .flag = FLAG_VAILD,
 };
@@ -129,12 +132,12 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
         memcpy(&global_valve_store, (void*)DATA_ADDR_FLASH, sizeof(ValveValStore));
         printf("Load valve value from flash.\r\n");
     }
-    if (global_valve_value->total_ticks >= global_config.tick) {
+    if (global_valve_value->current_status == VALVE_STATUS_ON) {
         lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
         lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
         lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
         lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
-    } else if (global_valve_value->total_ticks <= 0) {
+    } else {
         lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
         lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
         lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
@@ -220,20 +223,21 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
     switch (e->sig) {
         //${AOs::ValveHandler::SM::Idle::Handle::LOCK}
         case LOCK_SIG: {
-            QTimeEvt_rearm(&me->exitEvt, MS_TO_TICK(500));
+            QTimeEvt_rearm(&me->exitEvt, MS_TO_TICK(2000));
             status_ = Q_HANDLED();
             break;
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_UPDATE}
         case VALVE_UPDATE_SIG: {
-            ValveVal const *val = global_valve_value;
             QF_CRIT_ENTRY();
-            if (val->total_ticks >= global_config.tick) {
+            if (global_valve_value->total_ticks >= global_config.tick) {
+                global_valve_value->current_status = VALVE_STATUS_ON;
                 lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
                 lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
                 lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
                 lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
-            } else if (val->total_ticks <= 0) {
+            } else if (global_valve_value->total_ticks <= 0) {
+                global_valve_value->current_status = VALVE_STATUS_OFF;
                 lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
                 lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
                 lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
@@ -242,17 +246,17 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
 
             #ifdef USE_MODBUS
             extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
-            if (val->total_ticks >= global_config.tick) {
+            if (global_valve_value->total_ticks >= global_config.tick) {
                 ucSCoilBuf[0] |= (1<<0);
-            } else if (val->total_ticks <= 0) {
+            } else if (global_valve_value->total_ticks <= 0) {
                 ucSCoilBuf[0] &= ~(1<<0);
             }
             #endif
             QF_CRIT_EXIT();
-            QTimeEvt_rearm(&me->persistEvt, MS_TO_TICK(500));
+            QTimeEvt_rearm(&me->persistEvt, MS_TO_TICK(2000));
 
             if (update_handle != NULL) {
-                update_handle(val);
+                update_handle(global_valve_value);
             }
             status_ = Q_HANDLED();
             break;
@@ -316,8 +320,8 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             global_valve_value->total_ticks = 0;
             lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
             lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
-            lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
-            lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
+            lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
+            lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
             QF_CRIT_EXIT();
             printf("calibration Start\r\n");
             status_ = Q_TRAN(&ValveHandler_Tuning);
@@ -365,6 +369,10 @@ static QState ValveHandler_Tuning(ValveHandler * const me, QEvt const * const e)
             global_config.tick = global_valve_value->total_ticks;
             sFLASH_EraseSector(CONF_ADDR_EXFLASH);
             sFLASH_WriteBuffer((uint8_t*)&global_config, CONF_ADDR_EXFLASH, sizeof(cmd_config_t));
+            lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
+            lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
+            lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
+            lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
             QF_CRIT_EXIT();
             QEvt_ctor(&self_evt, VALVE_UPDATE_SIG);
             QACTIVE_POST(AO_ValveHandler, &self_evt, 0U);
@@ -374,9 +382,8 @@ static QState ValveHandler_Tuning(ValveHandler * const me, QEvt const * const e)
         }
         //${AOs::ValveHandler::SM::Idle::Handle::Tuning::VALVE_UPDATE}
         case VALVE_UPDATE_SIG: {
-            ValveVal const *val = global_valve_value;
             if (update_handle != NULL) {
-                update_handle(val);
+                update_handle(global_valve_value);
             }
             status_ = Q_HANDLED();
             break;

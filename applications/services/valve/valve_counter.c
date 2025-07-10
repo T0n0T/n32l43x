@@ -48,7 +48,7 @@ typedef struct {
 } TransitionRule;
 
 extern cmd_config_t global_config;
-extern ValveVal     global_valve_value;
+extern ValveVal*    global_valve_value;
 
 static ValveEvt evt;
 
@@ -151,7 +151,7 @@ static const int8_t rules[64][64] = {
 // 读取传感器状态（6-bit编码）
 static inline uint8_t read_sensor_state(void)
 {
-    return (uint8_t)(GPIOC->PID & 0xf | ((GPIOA->PID & 0x6) << 4));
+    return ~(uint8_t)(GPIOC->PID & 0xf | ((GPIOA->PID & 0x6) << 3)) & 0x3f;
 }
 
 // 检查是否为合法状态（单或双传感器触发）
@@ -278,7 +278,7 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
                 if (is_valid_state(&last_state)) {
                     int8_t dir = check_direction(&last_state, &new_state);
                     if (dir != 0) {
-                        global_valve_value.total_ticks += dir;
+                        global_valve_value->total_ticks += dir;
                         QEvt_ctor(&evt.super, VALVE_UPDATE_SIG);
                         evt.evtType = VALVE_VALUE;
                         QACTIVE_PUBLISH(&evt.super, &me->super);

@@ -42,6 +42,7 @@
   </operation>
   <class name="ValveVal">
    <attribute name="total_ticks" type="int32_t" visibility="0x00" properties="0x00"/>
+   <attribute name="current_status" type="uint32_t" visibility="0x00" properties="0x00"/>
   </class>
   <attribute name="ValveEvtType" type="enum" visibility="0x04" properties="0x00">
    <code>{
@@ -104,7 +105,7 @@ if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
     if (is_valid_state(&amp;last_state)) {
         int8_t dir = check_direction(&amp;last_state, &amp;new_state);
         if (dir != 0) {
-            global_valve_value.total_ticks += dir;            
+            global_valve_value-&gt;total_ticks += dir;            
             QEvt_ctor(&amp;evt.super, VALVE_UPDATE_SIG);
             evt.evtType = VALVE_VALUE;
             QACTIVE_PUBLISH(&amp;evt.super, &amp;me-&gt;super);
@@ -155,12 +156,12 @@ if (_valve_store-&gt;flag == FLAG_VAILD) {
     memcpy(&amp;global_valve_store, (void*)DATA_ADDR_FLASH, sizeof(ValveValStore));
     printf(&quot;Load valve value from flash.\r\n&quot;);
 }
-if (global_valve_value-&gt;total_ticks &gt;= global_config.tick) {
+if (global_valve_value-&gt;current_status == VALVE_STATUS_ON) {
     lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
     lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
     lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
     lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
-} else if (global_valve_value-&gt;total_ticks &lt;= 0) {
+} else {
     lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
     lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
     lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
@@ -223,20 +224,21 @@ eMBPoll();
      </tran>
      <state name="Handle">
       <tran trig="LOCK">
-       <action>QTimeEvt_rearm(&amp;me-&gt;exitEvt, MS_TO_TICK(500));</action>
+       <action>QTimeEvt_rearm(&amp;me-&gt;exitEvt, MS_TO_TICK(2000));</action>
        <tran_glyph conn="24,52,3,-1,14">
         <action box="0,-2,10,2"/>
        </tran_glyph>
       </tran>
       <tran trig="VALVE_UPDATE">
-       <action brief="handle data write flash action and lcd refresh">ValveVal const *val = global_valve_value;
-QF_CRIT_ENTRY();
-if (val-&gt;total_ticks &gt;= global_config.tick) {
+       <action brief="handle data write flash action and lcd refresh">QF_CRIT_ENTRY();
+if (global_valve_value-&gt;total_ticks &gt;= global_config.tick) {
+    global_valve_value-&gt;current_status = VALVE_STATUS_ON;
     lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
     lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
     lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
     lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
-} else if (val-&gt;total_ticks &lt;= 0) {
+} else if (global_valve_value-&gt;total_ticks &lt;= 0) {
+    global_valve_value-&gt;current_status = VALVE_STATUS_OFF;
     lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
     lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
     lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
@@ -245,17 +247,17 @@ if (val-&gt;total_ticks &gt;= global_config.tick) {
 
 #ifdef USE_MODBUS
 extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
-if (val-&gt;total_ticks &gt;= global_config.tick) {
+if (global_valve_value-&gt;total_ticks &gt;= global_config.tick) {
     ucSCoilBuf[0] |= (1&lt;&lt;0);
-} else if (val-&gt;total_ticks &lt;= 0) {
+} else if (global_valve_value-&gt;total_ticks &lt;= 0) {
     ucSCoilBuf[0] &amp;= ~(1&lt;&lt;0);
 }
 #endif
 QF_CRIT_EXIT();
-QTimeEvt_rearm(&amp;me-&gt;persistEvt, MS_TO_TICK(500));
+QTimeEvt_rearm(&amp;me-&gt;persistEvt, MS_TO_TICK(2000));
 
 if (update_handle != NULL) {
-    update_handle(val);
+    update_handle(global_valve_value);
 }</action>
        <tran_glyph conn="24,36,3,-1,14">
         <action box="0,-2,13,2"/>
@@ -319,8 +321,8 @@ if (ve-&gt;handle != NULL &amp;&amp; ve-&gt;msg != NULL) {
 global_valve_value-&gt;total_ticks = 0;
 lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
 lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
-lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
-lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
+lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
+lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
 QF_CRIT_EXIT();
 printf(&quot;calibration Start\r\n&quot;);</action>
        <tran_glyph conn="24,48,3,3,22">
@@ -357,6 +359,10 @@ QF_CRIT_EXIT();</action>
 global_config.tick = global_valve_value-&gt;total_ticks;
 sFLASH_EraseSector(CONF_ADDR_EXFLASH);
 sFLASH_WriteBuffer((uint8_t*)&amp;global_config, CONF_ADDR_EXFLASH, sizeof(cmd_config_t));
+lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
+lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
+lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
+lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
 QF_CRIT_EXIT();
 QEvt_ctor(&amp;self_evt, VALVE_UPDATE_SIG);
 QACTIVE_POST(AO_ValveHandler, &amp;self_evt, 0U);
@@ -366,9 +372,8 @@ printf(&quot;calibration Done\r\n&quot;);</action>
         </tran_glyph>
        </tran>
        <tran trig="VALVE_UPDATE">
-        <action>ValveVal const *val = global_valve_value;
-if (update_handle != NULL) {
-    update_handle(val);
+        <action>if (update_handle != NULL) {
+    update_handle(global_valve_value);
 }</action>
         <tran_glyph conn="46,40,3,-1,15">
          <action box="0,-2,14,2"/>
@@ -492,7 +497,7 @@ typedef struct {
 } TransitionRule;
 
 extern cmd_config_t global_config;
-extern ValveVal     global_valve_value;
+extern ValveVal*    global_valve_value;
 
 static ValveEvt evt;
 
@@ -576,7 +581,7 @@ static const int8_t rules[64][64] = {
 // 读取传感器状态（6-bit编码）
 static inline uint8_t read_sensor_state(void)
 {
-    return (uint8_t)(GPIOC-&gt;PID &amp; 0xf | ((GPIOA-&gt;PID &amp; 0x6) &lt;&lt; 4));
+    return ~(uint8_t)(GPIOC-&gt;PID &amp; 0xf | ((GPIOA-&gt;PID &amp; 0x6) &lt;&lt; 3)) &amp; 0x3f;
 }
 
 // 检查是否为合法状态（单或双传感器触发）
@@ -653,6 +658,9 @@ $define ${AOs::ValveConf}</text>
 
 #define CONF_ADDR_EXFLASH 0x0
 #define DATA_ADDR_FLASH   0x0801F800
+
+#define VALVE_STATUS_OFF  0
+#define VALVE_STATUS_ON   1
 
 ValveValStore global_valve_store = {
     .flag = FLAG_VAILD,

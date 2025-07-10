@@ -98,7 +98,7 @@ void BSP_init(void)
     lcd_init(); /* initialize the LCD */
     // dump_clk();
     // rtc_init();
-    wakeup_pin_init(wakeup_handle);
+    // wakeup_pin_init(wakeup_handle);
 }
 
 void BSP_start(void)
