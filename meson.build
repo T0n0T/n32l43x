@@ -49,6 +49,7 @@ subdir('middlewares/easylogger')
 subdir('middlewares/qpc')
 subdir('middlewares/FreeModbus')
 subdir('middlewares/cJSON')
+subdir('middlewares/RTT')
 
 appdep_incdirs = []
 appdep_sources = []
@@ -61,6 +62,8 @@ if get_option('buildtype').startswith('debug')
   c_args += '-DCM_BACKTRACE_ENABLE'  # 添加编译宏以启用相关代码
   c_args += '-DCMB_USER_CFG'
   c_args += '-DDEBUG'
+  appdep_sources += rtt_srcs
+  appdep_incdirs += rtt_incs
 endif
 
 c_args += '-DUSE_MODBUS'

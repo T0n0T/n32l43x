@@ -17,16 +17,6 @@ void board_init(void)
     RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
 }
 
-void dump_clk(void)
-{
-    RCC_ClocksType RCC_ClockFreq;
-    RCC_GetClocksFreqValue(&RCC_ClockFreq);
-    printf("\r\nSYSCLK: %u\r\n", (unsigned int)RCC_ClockFreq.SysclkFreq);
-    printf("HCLK: %u\r\n", (unsigned int)RCC_ClockFreq.HclkFreq);
-    printf("PCLK1: %u\r\n", (unsigned int)RCC_ClockFreq.Pclk1Freq);
-    printf("PCLK2: %u\r\n", (unsigned int)RCC_ClockFreq.Pclk2Freq);
-}
-
 /**
  * @brief  Selects MSI as System clock source and configure HCLK, PCLK2
  *         and PCLK1 prescalers.

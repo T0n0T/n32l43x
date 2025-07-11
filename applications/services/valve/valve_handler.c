@@ -40,6 +40,7 @@
 #include "valve.h"
 #include "cmd.h"
 #include "spi_flash.h"
+#include "log.h"
 #ifdef USE_MODBUS
 #include "user_mb_app.h"
 #endif
@@ -130,7 +131,7 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
     ValveValStore* _valve_store = (ValveValStore*)DATA_ADDR_FLASH;
     if (_valve_store->flag == FLAG_VAILD) {
         memcpy(&global_valve_store, (void*)DATA_ADDR_FLASH, sizeof(ValveValStore));
-        printf("Load valve value from flash.\r\n");
+        APP_LOG_INFO("Load valve value from flash");
     }
     if (global_valve_value->current_status == VALVE_STATUS_ON) {
         lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
@@ -150,9 +151,9 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
     sFLASH_ReadBuffer((uint8_t*)&_read_config, CONF_ADDR_EXFLASH, sizeof(cmd_config_t));
     if (_read_config.flag == FLAG_VAILD) {
         memcpy(&global_config, &_read_config, sizeof(cmd_config_t));
-        printf("Config read from flash and applied.\r\n");
+        APP_LOG_INFO("Config read from flash and applied");
     } else {
-        printf("Flash config is invaild, using default config.\r\n");
+        APP_LOG_INFO("Flash config is invaild, using default config");
     }
     sFLASH_DeInit();
     #ifdef USE_MODBUS
@@ -269,7 +270,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             sFLASH_EraseSector(CONF_ADDR_EXFLASH);
             sFLASH_WriteBuffer((uint8_t*)&global_config, CONF_ADDR_EXFLASH, sizeof(cmd_config_t));
             QF_CRIT_EXIT();
-            printf("Config written to flash.\r\n");
+            APP_LOG_INFO("Config written to flash");
             status_ = Q_HANDLED();
             break;
         }
@@ -285,7 +286,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_EXIT}
         case VALVE_EXIT_SIG: {
             QF_CRIT_ENTRY();
-            printf("write flash\r\n");
+            APP_LOG_DEBUG("write flash");
             uint32_t *p = (uint32_t *)&global_valve_store;
             size_t len = sizeof(ValveValStore) / sizeof(uint32_t);
             flash_erase_page(DATA_ADDR_FLASH);
@@ -323,7 +324,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
             lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
             QF_CRIT_EXIT();
-            printf("calibration Start\r\n");
+            APP_LOG_DEBUG("calibration Start");
             status_ = Q_TRAN(&ValveHandler_Tuning);
             break;
         }
@@ -376,7 +377,7 @@ static QState ValveHandler_Tuning(ValveHandler * const me, QEvt const * const e)
             QF_CRIT_EXIT();
             QEvt_ctor(&self_evt, VALVE_UPDATE_SIG);
             QACTIVE_POST(AO_ValveHandler, &self_evt, 0U);
-            printf("calibration Done\r\n");
+            APP_LOG_DEBUG("calibration Done");
             status_ = Q_TRAN(&ValveHandler_Handle);
             break;
         }

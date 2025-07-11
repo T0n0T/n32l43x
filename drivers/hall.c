@@ -81,7 +81,6 @@ void EXTI0_IRQHandler(void)
 {
     if (RESET != EXTI_GetITStatus(EXTI_LINE0)) {
         EXTI_ClrITPendBit(EXTI_LINE0);
-        printf("EXTI0 Happened\r\n");
     }
 }
 
@@ -89,7 +88,6 @@ void EXTI1_IRQHandler(void)
 {
     if (RESET != EXTI_GetITStatus(EXTI_LINE1)) {
         EXTI_ClrITPendBit(EXTI_LINE1);
-        printf("EXTI1 Happened\r\n");
     }
 }
 
@@ -97,7 +95,6 @@ void EXTI2_IRQHandler(void)
 {
     if (RESET != EXTI_GetITStatus(EXTI_LINE2)) {
         EXTI_ClrITPendBit(EXTI_LINE2);
-        printf("EXTI2 Happened\r\n");
     }
 }
 
@@ -105,7 +102,6 @@ void EXTI3_IRQHandler(void)
 {
     if (RESET != EXTI_GetITStatus(EXTI_LINE3)) {
         EXTI_ClrITPendBit(EXTI_LINE3);
-        printf("EXTI3 Happened\r\n");
     }
 }
 

@@ -4,6 +4,7 @@
 #include "string.h"
 #include "cmd.h"
 #include "valve.h"
+#include "log.h"
 
 #define BLE_PWR_PORT         GPIOB
 #define BLE_PWR_CLK          RCC_APB2_PERIPH_GPIOB
@@ -39,7 +40,7 @@ void USART_CMD_IRQHandler(void)
                 if (_cmd_buf[i] == START_STRING[_start_match_pos]) {
                     _start_match_pos++;
                     if (_start_match_pos == strlen(START_STRING)) {
-                        printf("Start CMD\r\n");
+                        APP_LOG_DEBUG("Start CMD");
                         _start_string_received = true;
                         _start_match_pos       = 0; // Reset for next potential "Start" if needed
                         break;                      // Found "Start", no need to check further in this packet
@@ -119,7 +120,7 @@ void cmd_init(void)
     _cmd_evt.evtType = VALVE_CMD; // 设置事件类型为命令解析
 
     if (RCC_GetFlagStatus(RCC_CTRLSTS_FLAG_SFTRSTF) == SET && !_module_already_off) {
-        printf("System is reboot from software ...\r\n");
+        APP_LOG_DEBUG("System is reboot from software ...");
         _start_string_received = true;
     }
 }
@@ -143,7 +144,7 @@ void cmd_response(uint8_t result)
 void cmd_execute(char* input)
 {
     // 去除换行符(如果有)
-    input[strcspn(input, "\r\n")] = 0;
+    input[strcspn(input, "")] = 0;
 
     // 跳过前导空格
     while (*input == ' ') input++;
@@ -172,8 +173,8 @@ void cmd_execute(char* input)
         if (strcmp(args[0], commands[i].name) == 0) {
             // 检查参数数量
             if (argc - 1 > commands[i].max_args) {
-                printf("Error: Too many arguments for command '%s'. Max is %d.\r\n",
-                       commands[i].name, commands[i].max_args);
+                APP_LOG_ERROR("Error: Too many arguments for command '%s'. Max is %d.",
+                              commands[i].name, commands[i].max_args);
                 goto _clear;
             }
 
@@ -183,7 +184,7 @@ void cmd_execute(char* input)
         }
     }
 
-    printf("Error: Unknown command '%s'\r\n", args[0]);
+    APP_LOG_ERROR("Error: Unknown command '%s'", args[0]);
 
 _clear:
     _cmd_len = 0;
@@ -194,7 +195,7 @@ uint8_t cmd_reboot(int argc, char** argv)
 {
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
-    printf("System is rebooting...\r\n");
+    APP_LOG_INFO("System is rebooting...");
     NVIC_SystemReset(); // 调用系统重启函数
     return 0;
 }
@@ -211,7 +212,7 @@ uint8_t cmd_update(int argc, char** argv)
     flash_erase_option();
     flash_program_option(UPDATE_FLAG_MASK);
 
-    printf("Go to Boot...\r\n");
+    APP_LOG_INFO("Go to Boot...");
     NVIC_SystemReset(); // 调用系统重启函数
     // 这里可以添加实际的更新逻辑
     return 0;
@@ -222,6 +223,6 @@ uint8_t cmd_ping(int argc, char** argv)
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
 
-    printf("Pong!\r\n");
+    APP_LOG_DEBUG("Pong!");
     return 0;
 }

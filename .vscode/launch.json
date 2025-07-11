@@ -15,6 +15,18 @@
             "interface": "swd",
             "svdFile": "${workspaceRoot}/tools/svd/N32L436.svd",
             "runToEntryPoint": "Reset_Handler",
+            "rttConfig": {
+                "polling_interval": 5,
+                "enabled": true,
+                "address": "auto",
+                "decoders": [
+                    {
+                        "label": "",
+                        "port": 0,
+                        "type": "console"
+                    }
+                ]
+            }
         },
         {
             "name": "N32L43x Attach",
@@ -27,7 +39,17 @@
             "interface": "swd",
             "svdFile": "${workspaceRoot}/tools/svd/N32L436.svd",
             "runToEntryPoint": "Reset_Handler",
-            "showDevDebugOutput": "raw"
+            "rttConfig": {
+                "enabled": true,
+                "address": "auto",
+                "decoders": [
+                    {
+                        "label": "",
+                        "port": 0,
+                        "type": "console"
+                    }
+                ]
+            }
         },
         {
             "name": "Remote Debug",

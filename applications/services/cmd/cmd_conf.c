@@ -5,6 +5,7 @@
 #include "string.h"
 #include "cmd.h"
 #include "valve.h"
+#include "log.h"
 
 /*
 configure the command line interface for the application.
@@ -89,14 +90,14 @@ void cmd_config_read_wrapper(void* msg)
         uart_putc(BLE_SERIAL, '\r'); // 发送回车符
         free(json_string);           // 释放编码后的JSON字符串
     } else {
-        printf("Error: Failed to encode command configuration.\r\n");
+        APP_LOG_ERROR("Error: Failed to encode command configuration.");
     }
 }
 
 uint8_t cmd_config_write(int argc, char** argv)
 {
     if (argc != 1) {
-        printf("Usage: config_write <json_string>\r\n");
+        APP_LOG_ERROR("Usage: config_write <json_string>");
         return -1;
     }
 
@@ -107,7 +108,7 @@ uint8_t cmd_config_write(int argc, char** argv)
 
     memset(&config, 0, sizeof(cmd_config_t));
     if (cmd_config_decode(json_string, &config) != 0) {
-        printf("Error: Failed to decode command configuration.\r\n");
+        APP_LOG_ERROR("Error: Failed to decode command configuration.");
         return -1;
     }
     config.flag = FLAG_VAILD;
@@ -158,16 +159,16 @@ void cmd_valve_info_wrapper(void* msg)
 uint8_t cmd_valve_info(int argc, char** argv)
 {
     if (argc != 1) {
-        printf("Usage: valve_info <0/1>\r\n");
+        APP_LOG_ERROR("Usage: valve_info <0/1>");
         return -1;
     }
 
     int is_enable = atoi(argv[0]);
     if (is_enable != 0 && is_enable != 1) {
-        printf("Error: Invalid argument. Use 0 or 1.\r\n");
+        APP_LOG_ERROR("Error: Invalid argument. Use 0 or 1.");
         return -1;
     }
-    printf("Valve info command received with is_enable: %d\r\n", is_enable);
+    APP_LOG_INFO("Valve info command received with is_enable: %d", is_enable);
     QEvt_ctor(&evt.super, VALVE_INFO_READ_SIG);
     evt.handle  = cmd_valve_info_wrapper;
     evt.msg     = (void*)(intptr_t)is_enable; // 将is_enable转换为void*传递
@@ -180,15 +181,15 @@ uint8_t cmd_valve_info(int argc, char** argv)
 uint8_t cmd_valve_tunning(int argc, char** argv)
 {
     if (argc != 1) {
-        printf("Usage: valve_tunning <0/1>\r\n");
+        APP_LOG_ERROR("Usage: valve_tunning <0/1>");
         return -1;
     }
     int is_enable = atoi(argv[0]);
     if (is_enable != 0 && is_enable != 1) {
-        printf("Error: Invalid argument. Use 0 or 1.\r\n");
+        APP_LOG_ERROR("Error: Invalid argument. Use 0 or 1.");
         return -1;
     }
-    printf("Valve tunning command received with is_enable: %d\r\n", is_enable);
+    APP_LOG_INFO("Valve tunning command received with is_enable: %d", is_enable);
     if (is_enable) {
         QEvt_ctor(&evt.super, VALVE_TUNNING_START_SIG);
     } else {

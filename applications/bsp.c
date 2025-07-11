@@ -4,6 +4,7 @@
 #include "qpc.h" /* QP/C API */
 #include "bsp.h"
 #include "valve.h"
+#include "log.h"
 #ifdef DEBUG
 #include "cm_backtrace.h"
 #endif
@@ -15,7 +16,7 @@ static QEvt _lock_evt;
 /* Assertion handler  ======================================================*/
 Q_NORETURN Q_onAssert(char const* module, int_t id)
 {
-    printf("ERROR in %s:%d\r\n", module, id);
+    APP_LOG_RAW("ERROR in %s:%d\r\n", module, id);
 #ifdef DEBUG /* debug build? */
     cm_backtrace_assert(cmb_get_sp());
     while (1); /* tie the CPU in this endless loop */
@@ -26,7 +27,7 @@ Q_NORETURN Q_onAssert(char const* module, int_t id)
 /* assert-handling function called by exception handlers in the startup code */
 void assert_failed(const uint8_t* expr, const uint8_t* file, uint32_t line)
 {
-    printf("ERROR in %s:%d\r\n", file, line);
+    APP_LOG_RAW("ERROR in %s:%d\r\n", file, line);
 #ifdef DEBUG /* debug build? */
     cm_backtrace_assert(cmb_get_sp());
     while (1); /* tie the CPU in this endless loop */
@@ -91,10 +92,10 @@ void BSP_init(void)
     led_init();   /* initialize the LEDs */
     hall_init();  /* initialize the Hall sensor */
     uart_init(CONSOLE);
-    printf(" \r\n");
-    printf("┌──────────────────────────────────────────────┐\r\n");
-    printf("│   N32L43x Valve App  %s-%s    │\r\n", __DATE__, __TIME__);
-    printf("└──────────────────────────────────────────────┘\r\n");
+    APP_LOG_RAW(" \r\n");
+    APP_LOG_RAW("┌──────────────────────────────────────────────┐\r\n");
+    APP_LOG_RAW("│   N32L43x Valve App  %s-%s    │\r\n", __DATE__, __TIME__);
+    APP_LOG_RAW("└──────────────────────────────────────────────┘\r\n");
     lcd_init(); /* initialize the LCD */
     // dump_clk();
     // rtc_init();
@@ -144,13 +145,18 @@ void QF_onStartup(void)
 {
     RCC_ClocksType RCC_ClockFreq;
     RCC_GetClocksFreqValue(&RCC_ClockFreq);
+    APP_LOG_INFO("\r\nSYSCLK: %u", (unsigned int)RCC_ClockFreq.SysclkFreq);
+    APP_LOG_INFO("HCLK: %u", (unsigned int)RCC_ClockFreq.HclkFreq);
+    APP_LOG_INFO("PCLK1: %u", (unsigned int)RCC_ClockFreq.Pclk1Freq);
+    APP_LOG_INFO("PCLK2: %u", (unsigned int)RCC_ClockFreq.Pclk2Freq);
     SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
     // if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
-        QEvt_ctor(&_lock_evt, UNLOCK_SIG);
-        QACTIVE_PUBLISH(&_lock_evt, 0);
+    QEvt_ctor(&_lock_evt, UNLOCK_SIG);
+    QACTIVE_PUBLISH(&_lock_evt, 0);
     // }
 }
 /*..........................................................................*/
 void QF_onCleanup(void)
 {
 }
+
