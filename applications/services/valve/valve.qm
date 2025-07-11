@@ -15,8 +15,8 @@
     VALVE_REFACTORY_SIG,
     VALVE_CONFIG_WRITE_SIG,
     VALVE_CONFIG_READ_SIG,
-    VALVE_TUNNING_START_SIG,
-    VALVE_TUNNING_END_SIG,
+    VALVE_TUNING_START_SIG,
+    VALVE_TUNING_STOP_SIG,
     VALVE_INFO_READ_SIG,
     MAX_PUB_SIG,
 
@@ -149,8 +149,8 @@ QActive_subscribe(&amp;me-&gt;super, VALVE_REBOOT_SIG);
 QActive_subscribe(&amp;me-&gt;super, VALVE_REFACTORY_SIG);
 QActive_subscribe(&amp;me-&gt;super, VALVE_CONFIG_WRITE_SIG);
 QActive_subscribe(&amp;me-&gt;super, VALVE_CONFIG_READ_SIG);
-QActive_subscribe(&amp;me-&gt;super, VALVE_TUNNING_START_SIG);
-QActive_subscribe(&amp;me-&gt;super, VALVE_TUNNING_END_SIG);
+QActive_subscribe(&amp;me-&gt;super, VALVE_TUNING_START_SIG);
+QActive_subscribe(&amp;me-&gt;super, VALVE_TUNING_STOP_SIG);
 
 //get valve data from flash
 ValveValStore* _valve_store = (ValveValStore*)DATA_ADDR_FLASH;
@@ -318,7 +318,7 @@ if (ve-&gt;handle != NULL &amp;&amp; ve-&gt;msg != NULL) {
         <action box="0,-2,17,2"/>
        </tran_glyph>
       </tran>
-      <tran trig="VALVE_TUNNING_START" target="../10">
+      <tran trig="VALVE_TUNING_START" target="../10">
        <action>QF_CRIT_ENTRY();
 global_valve_value-&gt;total_ticks = 0;
 lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
@@ -378,7 +378,7 @@ NVIC_SystemReset();</action>
        </tran_glyph>
       </tran>
       <state name="Tuning">
-       <tran trig="VALVE_TUNNING_END" target="../..">
+       <tran trig="VALVE_TUNING_STOP" target="../..">
         <action>QF_CRIT_ENTRY();
 global_config.tick = global_valve_value-&gt;total_ticks;
 sFLASH_EraseSector(CONF_ADDR_EXFLASH);
@@ -694,7 +694,7 @@ ValveVal*    global_valve_value = &amp;global_valve_store.val;
 cmd_config_t global_config      = {
          .flag  = FLAG_VAILD,
          .tick  = 12,             // 默认旋转阈值
-         .dir   = -1,              // 默认方向
+         .dir   = -1,             // 默认方向，逆时针
          .model = &quot;default_model&quot; // 默认模型名称
 };
 static int32_t   last_total_ticks;

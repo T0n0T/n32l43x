@@ -178,10 +178,10 @@ int cmd_valve_info(int argc, char** argv)
     return 0;
 }
 
-int cmd_valve_tunning(int argc, char** argv)
+int cmd_valve_tuning(int argc, char** argv)
 {
     if (argc != 1) {
-        APP_LOG_ERROR("Usage: valve_tunning <0/1>");
+        APP_LOG_ERROR("Usage: valve_tuning <0/1>");
         return -1;
     }
     int is_enable = atoi(argv[0]);
@@ -189,11 +189,11 @@ int cmd_valve_tunning(int argc, char** argv)
         APP_LOG_ERROR("Error: Invalid argument. Use 0 or 1.");
         return -1;
     }
-    APP_LOG_INFO("Valve tunning command received with is_enable: %d", is_enable);
+    APP_LOG_INFO("Valve tuning command received with is_enable: %d", is_enable);
     if (is_enable) {
-        QEvt_ctor(&evt.super, VALVE_TUNNING_START_SIG);
+        QEvt_ctor(&evt.super, VALVE_TUNING_START_SIG);
     } else {
-        QEvt_ctor(&evt.super, VALVE_TUNNING_END_SIG);
+        QEvt_ctor(&evt.super, VALVE_TUNING_STOP_SIG);
     }
 
     evt.evtType = VALVE_CMD;

@@ -58,7 +58,7 @@ ValveVal*    global_valve_value = &global_valve_store.val;
 cmd_config_t global_config      = {
          .flag  = FLAG_VAILD,
          .tick  = 12,             // 默认旋转阈值
-         .dir   = -1,              // 默认方向
+         .dir   = -1,             // 默认方向，逆时针
          .model = "default_model" // 默认模型名称
 };
 static int32_t   last_total_ticks;
@@ -125,8 +125,8 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
     QActive_subscribe(&me->super, VALVE_REFACTORY_SIG);
     QActive_subscribe(&me->super, VALVE_CONFIG_WRITE_SIG);
     QActive_subscribe(&me->super, VALVE_CONFIG_READ_SIG);
-    QActive_subscribe(&me->super, VALVE_TUNNING_START_SIG);
-    QActive_subscribe(&me->super, VALVE_TUNNING_END_SIG);
+    QActive_subscribe(&me->super, VALVE_TUNING_START_SIG);
+    QActive_subscribe(&me->super, VALVE_TUNING_STOP_SIG);
 
     //get valve data from flash
     ValveValStore* _valve_store = (ValveValStore*)DATA_ADDR_FLASH;
@@ -316,8 +316,8 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             status_ = Q_HANDLED();
             break;
         }
-        //${AOs::ValveHandler::SM::Idle::Handle::VALVE_TUNNING_START}
-        case VALVE_TUNNING_START_SIG: {
+        //${AOs::ValveHandler::SM::Idle::Handle::VALVE_TUNING_START}
+        case VALVE_TUNING_START_SIG: {
             QF_CRIT_ENTRY();
             global_valve_value->total_ticks = 0;
             lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
@@ -387,8 +387,8 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
 static QState ValveHandler_Tuning(ValveHandler * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        //${AOs::ValveHandler::SM::Idle::Handle::Tuning::VALVE_TUNNING_END}
-        case VALVE_TUNNING_END_SIG: {
+        //${AOs::ValveHandler::SM::Idle::Handle::Tuning::VALVE_TUNING_STOP}
+        case VALVE_TUNING_STOP_SIG: {
             QF_CRIT_ENTRY();
             global_config.tick = global_valve_value->total_ticks;
             sFLASH_EraseSector(CONF_ADDR_EXFLASH);
