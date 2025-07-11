@@ -57,7 +57,7 @@ ValveVal*    global_valve_value = &global_valve_store.val;
 cmd_config_t global_config      = {
          .flag  = FLAG_VAILD,
          .tick  = 12,             // 默认旋转阈值
-         .dir   = 1,              // 默认方向
+         .dir   = -1,              // 默认方向
          .model = "default_model" // 默认模型名称
 };
 static int32_t   last_total_ticks;

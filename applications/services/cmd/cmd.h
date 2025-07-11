@@ -3,7 +3,7 @@
 
 #include "cmd_impl.h" // 包含cmd_impl.h
 
-#define CMD_DEFINE(func) int cmd_##func(int argc, char** argv);
+#define CMD_DEFINE(func) uint8_t cmd_##func(int argc, char** argv);
 
 #define CMD_DEFINE_LIST  {                         \
     {"config_refactory", cmd_config_refactory, 0}, \
