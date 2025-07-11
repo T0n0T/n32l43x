@@ -201,3 +201,32 @@ int cmd_valve_tunning(int argc, char** argv)
     QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
     return 0;
 }
+
+int cmd_reboot(int argc, char** argv)
+{
+    (void)argc; // 未使用参数
+    (void)argv; // 未使用参数
+    APP_LOG_INFO("System is rebooting...");
+    QEvt_ctor(&evt.super, VALVE_REBOOT_SIG);
+    evt.evtType = VALVE_CMD;
+    QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
+    return 0;
+}
+
+int cmd_update(int argc, char** argv)
+{
+    (void)argc; // 未使用参数
+    (void)argv; // 未使用参数
+#ifndef UPDATE_FLAG_MASK
+#define UPDATE_FLAG_MASK 0x1234
+#endif
+
+    flash_erase_option();
+    flash_program_option(UPDATE_FLAG_MASK);
+
+    APP_LOG_INFO("Go to Boot...");
+    QEvt_ctor(&evt.super, VALVE_REBOOT_SIG);
+    evt.evtType = VALVE_CMD;
+    QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
+    return 0;
+}

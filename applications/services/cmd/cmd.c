@@ -198,33 +198,6 @@ _clear:
     memset(_cmd_buf, 0, sizeof(_cmd_buf)); // Clear command buffer
 }
 
-int cmd_reboot(int argc, char** argv)
-{
-    (void)argc; // 未使用参数
-    (void)argv; // 未使用参数
-    APP_LOG_INFO("System is rebooting...");
-    NVIC_SystemReset(); // 调用系统重启函数
-    return 0;
-}
-
-
-int cmd_update(int argc, char** argv)
-{
-    (void)argc; // 未使用参数
-    (void)argv; // 未使用参数
-#ifndef UPDATE_FLAG_MASK
-#define UPDATE_FLAG_MASK 0x1234
-#endif
-
-    flash_erase_option();
-    flash_program_option(UPDATE_FLAG_MASK);
-
-    APP_LOG_INFO("Go to Boot...");
-    NVIC_SystemReset(); // 调用系统重启函数
-    // 这里可以添加实际的更新逻辑
-    return 0;
-}
-
 int cmd_ping(int argc, char** argv)
 {
     (void)argc; // 未使用参数

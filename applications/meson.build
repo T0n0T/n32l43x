@@ -16,6 +16,6 @@ applications_sources = files(
   'services/valve/valve_handler.c',
   'services/valve/valve_conf.c',
   'services/cmd/cmd.c',
-  'services/cmd/cmd_conf.c',
+  'services/cmd/cmd_valve.c',
   'services/log/log.c'
 )

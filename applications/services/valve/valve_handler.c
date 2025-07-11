@@ -121,6 +121,7 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
     QActive_subscribe(&me->super, LOCK_SIG);
     QActive_subscribe(&me->super, UNLOCK_SIG);
     QActive_subscribe(&me->super, VALVE_UPDATE_SIG);
+    QActive_subscribe(&me->super, VALVE_REBOOT_SIG);
     QActive_subscribe(&me->super, VALVE_REFACTORY_SIG);
     QActive_subscribe(&me->super, VALVE_CONFIG_WRITE_SIG);
     QActive_subscribe(&me->super, VALVE_CONFIG_READ_SIG);
@@ -352,6 +353,25 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             flash_erase_page(DATA_ADDR_FLASH);
             sFLASH_EraseSector(CONF_ADDR_EXFLASH);
             QF_CRIT_EXIT();
+            status_ = Q_HANDLED();
+            break;
+        }
+        //${AOs::ValveHandler::SM::Idle::Handle::VALVE_REBOOT}
+        case VALVE_REBOOT_SIG: {
+            if (global_valve_value->total_ticks != last_total_ticks) {
+                QF_CRIT_ENTRY();
+                uint32_t *p = (uint32_t *)&global_valve_store;
+                size_t len = sizeof(ValveValStore) / sizeof(uint32_t);
+                flash_erase_page(DATA_ADDR_FLASH);
+                for (size_t i = 0; i < len; ++i) {
+                    flash_program_word(DATA_ADDR_FLASH + i * 4, p[i]);
+                }
+                last_total_ticks = global_valve_value->total_ticks;
+                use_flash_data = true;
+                APP_LOG_DEBUG("write flash %d", last_total_ticks);
+                QF_CRIT_EXIT();
+            }
+            NVIC_SystemReset();
             status_ = Q_HANDLED();
             break;
         }
