@@ -80,6 +80,9 @@ void BSP_init(void)
      */
 #ifdef DEBUG
     cm_backtrace_init("build/n32l43x", "V1.0", "1.0.0");
+    // CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    // DWT->CYCCNT = 0;
+    // DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 #endif
     NVIC_SetPriorityGrouping(4);
     NVIC_SetPriority(SysTick_IRQn, DEF_ISR_PRI);
@@ -145,7 +148,7 @@ void QF_onStartup(void)
 {
     RCC_ClocksType RCC_ClockFreq;
     RCC_GetClocksFreqValue(&RCC_ClockFreq);
-    APP_LOG_INFO("\r\nSYSCLK: %u", (unsigned int)RCC_ClockFreq.SysclkFreq);
+    APP_LOG_INFO("SYSCLK: %u", (unsigned int)RCC_ClockFreq.SysclkFreq);
     APP_LOG_INFO("HCLK: %u", (unsigned int)RCC_ClockFreq.HclkFreq);
     APP_LOG_INFO("PCLK1: %u", (unsigned int)RCC_ClockFreq.Pclk1Freq);
     APP_LOG_INFO("PCLK2: %u", (unsigned int)RCC_ClockFreq.Pclk2Freq);

@@ -94,7 +94,7 @@ void cmd_config_read_wrapper(void* msg)
     }
 }
 
-uint8_t cmd_config_write(int argc, char** argv)
+int cmd_config_write(int argc, char** argv)
 {
     if (argc != 1) {
         APP_LOG_ERROR("Usage: config_write <json_string>");
@@ -121,7 +121,7 @@ uint8_t cmd_config_write(int argc, char** argv)
     return 0;
 }
 
-uint8_t cmd_config_read(int argc, char** argv)
+int cmd_config_read(int argc, char** argv)
 {
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
@@ -135,7 +135,7 @@ uint8_t cmd_config_read(int argc, char** argv)
     return 0;
 }
 
-uint8_t cmd_config_refactory(int argc, char** argv)
+int cmd_config_refactory(int argc, char** argv)
 {
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
@@ -156,7 +156,7 @@ void cmd_valve_info_wrapper(void* msg)
     }
 }
 
-uint8_t cmd_valve_info(int argc, char** argv)
+int cmd_valve_info(int argc, char** argv)
 {
     if (argc != 1) {
         APP_LOG_ERROR("Usage: valve_info <0/1>");
@@ -178,7 +178,7 @@ uint8_t cmd_valve_info(int argc, char** argv)
     return 0;
 }
 
-uint8_t cmd_valve_tunning(int argc, char** argv)
+int cmd_valve_tunning(int argc, char** argv)
 {
     if (argc != 1) {
         APP_LOG_ERROR("Usage: valve_tunning <0/1>");

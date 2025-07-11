@@ -286,7 +286,7 @@ if (ve-&gt;handle != NULL) {
       </tran>
       <tran trig="VALVE_EXIT" target="../..">
        <action>QF_CRIT_ENTRY();
-APP_LOG_DEBUG(&quot;write flash&quot;);
+APP_LOG_DEBUG(&quot;write flash %d&quot;, last_total_ticks);
 uint32_t *p = (uint32_t *)&amp;global_valve_store;
 size_t len = sizeof(ValveValStore) / sizeof(uint32_t);
 flash_erase_page(DATA_ADDR_FLASH);
@@ -331,6 +331,7 @@ APP_LOG_DEBUG(&quot;calibration Start&quot;);</action>
       </tran>
       <tran trig="VALVE_PERSIST">
        <action>if (global_valve_value-&gt;total_ticks != last_total_ticks) {
+    QF_CRIT_ENTRY();
     uint32_t *p = (uint32_t *)&amp;global_valve_store;
     size_t len = sizeof(ValveValStore) / sizeof(uint32_t);
     flash_erase_page(DATA_ADDR_FLASH);
@@ -339,6 +340,8 @@ APP_LOG_DEBUG(&quot;calibration Start&quot;);</action>
     }
     last_total_ticks = global_valve_value-&gt;total_ticks;
     use_flash_data = true;
+    APP_LOG_DEBUG(&quot;write flash %d&quot;, last_total_ticks);
+    QF_CRIT_EXIT();
 }</action>
        <tran_glyph conn="24,38,3,-1,14">
         <action box="0,-2,14,2"/>

@@ -14,7 +14,7 @@ typedef enum {
 
 // Default log level, can be overridden by compiler flags
 #ifndef APP_LOG_LEVEL
-#define APP_LOG_LEVEL LOG_LEVEL_INFO
+#define APP_LOG_LEVEL LOG_LEVEL_DEBUG
 #endif
 
 // Log macro

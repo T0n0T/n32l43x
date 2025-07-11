@@ -286,7 +286,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_EXIT}
         case VALVE_EXIT_SIG: {
             QF_CRIT_ENTRY();
-            APP_LOG_DEBUG("write flash");
+            APP_LOG_DEBUG("write flash %d", last_total_ticks);
             uint32_t *p = (uint32_t *)&global_valve_store;
             size_t len = sizeof(ValveValStore) / sizeof(uint32_t);
             flash_erase_page(DATA_ADDR_FLASH);
@@ -331,6 +331,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_PERSIST}
         case VALVE_PERSIST_SIG: {
             if (global_valve_value->total_ticks != last_total_ticks) {
+                QF_CRIT_ENTRY();
                 uint32_t *p = (uint32_t *)&global_valve_store;
                 size_t len = sizeof(ValveValStore) / sizeof(uint32_t);
                 flash_erase_page(DATA_ADDR_FLASH);
@@ -339,6 +340,8 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
                 }
                 last_total_ticks = global_valve_value->total_ticks;
                 use_flash_data = true;
+                APP_LOG_DEBUG("write flash %d", last_total_ticks);
+                QF_CRIT_EXIT();
             }
             status_ = Q_HANDLED();
             break;

@@ -135,16 +135,17 @@ void cmd_deinit(void)
     uart_deinit(BLE_SERIAL);
 }
 
-void cmd_response(uint8_t result)
+void cmd_response(uint16_t result)
 {
-    uart_putc(BLE_SERIAL, result);
+    uart_putc(BLE_SERIAL, (uint8_t)(result & 0xff));
+    uart_putc(BLE_SERIAL, (uint8_t)(result >> 8));
 }
 
 // 解析并执行命令
 void cmd_execute(char* input)
 {
     // 去除换行符(如果有)
-    input[strcspn(input, "")] = 0;
+    input[strcspn(input, "\r\n")] = 0;
 
     // 跳过前导空格
     while (*input == ' ') input++;
@@ -179,7 +180,13 @@ void cmd_execute(char* input)
             }
 
             // 调用处理函数(跳过命令名)
-            cmd_response(commands[i].handler(argc - 1, args + 1));
+            int result = commands[i].handler(argc - 1, args + 1);
+            if (result < 0) {
+                cmd_response(CMD_ERR);
+            } else {
+                cmd_response(CMD_OK);
+            }
+
             goto _clear;
         }
     }
@@ -191,7 +198,7 @@ _clear:
     memset(_cmd_buf, 0, sizeof(_cmd_buf)); // Clear command buffer
 }
 
-uint8_t cmd_reboot(int argc, char** argv)
+int cmd_reboot(int argc, char** argv)
 {
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
@@ -200,14 +207,14 @@ uint8_t cmd_reboot(int argc, char** argv)
     return 0;
 }
 
-#ifndef UPDATE_FLAG_MASK
-#define UPDATE_FLAG_MASK 0x1234
-#endif
 
-uint8_t cmd_update(int argc, char** argv)
+int cmd_update(int argc, char** argv)
 {
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
+#ifndef UPDATE_FLAG_MASK
+#define UPDATE_FLAG_MASK 0x1234
+#endif
 
     flash_erase_option();
     flash_program_option(UPDATE_FLAG_MASK);
@@ -218,7 +225,7 @@ uint8_t cmd_update(int argc, char** argv)
     return 0;
 }
 
-uint8_t cmd_ping(int argc, char** argv)
+int cmd_ping(int argc, char** argv)
 {
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数

@@ -3,7 +3,9 @@
 
 #include "cmd_impl.h" // 包含cmd_impl.h
 
-#define CMD_DEFINE(func) uint8_t cmd_##func(int argc, char** argv);
+#define CMD_OK           0xcafe
+#define CMD_ERR          0xdead
+#define CMD_DEFINE(func) int cmd_##func(int argc, char** argv);
 
 #define CMD_DEFINE_LIST  {                         \
     {"config_refactory", cmd_config_refactory, 0}, \
@@ -17,7 +19,7 @@
 }
 
 // 命令处理函数类型定义
-typedef uint8_t (*cmd_handler_t)(int argc, char** argv);
+typedef int (*cmd_handler_t)(int argc, char** argv);
 
 // 命令结构体
 typedef struct {
