@@ -319,7 +319,11 @@ if (ve-&gt;handle != NULL &amp;&amp; ve-&gt;msg != NULL) {
        </tran_glyph>
       </tran>
       <tran trig="VALVE_TUNING_START" target="../10">
-       <action>QF_CRIT_ENTRY();
+       <action>ValveEvt const* ve = (ValveEvt const*)e;
+if (ve-&gt;handle != NULL) {
+    update_handle = ve-&gt;handle;
+}
+QF_CRIT_ENTRY();
 global_valve_value-&gt;total_ticks = 0;
 lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
 lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
@@ -387,6 +391,7 @@ lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
 lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
 lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
 lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
+update_handle = NULL;
 QF_CRIT_EXIT();
 QEvt_ctor(&amp;self_evt, VALVE_UPDATE_SIG);
 QACTIVE_POST(AO_ValveHandler, &amp;self_evt, 0U);

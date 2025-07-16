@@ -82,6 +82,7 @@ void cmd_config_read_wrapper(void* msg)
 {
     cmd_config_t* config      = (cmd_config_t*)msg;
     char*         json_string = cmd_config_encode(config);
+    APP_LOG_DEBUG("read valve config");
     if (json_string != NULL) {
         for (size_t i = 0; i < strlen(json_string); i++) {
             uart_putc(BLE_SERIAL, json_string[i]); // 逐字符发送JSON字符串
@@ -192,6 +193,7 @@ int cmd_valve_tuning(int argc, char** argv)
     APP_LOG_INFO("Valve tuning command received with is_enable: %d", is_enable);
     if (is_enable) {
         QEvt_ctor(&evt.super, VALVE_TUNING_START_SIG);
+        evt.handle = cmd_valve_info_wrapper;
     } else {
         QEvt_ctor(&evt.super, VALVE_TUNING_STOP_SIG);
     }

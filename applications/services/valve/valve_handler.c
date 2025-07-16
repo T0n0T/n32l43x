@@ -318,6 +318,10 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_TUNING_START}
         case VALVE_TUNING_START_SIG: {
+            ValveEvt const* ve = (ValveEvt const*)e;
+            if (ve->handle != NULL) {
+                update_handle = ve->handle;
+            }
             QF_CRIT_ENTRY();
             global_valve_value->total_ticks = 0;
             lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
@@ -397,6 +401,7 @@ static QState ValveHandler_Tuning(ValveHandler * const me, QEvt const * const e)
             lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
             lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
             lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
+            update_handle = NULL;
             QF_CRIT_EXIT();
             QEvt_ctor(&self_evt, VALVE_UPDATE_SIG);
             QACTIVE_POST(AO_ValveHandler, &self_evt, 0U);
