@@ -49,7 +49,7 @@ subdir('middlewares/easylogger')
 subdir('middlewares/qpc')
 subdir('middlewares/FreeModbus')
 subdir('middlewares/cJSON')
-subdir('middlewares/RTT')
+subdir('middlewares/SEGGER')
 
 appdep_incdirs = []
 appdep_sources = []
