@@ -63,14 +63,14 @@
   </class>
  </package>
  <package name="AOs" stereotype="0x02">
-  <class name="ValveCounter" superclass="qpc::QActive">
+  <class name="ValveCounter" superclass="qpc::QMActive">
    <documentation>Trigger by timeout, then collect hall sensor data and decode it. If there's a leagal update action,will publish event to ValveHandler</documentation>
    <attribute name="timeEvt" type="QTimeEvt" visibility="0x02" properties="0x00"/>
    <attribute name="inst" type="ValveCounter" visibility="0x00" properties="0x01"/>
    <statechart properties="0x00">
     <initial target="../1">
-     <action>QActive_subscribe(&amp;me-&gt;super, LOCK_SIG);
-QActive_subscribe(&amp;me-&gt;super, UNLOCK_SIG);</action>
+     <action>QActive_subscribe((QActive*)me, LOCK_SIG);
+QActive_subscribe((QActive*)me, UNLOCK_SIG);</action>
      <initial_glyph conn="26,14,5,1,18,7,-2">
       <action box="0,-2,10,2"/>
      </initial_glyph>
@@ -129,7 +129,7 @@ if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
     <state_diagram size="147,84"/>
    </statechart>
   </class>
-  <class name="ValveHandler" superclass="qpc::QActive">
+  <class name="ValveHandler" superclass="qpc::QMActive">
    <documentation>handle all internal action on the board;
 include:
 - flash;
@@ -142,15 +142,15 @@ include:
    <attribute name="persistEvt" type="QTimeEvt" visibility="0x00" properties="0x00"/>
    <statechart properties="0x00">
     <initial target="../1">
-     <action>QActive_subscribe(&amp;me-&gt;super, LOCK_SIG);
-QActive_subscribe(&amp;me-&gt;super, UNLOCK_SIG);
-QActive_subscribe(&amp;me-&gt;super, VALVE_UPDATE_SIG);
-QActive_subscribe(&amp;me-&gt;super, VALVE_REBOOT_SIG);
-QActive_subscribe(&amp;me-&gt;super, VALVE_REFACTORY_SIG);
-QActive_subscribe(&amp;me-&gt;super, VALVE_CONFIG_WRITE_SIG);
-QActive_subscribe(&amp;me-&gt;super, VALVE_CONFIG_READ_SIG);
-QActive_subscribe(&amp;me-&gt;super, VALVE_TUNING_START_SIG);
-QActive_subscribe(&amp;me-&gt;super, VALVE_TUNING_STOP_SIG);
+     <action>QActive_subscribe((QActive*)me, LOCK_SIG);
+QActive_subscribe((QActive*)me, UNLOCK_SIG);
+QActive_subscribe((QActive*)me, VALVE_UPDATE_SIG);
+QActive_subscribe((QActive*)me, VALVE_REBOOT_SIG);
+QActive_subscribe((QActive*)me, VALVE_REFACTORY_SIG);
+QActive_subscribe((QActive*)me, VALVE_CONFIG_WRITE_SIG);
+QActive_subscribe((QActive*)me, VALVE_CONFIG_READ_SIG);
+QActive_subscribe((QActive*)me, VALVE_TUNING_START_SIG);
+QActive_subscribe((QActive*)me, VALVE_TUNING_STOP_SIG);
 
 //get valve data from flash
 ValveValStore* _valve_store = (ValveValStore*)DATA_ADDR_FLASH;
@@ -319,11 +319,7 @@ if (ve-&gt;handle != NULL &amp;&amp; ve-&gt;msg != NULL) {
        </tran_glyph>
       </tran>
       <tran trig="VALVE_TUNING_START" target="../10">
-       <action>ValveEvt const* ve = (ValveEvt const*)e;
-if (ve-&gt;handle != NULL) {
-    update_handle = ve-&gt;handle;
-}
-QF_CRIT_ENTRY();
+       <action>QF_CRIT_ENTRY();
 global_valve_value-&gt;total_ticks = 0;
 lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
 lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
@@ -391,7 +387,6 @@ lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
 lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
 lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
 lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
-update_handle = NULL;
 QF_CRIT_EXIT();
 QEvt_ctor(&amp;self_evt, VALVE_UPDATE_SIG);
 QACTIVE_POST(AO_ValveHandler, &amp;self_evt, 0U);
@@ -420,7 +415,7 @@ APP_LOG_DEBUG(&quot;calibration Done&quot;);</action>
     <state_diagram size="141,83"/>
    </statechart>
   </class>
-  <class name="ValveConf" superclass="qpc::QActive">
+  <class name="ValveConf" superclass="qpc::QMActive">
    <documentation>Abstract a interface between user and board,inclue:
 - Daily actoin trigger by RTC Alarm;
 - Configuration parse from serial, trigger by uart, if there's a necessary to write flash,publish event to ValveHandler;</documentation>
@@ -428,8 +423,8 @@ APP_LOG_DEBUG(&quot;calibration Done&quot;);</action>
    <attribute name="timeEvt" type="QTimeEvt" visibility="0x00" properties="0x00"/>
    <statechart properties="0x00">
     <initial target="../2">
-     <action>QActive_subscribe(&amp;me-&gt;super, LOCK_SIG);
-QActive_subscribe(&amp;me-&gt;super, UNLOCK_SIG);</action>
+     <action>QActive_subscribe((QActive*)me, LOCK_SIG);
+QActive_subscribe((QActive*)me, UNLOCK_SIG);</action>
      <initial_glyph conn="20,16,5,1,20,7,-2">
       <action box="0,-2,10,2"/>
      </initial_glyph>
@@ -485,30 +480,30 @@ if (evt-&gt;evtType == VALVE_CMD) {
    </statechart>
   </class>
   <attribute name="AO_ValveCounter" type="QActive * const" visibility="0x00" properties="0x00">
-   <code>= &amp;ValveCounter_inst.super;</code>
+   <code>= (QActive* const)&amp;ValveCounter_inst.super;</code>
   </attribute>
   <operation name="ValveCounter_ctor" type="void" visibility="0x00" properties="0x00">
    <code>ValveCounter * const me = &amp;ValveCounter_inst;
-QActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveCounter_initial));
-QTimeEvt_ctorX(&amp;me-&gt;timeEvt, &amp;me-&gt;super, TIMEOUT_SIG, 0U);</code>
+QMActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveCounter_initial));
+QTimeEvt_ctorX(&amp;me-&gt;timeEvt, (QActive*)me, TIMEOUT_SIG, 0U);</code>
   </operation>
   <attribute name="AO_ValveHandler" type="QActive * const" visibility="0x00" properties="0x00">
-   <code>= &amp;ValveHandler_inst.super;</code>
+   <code>= (QActive* const)&amp;ValveHandler_inst.super;</code>
   </attribute>
   <operation name="ValveHandler_ctor" type="void" visibility="0x00" properties="0x00">
    <code>ValveHandler * const me = &amp;ValveHandler_inst;
-QActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveHandler_initial));
-QTimeEvt_ctorX(&amp;me-&gt;timeEvt, &amp;me-&gt;super, TIMEOUT_SIG, 0U);
-QTimeEvt_ctorX(&amp;me-&gt;persistEvt, &amp;me-&gt;super, VALVE_PERSIST_SIG, 0U);
-QTimeEvt_ctorX(&amp;me-&gt;exitEvt, &amp;me-&gt;super, VALVE_EXIT_SIG, 0U);</code>
+QMActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveHandler_initial));
+QTimeEvt_ctorX(&amp;me-&gt;timeEvt, (QActive*)me, TIMEOUT_SIG, 0U);
+QTimeEvt_ctorX(&amp;me-&gt;persistEvt, (QActive*)me, VALVE_PERSIST_SIG, 0U);
+QTimeEvt_ctorX(&amp;me-&gt;exitEvt, (QActive*)me, VALVE_EXIT_SIG, 0U);</code>
   </operation>
   <attribute name="AO_ValveConf" type="QActive * const" visibility="0x00" properties="0x00">
-   <code>= &amp;ValveConf_inst.super;</code>
+   <code>= (QActive* const)&amp;ValveConf_inst.super;</code>
   </attribute>
   <operation name="ValveConf_ctor" type="void" visibility="0x00" properties="0x00">
    <code>ValveConf * const me = &amp;ValveConf_inst;
-QActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveConf_initial));
-QTimeEvt_ctorX(&amp;me-&gt;timeEvt, &amp;me-&gt;super, TIMEOUT_SIG, 0U);</code>
+QMActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveConf_initial));
+QTimeEvt_ctorX(&amp;me-&gt;timeEvt, (QActive*)me, TIMEOUT_SIG, 0U);</code>
   </operation>
  </package>
  <directory name=".">

@@ -45,7 +45,7 @@
 //${AOs::ValveConf} ..........................................................
 typedef struct ValveConf {
 // protected:
-    QActive super;
+    QMActive super;
 
 // public:
     QTimeEvt timeEvt;
@@ -55,8 +55,26 @@ extern ValveConf ValveConf_inst;
 
 // protected:
 static QState ValveConf_initial(ValveConf * const me, void const * const par);
-static QState ValveConf_Active(ValveConf * const me, QEvt const * const e);
-static QState ValveConf_Wait(ValveConf * const me, QEvt const * const e);
+static QState ValveConf_Active  (ValveConf * const me, QEvt const * const e);
+static QState ValveConf_Active_e(ValveConf * const me);
+static QState ValveConf_Active_x(ValveConf * const me);
+static QMState const ValveConf_Active_s = {
+    QM_STATE_NULL, // superstate (top)
+    Q_STATE_CAST(&ValveConf_Active),
+    Q_ACTION_CAST(&ValveConf_Active_e),
+    Q_ACTION_CAST(&ValveConf_Active_x),
+    Q_ACTION_NULL  // no initial tran.
+};
+static QState ValveConf_Wait  (ValveConf * const me, QEvt const * const e);
+static QState ValveConf_Wait_e(ValveConf * const me);
+static QState ValveConf_Wait_x(ValveConf * const me);
+static QMState const ValveConf_Wait_s = {
+    QM_STATE_NULL, // superstate (top)
+    Q_STATE_CAST(&ValveConf_Wait),
+    Q_ACTION_CAST(&ValveConf_Wait_e),
+    Q_ACTION_CAST(&ValveConf_Wait_x),
+    Q_ACTION_NULL  // no initial tran.
+};
 //$enddecl${AOs::ValveConf} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 //$skip${QP_VERSION} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -68,15 +86,15 @@ static QState ValveConf_Wait(ValveConf * const me, QEvt const * const e);
 //$define${AOs::AO_ValveConf} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 //${AOs::AO_ValveConf} .......................................................
-QActive * const AO_ValveConf = &ValveConf_inst.super;
+QActive * const AO_ValveConf = (QActive* const)&ValveConf_inst.super;
 //$enddef${AOs::AO_ValveConf} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$define${AOs::ValveConf_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 //${AOs::ValveConf_ctor} .....................................................
 void ValveConf_ctor(void) {
     ValveConf * const me = &ValveConf_inst;
-    QActive_ctor(&me->super, Q_STATE_CAST(&ValveConf_initial));
-    QTimeEvt_ctorX(&me->timeEvt, &me->super, TIMEOUT_SIG, 0U);
+    QMActive_ctor(&me->super, Q_STATE_CAST(&ValveConf_initial));
+    QTimeEvt_ctorX(&me->timeEvt, (QActive*)me, TIMEOUT_SIG, 0U);
 }
 //$enddef${AOs::ValveConf_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$define${AOs::ValveConf} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -87,27 +105,38 @@ ValveConf ValveConf_inst;
 //${AOs::ValveConf::SM} ......................................................
 static QState ValveConf_initial(ValveConf * const me, void const * const par) {
     //${AOs::ValveConf::SM::initial}
-    QActive_subscribe(&me->super, LOCK_SIG);
-    QActive_subscribe(&me->super, UNLOCK_SIG);
-    return Q_TRAN(&ValveConf_Wait);
+    QActive_subscribe((QActive*)me, LOCK_SIG);
+    QActive_subscribe((QActive*)me, UNLOCK_SIG);
+    static struct {
+        QMState const *target;
+        QActionHandler act[2];
+    } const tatbl_ = { // tran-action table
+        &ValveConf_Wait_s, // target state
+        {
+            Q_ACTION_CAST(&ValveConf_Wait_e), // entry
+            Q_ACTION_NULL // zero terminator
+        }
+    };
+    return QM_TRAN_INIT(&tatbl_);
 }
 
 //${AOs::ValveConf::SM::Active} ..............................................
+//${AOs::ValveConf::SM::Active}
+static QState ValveConf_Active_e(ValveConf * const me) {
+    cmd_init();
+    Q_UNUSED_PAR(me);
+    return QM_ENTRY(&ValveConf_Active_s);
+}
+//${AOs::ValveConf::SM::Active}
+static QState ValveConf_Active_x(ValveConf * const me) {
+    cmd_deinit();
+    (void)me; // unused parameter
+    return QM_EXIT(&ValveConf_Active_s);
+}
+//${AOs::ValveConf::SM::Active}
 static QState ValveConf_Active(ValveConf * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        //${AOs::ValveConf::SM::Active}
-        case Q_ENTRY_SIG: {
-            cmd_init();
-            status_ = Q_HANDLED();
-            break;
-        }
-        //${AOs::ValveConf::SM::Active}
-        case Q_EXIT_SIG: {
-            cmd_deinit();
-            status_ = Q_HANDLED();
-            break;
-        }
         //${AOs::ValveConf::SM::Active::TIMEOUT}
         case TIMEOUT_SIG: {
             static int count = 10;
@@ -117,12 +146,23 @@ static QState ValveConf_Active(ValveConf * const me, QEvt const * const e) {
                 QTimeEvt_disarm(&me->timeEvt);
                 count = 0;
             }
-            status_ = Q_HANDLED();
+            status_ = QM_HANDLED();
             break;
         }
         //${AOs::ValveConf::SM::Active::LOCK}
         case LOCK_SIG: {
-            status_ = Q_TRAN(&ValveConf_Wait);
+            static struct {
+                QMState const *target;
+                QActionHandler act[3];
+            } const tatbl_ = { // tran-action table
+                &ValveConf_Wait_s, // target state
+                {
+                    Q_ACTION_CAST(&ValveConf_Active_x), // exit
+                    Q_ACTION_CAST(&ValveConf_Wait_e), // entry
+                    Q_ACTION_NULL // zero terminator
+                }
+            };
+            status_ = QM_TRAN(&tatbl_);
             break;
         }
         //${AOs::ValveConf::SM::Active::VALVE_CMD_PARSE}
@@ -131,40 +171,53 @@ static QState ValveConf_Active(ValveConf * const me, QEvt const * const e) {
             if (evt->evtType == VALVE_CMD) {
                 cmd_execute((char*)evt->msg);
             }
-            status_ = Q_HANDLED();
+            status_ = QM_HANDLED();
             break;
         }
         default: {
-            status_ = Q_SUPER(&QHsm_top);
+            status_ = QM_SUPER();
             break;
         }
     }
+    Q_UNUSED_PAR(me);
     return status_;
 }
 
 //${AOs::ValveConf::SM::Wait} ................................................
+//${AOs::ValveConf::SM::Wait}
+static QState ValveConf_Wait_e(ValveConf * const me) {
+    Sleep_release(CONFIG_BIT);
+    Q_UNUSED_PAR(me);
+    return QM_ENTRY(&ValveConf_Wait_s);
+}
+//${AOs::ValveConf::SM::Wait}
+static QState ValveConf_Wait_x(ValveConf * const me) {
+    Sleep_request(CONFIG_BIT);
+    (void)me; // unused parameter
+    return QM_EXIT(&ValveConf_Wait_s);
+}
+//${AOs::ValveConf::SM::Wait}
 static QState ValveConf_Wait(ValveConf * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        //${AOs::ValveConf::SM::Wait}
-        case Q_ENTRY_SIG: {
-            Sleep_release(CONFIG_BIT);
-            status_ = Q_HANDLED();
-            break;
-        }
-        //${AOs::ValveConf::SM::Wait}
-        case Q_EXIT_SIG: {
-            Sleep_request(CONFIG_BIT);
-            status_ = Q_HANDLED();
-            break;
-        }
         //${AOs::ValveConf::SM::Wait::UNLOCK}
         case UNLOCK_SIG: {
-            status_ = Q_TRAN(&ValveConf_Active);
+            static struct {
+                QMState const *target;
+                QActionHandler act[3];
+            } const tatbl_ = { // tran-action table
+                &ValveConf_Active_s, // target state
+                {
+                    Q_ACTION_CAST(&ValveConf_Wait_x), // exit
+                    Q_ACTION_CAST(&ValveConf_Active_e), // entry
+                    Q_ACTION_NULL // zero terminator
+                }
+            };
+            status_ = QM_TRAN(&tatbl_);
             break;
         }
         default: {
-            status_ = Q_SUPER(&QHsm_top);
+            status_ = QM_SUPER();
             break;
         }
     }
