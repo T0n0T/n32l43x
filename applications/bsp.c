@@ -8,6 +8,7 @@
 #include "cmd.h"   /* Command interface */
 #ifdef DEBUG
 #include "cm_backtrace.h"
+#include "SEGGER_SYSVIEW.h"
 #endif
 
 #define BTN_SW1 (1U << 4)
@@ -38,8 +39,9 @@ void assert_failed(const uint8_t* expr, const uint8_t* file, uint32_t line)
 /* ISRs  ===============================================*/
 void SysTick_Handler(void)
 {
-    // process the tick event
+    SEGGER_SYSVIEW_RecordEnterISR();
     QTIMEEVT_TICK_X(0, 0);
+    SEGGER_SYSVIEW_RecordExitISR();
     QV_ARM_ERRATUM_838869();
 }
 
@@ -58,7 +60,8 @@ void BSP_init(void)
  *  but SystemCoreClock needs to be updated
  */
 #ifdef DEBUG
-    cm_backtrace_init("N32L4", "V1.0", "1.0.0");
+    cm_backtrace_init("build/n32l43x", "V1.0", "1.0.0");
+    SEGGER_SYSVIEW_Conf();
 #endif
     board_init();       /* initialize the board */
     led_init();         /* initialize the LEDs */

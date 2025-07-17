@@ -44,22 +44,21 @@ BOOL xMBPortTimersInit(USHORT usTim1Timerout50us)
     TIM_TimeBaseInitType TIM_TimeBaseStructure;
 
     /* TIM1 clock enable */
-    RCC_ConfigTim18Clk(RCC_TIM18CLK_SRC_TIM18CLK);
+    RCC_ConfigTim18Clk(RCC_TIM18CLK_SRC_SYSCLK);
     RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_TIM1, ENABLE);
 
-    /* Time base configuration 
-    @tip when using higher clk like pll, 
+    /* Time base configuration
+    @tip when using higher clk like pll,
     oneshot update willbe overrun,
     so the expired also need to edit*/
-    TIM_TimeBaseStructure.Period    = 50 * 16 * usTim1Timerout50us - 1;
-    TIM_TimeBaseStructure.Prescaler = 0;
-    TIM_TimeBaseStructure.ClkDiv    = 0;
+    TIM_TimeBaseStructure.Period    = 50 * usTim1Timerout50us - 1;
+    TIM_TimeBaseStructure.Prescaler = SystemCoreClock / 1000000 - 1; //invalid?
+    TIM_TimeBaseStructure.ClkDiv    = TIM_CLK_DIV1;
     TIM_TimeBaseStructure.CntMode   = TIM_CNT_MODE_UP;
+    TIM_TimeBaseStructure.RepetCnt  = 0;
 
     TIM_InitTimeBase(TIM1, &TIM_TimeBaseStructure);
 
-    /* Prescaler configuration */
-    TIM_ConfigPrescaler(TIM1, 0, TIM_PSC_RELOAD_MODE_IMMEDIATE);
     /* TIM1 enable update irq */
     TIM_ConfigInt(TIM1, TIM_INT_UPDATE, ENABLE);
     return TRUE;
@@ -69,7 +68,6 @@ void vMBPortTimersEnable()
 {
     /* Enable the timer with the timeout passed to xMBPortTimersInit( ) */
     /* Read the current counter value. Counter value is in status.counter. */
-
     TIM_SetCnt(TIM1, 0);
     /* TIM1 enable counter */
     TIM_Enable(TIM1, ENABLE);
@@ -100,4 +98,5 @@ void TIM1_UP_IRQHandler(void)
         TIM_ClrIntPendingBit(TIM1, TIM_INT_UPDATE);
         prvvTIMERExpiredISR();
     }
+    __DSB();
 }
