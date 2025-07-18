@@ -45,14 +45,12 @@ BOOL xMBPortTimersInit(USHORT usTim1Timerout50us)
     oneshot update willbe overrun,
     so the expired also need to edit*/
     TIM_TimeBaseStructure.Period    = 50 * 16 * usTim1Timerout50us - 1;
-    TIM_TimeBaseStructure.Prescaler = 0;
+    TIM_TimeBaseStructure.Prescaler = SystemCoreClock / 1000000 - 1;
     TIM_TimeBaseStructure.ClkDiv    = 0;
     TIM_TimeBaseStructure.CntMode   = TIM_CNT_MODE_UP;
 
     TIM_InitTimeBase(TIM1, &TIM_TimeBaseStructure);
 
-    /* Prescaler configuration */
-    TIM_ConfigPrescaler(TIM1, 0, TIM_PSC_RELOAD_MODE_IMMEDIATE);
     /* TIM1 enable update irq */
     TIM_ConfigInt(TIM1, TIM_INT_UPDATE, ENABLE);
     return TRUE;
