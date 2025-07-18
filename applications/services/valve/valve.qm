@@ -104,15 +104,14 @@ uint8_t        new_state  = read_sensor_state();
 if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
     // 检查方向并更新旋转计数
     if (is_valid_state(&amp;last_state)) {
-        int8_t dir = check_direction(&amp;last_state, &amp;new_state);
-        if (dir != 0) {
-            global_valve_value-&gt;total_ticks += dir;            
-            QEvt_ctor(&amp;evt.super, VALVE_UPDATE_SIG);
-            evt.evtType = VALVE_VALUE;
-            QACTIVE_PUBLISH(&amp;evt.super, &amp;me-&gt;super);
-        } else {
-            // 处理错误（如复位状态）
-        }
+#ifdef DEBUG
+        SEGGER_SYSVIEW_RecordU32(VALVE_COUNT_EVENT, global_valve_value-&gt;total_ticks);
+#endif
+        global_valve_value-&gt;total_ticks += check_direction(&amp;last_state, &amp;new_state);        
+        QEvt_ctor(&amp;evt.super, VALVE_UPDATE_SIG);
+        evt.evtType = VALVE_VALUE;
+        QACTIVE_PUBLISH(&amp;evt.super, &amp;me-&gt;super);
+        //QACTIVE_POST_X(AO_ValveHandler, &amp;evt.super, 1, &amp;me-&gt;super);
     } 
     last_state = new_state;
 }
@@ -232,7 +231,10 @@ eMBPoll();
        </tran_glyph>
       </tran>
       <tran trig="VALVE_UPDATE">
-       <action brief="handle data write flash action and lcd refresh">QF_CRIT_ENTRY();
+       <action brief="handle data write flash action and lcd refresh">#ifdef DEBUG
+SEGGER_SYSVIEW_MarkStart(VALVE_UPDATE_EVENT);
+#endif
+QF_CRIT_ENTRY();
 if (global_valve_value-&gt;total_ticks &gt;= global_config.tick) {
     global_valve_value-&gt;current_status = VALVE_STATUS_ON;
     lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
@@ -260,7 +262,10 @@ QTimeEvt_rearm(&amp;me-&gt;persistEvt, MS_TO_TICK(2000));
 
 if (update_handle != NULL) {
     update_handle(global_valve_value);
-}</action>
+}
+#ifdef DEBUG
+SEGGER_SYSVIEW_MarkStop(VALVE_UPDATE_EVENT);
+#endif</action>
        <tran_glyph conn="24,34,3,-1,14">
         <action box="0,-2,13,2"/>
        </tran_glyph>
@@ -645,6 +650,12 @@ $define ${AOs::ValveCounter}</text>
   <file name="valve.h">
    <text>#ifndef __VALVE_H__
 #define __VALVE_H__
+
+#ifdef DEBUG
+#include &quot;SEGGER_SYSVIEW.h&quot;
+#define VALVE_COUNT_EVENT  0x400
+#define VALVE_UPDATE_EVENT 0x401
+#endif
 
 #define TICKS_PER_ROTATION 6 // 每圈的跳变次数（6磁铁）
 

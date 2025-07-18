@@ -273,6 +273,9 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_UPDATE}
         case VALVE_UPDATE_SIG: {
+            #ifdef DEBUG
+            SEGGER_SYSVIEW_MarkStart(VALVE_UPDATE_EVENT);
+            #endif
             QF_CRIT_ENTRY();
             if (global_valve_value->total_ticks >= global_config.tick) {
                 global_valve_value->current_status = VALVE_STATUS_ON;
@@ -302,6 +305,9 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             if (update_handle != NULL) {
                 update_handle(global_valve_value);
             }
+            #ifdef DEBUG
+            SEGGER_SYSVIEW_MarkStop(VALVE_UPDATE_EVENT);
+            #endif
             status_ = QM_HANDLED();
             break;
         }

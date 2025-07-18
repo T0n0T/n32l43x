@@ -12,8 +12,8 @@ ErrorStatus SetSysClockToPLL(uint32_t freq, uint8_t src);
 
 void board_init(void)
 {
-    SetSysClockToHSI();
-    // SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
+    SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
+    SystemCoreClockUpdate();
     RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
 }
 

@@ -326,15 +326,14 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
             if (new_state != last_state && is_valid_state(&new_state)) {
                 // 检查方向并更新旋转计数
                 if (is_valid_state(&last_state)) {
-                    int8_t dir = check_direction(&last_state, &new_state);
-                    if (dir != 0) {
-                        global_valve_value->total_ticks += dir;
-                        QEvt_ctor(&evt.super, VALVE_UPDATE_SIG);
-                        evt.evtType = VALVE_VALUE;
-                        QACTIVE_PUBLISH(&evt.super, &me->super);
-                    } else {
-                        // 处理错误（如复位状态）
-                    }
+            #ifdef DEBUG
+                    SEGGER_SYSVIEW_RecordU32(VALVE_COUNT_EVENT, global_valve_value->total_ticks);
+            #endif
+                    global_valve_value->total_ticks += check_direction(&last_state, &new_state);
+                    QEvt_ctor(&evt.super, VALVE_UPDATE_SIG);
+                    evt.evtType = VALVE_VALUE;
+                    QACTIVE_PUBLISH(&evt.super, &me->super);
+                    //QACTIVE_POST_X(AO_ValveHandler, &evt.super, 1, &me->super);
                 }
                 last_state = new_state;
             }

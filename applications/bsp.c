@@ -49,9 +49,13 @@ void RTC_WKUP_IRQHandler(void)
 
 void SysTick_Handler(void)
 {
+#ifdef DEBUG
     SEGGER_SYSVIEW_RecordEnterISR();
+#endif
     QTIMEEVT_TICK_X(0, 0);
-    SEGGER_SYSVIEW_RecordExitISR();
+#ifdef DEBUG
+    SEGGER_SYSVIEW_RecordExitISRToScheduler();
+#endif
     QV_ARM_ERRATUM_838869();
 }
 
@@ -69,7 +73,11 @@ static void wakeup_handle(uint8_t bit)
 /*..........................................................................*/
 void QV_onIdle(void)
 {
-    QF_INT_ENABLE();
+#ifdef DEBUG
+    SEGGER_SYSVIEW_OnIdle();
+#endif
+    QV_CPU_SLEEP();
+
     if (!Sleep_bits) {
         // PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
     }
@@ -84,7 +92,7 @@ void BSP_init(void)
 #ifdef DEBUG
     cm_backtrace_init("build/n32l43x", "V1.0", "1.0.0");
     SEGGER_SYSVIEW_Conf();
-    // GPIO_ConfigPinRemap(GPIOB_PORT_SOURCE, GPIO_PIN_SOURCE3, GPIO_NO_AF);
+    // DBG->CTRL |= (1 << 5);
     // CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
     // TPI->ACPR = 7;
     // TPI->SPPR = 2;
@@ -131,6 +139,9 @@ void BSP_init(void)
 
 void BSP_start(void)
 {
+#ifdef DEBUG
+    extern SEGGER_SYSVIEW_TASKINFO _Q_taskInfo[3];
+#endif
     // initialize event pools
     // static QF_MPOOL_EL(QEvt) smlPoolSto[10];
     // QF_poolInit(smlPoolSto, sizeof(smlPoolSto), sizeof(smlPoolSto[0]));
@@ -144,11 +155,12 @@ void BSP_start(void)
     static QEvtPtr valveCounterQueueSto[128];
     ValveCounter_ctor();
     QActive_start(AO_ValveCounter,
-                  1U,
+                  3U,
                   valveCounterQueueSto,
                   Q_DIM(valveCounterQueueSto),
                   (void*)0, 0U,
                   (void*)0);
+
     static QEvtPtr valveHandlerQueueSto[128];
     ValveHandler_ctor();
     QActive_start(AO_ValveHandler,
@@ -160,11 +172,23 @@ void BSP_start(void)
     static QEvtPtr valveConfQueueSto[16];
     ValveConf_ctor();
     QActive_start(AO_ValveConf,
-                  3U,
+                  1U,
                   valveConfQueueSto,
                   Q_DIM(valveConfQueueSto),
                   (void*)0, 0U,
                   (void*)0);
+
+#ifdef DEBUG
+    _Q_taskInfo[0].TaskID = (uint32_t)AO_ValveCounter;
+    _Q_taskInfo[0].sName  = "AO_ValveCounter";
+    _Q_taskInfo[0].Prio   = 3U;
+    _Q_taskInfo[1].TaskID = (uint32_t)AO_ValveHandler;
+    _Q_taskInfo[1].sName  = "AO_ValveHandler";
+    _Q_taskInfo[1].Prio   = 2U;
+    _Q_taskInfo[2].TaskID = (uint32_t)AO_ValveConf;
+    _Q_taskInfo[2].sName  = "AO_ValveConf";
+    _Q_taskInfo[2].Prio   = 1U;
+#endif
 }
 
 /*..........................................................................*/
@@ -172,8 +196,6 @@ void QF_onStartup(void)
 {
     RCC_ClocksType RCC_ClockFreq;
     RCC_GetClocksFreqValue(&RCC_ClockFreq);
-    extern uint32_t SystemCoreClock;
-    SystemCoreClock = RCC_ClockFreq.SysclkFreq;
     APP_LOG_INFO("SYSCLK: %u", (unsigned int)RCC_ClockFreq.SysclkFreq);
     APP_LOG_INFO("HCLK: %u", (unsigned int)RCC_ClockFreq.HclkFreq);
     APP_LOG_INFO("PCLK1: %u", (unsigned int)RCC_ClockFreq.Pclk1Freq);
@@ -188,3 +210,16 @@ void QF_onStartup(void)
 void QF_onCleanup(void)
 {
 }
+
+#ifdef QF_ON_CONTEXT_SW
+void QF_onContextSw(QActive* prev, QActive* next)
+{
+#ifdef DEBUG
+    SEGGER_SYSVIEW_OnTaskStopExec();
+    if (next) {
+        SEGGER_SYSVIEW_OnTaskStartExec((uint32_t)next);
+    }
+
+#endif
+}
+#endif

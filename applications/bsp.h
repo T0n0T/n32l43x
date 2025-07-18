@@ -40,7 +40,7 @@
 #include "uart.h"
 
 #define DEF_ISR_PRI 5
-#define TICK_RATE 10000
+#define TICK_RATE 1000
 #define MS_TO_TICK(ms) ((ms) * TICK_RATE / 1000)
 
 void BSP_init(void);

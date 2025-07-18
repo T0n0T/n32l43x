@@ -38,6 +38,12 @@
 #ifndef __VALVE_H__
 #define __VALVE_H__
 
+#ifdef DEBUG
+#include "SEGGER_SYSVIEW.h"
+#define VALVE_COUNT_EVENT  0x400
+#define VALVE_UPDATE_EVENT 0x401
+#endif
+
 #define TICKS_PER_ROTATION 6 // 每圈的跳变次数（6磁铁）
 
 //$declare${Shared} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
