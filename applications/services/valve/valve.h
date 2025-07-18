@@ -40,8 +40,8 @@
 
 #ifdef DEBUG
 #include "SEGGER_SYSVIEW.h"
-#define VALVE_COUNT_EVENT  0x400
-#define VALVE_UPDATE_EVENT 0x401
+#define VALVE_UPDATE_EVENT 0x400
+#define VALVE_VALVE_TICK 0
 #endif
 
 #define TICKS_PER_ROTATION 6 // 每圈的跳变次数（6磁铁）

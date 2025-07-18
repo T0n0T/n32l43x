@@ -44,7 +44,6 @@
 #ifdef USE_MODBUS
 #include "user_mb_app.h"
 #endif
-
 #define CONF_ADDR_EXFLASH 0x0
 #define DATA_ADDR_FLASH   0x0801F800
 
@@ -276,30 +275,21 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             #ifdef DEBUG
             SEGGER_SYSVIEW_MarkStart(VALVE_UPDATE_EVENT);
             #endif
-            QF_CRIT_ENTRY();
-            if (global_valve_value->total_ticks >= global_config.tick) {
-                global_valve_value->current_status = VALVE_STATUS_ON;
-                lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
-                lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
-                lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
-                lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
-            } else if (global_valve_value->total_ticks <= 0) {
-                global_valve_value->current_status = VALVE_STATUS_OFF;
-                lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
-                lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
-                lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
-                lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
-            }
-
-            #ifdef USE_MODBUS
-            extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
-            if (global_valve_value->total_ticks >= global_config.tick) {
-                ucSCoilBuf[0] |= (1<<0);
-            } else if (global_valve_value->total_ticks <= 0) {
-                ucSCoilBuf[0] &= ~(1<<0);
-            }
-            #endif
-            QF_CRIT_EXIT();
+            // QF_CRIT_ENTRY();
+            // if (global_valve_value->total_ticks >= global_config.tick) {
+            //     global_valve_value->current_status = VALVE_STATUS_ON;
+            //     lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
+            //     lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
+            //     lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
+            //     lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
+            // } else if (global_valve_value->total_ticks <= 0) {
+            //     global_valve_value->current_status = VALVE_STATUS_OFF;
+            //     lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
+            //     lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
+            //     lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
+            //     lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
+            // }
+            // QF_CRIT_EXIT();
             QTimeEvt_rearm(&me->persistEvt, MS_TO_TICK(2000));
 
             if (update_handle != NULL) {

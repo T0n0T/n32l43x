@@ -52,6 +52,12 @@ extern ValveVal*    global_valve_value;
 
 static ValveEvt evt;
 
+#ifdef DEBUG
+SEGGER_SYSVIEW_DATA_SAMPLE Xdata = {
+    .ID          = VALVE_VALVE_TICK,
+};
+#endif
+
 //$declare${AOs::ValveCounter} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 //${AOs::ValveCounter} .......................................................
@@ -327,7 +333,7 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
                 // 检查方向并更新旋转计数
                 if (is_valid_state(&last_state)) {
             #ifdef DEBUG
-                    SEGGER_SYSVIEW_RecordU32(VALVE_COUNT_EVENT, global_valve_value->total_ticks);
+                    SEGGER_SYSVIEW_SampleData(&Xdata);
             #endif
                     global_valve_value->total_ticks += check_direction(&last_state, &new_state);
                     QEvt_ctor(&evt.super, VALVE_UPDATE_SIG);

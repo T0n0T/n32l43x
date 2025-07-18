@@ -105,7 +105,7 @@ if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
     // 检查方向并更新旋转计数
     if (is_valid_state(&amp;last_state)) {
 #ifdef DEBUG
-        SEGGER_SYSVIEW_RecordU32(VALVE_COUNT_EVENT, global_valve_value-&gt;total_ticks);
+        SEGGER_SYSVIEW_SampleData(&amp;Xdata);
 #endif
         global_valve_value-&gt;total_ticks += check_direction(&amp;last_state, &amp;new_state);        
         QEvt_ctor(&amp;evt.super, VALVE_UPDATE_SIG);
@@ -248,15 +248,6 @@ if (global_valve_value-&gt;total_ticks &gt;= global_config.tick) {
     lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
     lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
 }
-
-#ifdef USE_MODBUS
-extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
-if (global_valve_value-&gt;total_ticks &gt;= global_config.tick) {
-    ucSCoilBuf[0] |= (1&lt;&lt;0);
-} else if (global_valve_value-&gt;total_ticks &lt;= 0) {
-    ucSCoilBuf[0] &amp;= ~(1&lt;&lt;0);
-}
-#endif
 QF_CRIT_EXIT();
 QTimeEvt_rearm(&amp;me-&gt;persistEvt, MS_TO_TICK(2000));
 
@@ -530,6 +521,12 @@ extern ValveVal*    global_valve_value;
 
 static ValveEvt evt;
 
+#ifdef DEBUG
+SEGGER_SYSVIEW_DATA_SAMPLE Xdata = {
+    .ID          = VALVE_VALVE_TICK,
+};
+#endif
+
 $declare ${AOs::ValveCounter}
 
 // 方向映射表(64x64, 未定义部分置0)
@@ -653,8 +650,8 @@ $define ${AOs::ValveCounter}</text>
 
 #ifdef DEBUG
 #include &quot;SEGGER_SYSVIEW.h&quot;
-#define VALVE_COUNT_EVENT  0x400
-#define VALVE_UPDATE_EVENT 0x401
+#define VALVE_UPDATE_EVENT 0x400
+#define VALVE_VALVE_TICK 0
 #endif
 
 #define TICKS_PER_ROTATION 6 // 每圈的跳变次数（6磁铁）
@@ -691,7 +688,6 @@ $define ${AOs::ValveConf}</text>
 #ifdef USE_MODBUS
 #include &quot;user_mb_app.h&quot;
 #endif
-
 #define CONF_ADDR_EXFLASH 0x0
 #define DATA_ADDR_FLASH   0x0801F800
 

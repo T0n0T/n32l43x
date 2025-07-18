@@ -3,8 +3,10 @@
  *****************************************************************************/
 #include "qpc.h" /* QP/C API */
 #include "bsp.h"
+#include "cmd.h"
 #include "valve.h"
 #include "log.h"
+
 #ifdef DEBUG
 #include "cm_backtrace.h"
 #include "SEGGER_SYSVIEW.h"
@@ -13,6 +15,13 @@
 /* Use for sleep judgement */
 uint32_t    Sleep_bits;
 static QEvt _lock_evt;
+
+#ifdef USE_MODBUS
+#include "user_mb_app.h"
+extern UCHAR        ucSCoilBuf[S_COIL_NCOILS / 8];
+#endif
+extern ValveVal*    global_valve_value;
+extern cmd_config_t global_config;
 
 /* Assertion handler  ======================================================*/
 Q_NORETURN Q_onAssert(char const* module, int_t id)
@@ -75,6 +84,14 @@ void QV_onIdle(void)
 {
 #ifdef DEBUG
     SEGGER_SYSVIEW_OnIdle();
+#endif
+
+#ifdef USE_MODBUS
+    if (global_valve_value->total_ticks >= global_config.tick) {
+        ucSCoilBuf[0] |= (1 << 0);
+    } else if (global_valve_value->total_ticks <= 0) {
+        ucSCoilBuf[0] &= ~(1 << 0);
+    }
 #endif
     QV_CPU_SLEEP();
 

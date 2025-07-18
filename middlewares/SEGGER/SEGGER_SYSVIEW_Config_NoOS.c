@@ -102,6 +102,16 @@ extern unsigned int SystemCoreClock;
 #define CYCCNTENA_BIT (1uL << 0)                                 // Cycle counter enable bit
 
 SEGGER_SYSVIEW_TASKINFO _Q_taskInfo[3];
+
+static const SEGGER_SYSVIEW_DATA_REGISTER regdataX = {
+    .ID            = 0,
+    .DataType      = SEGGER_SYSVIEW_TYPE_I32,
+    .Offset        = 0,
+    .RangeMin      = 0,
+    .RangeMax      = 0,
+    .ScalingFactor = 1.0f, /* important: set to non-zero! */
+    .sName         = "valve tick",
+    .sUnit         = "ss"};
 /*********************************************************************
  *
  *       _cbSendSystemDesc()
@@ -113,6 +123,7 @@ static void _cbSendSystemDesc(void)
 {
     SEGGER_SYSVIEW_SendSysDesc("N=" SYSVIEW_APP_NAME ",D=" SYSVIEW_DEVICE_NAME);
     SEGGER_SYSVIEW_SendSysDesc("I#15=SysTick");
+    SEGGER_SYSVIEW_RegisterData(&regdataX);
 }
 
 static void _cbSendTaskList(void)
