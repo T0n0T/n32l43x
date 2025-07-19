@@ -105,8 +105,8 @@ ValveConf ValveConf_inst;
 //${AOs::ValveConf::SM} ......................................................
 static QState ValveConf_initial(ValveConf * const me, void const * const par) {
     //${AOs::ValveConf::SM::initial}
-    QActive_subscribe((QActive*)me, LOCK_SIG);
-    QActive_subscribe((QActive*)me, UNLOCK_SIG);
+    QActive_subscribe((QActive*)me, VALVE_LOCK_SIG);
+    QActive_subscribe((QActive*)me, VALVE_UNLOCK_SIG);
     static struct {
         QMState const *target;
         QActionHandler act[2];
@@ -149,8 +149,8 @@ static QState ValveConf_Active(ValveConf * const me, QEvt const * const e) {
             status_ = QM_HANDLED();
             break;
         }
-        //${AOs::ValveConf::SM::Active::LOCK}
-        case LOCK_SIG: {
+        //${AOs::ValveConf::SM::Active::VALVE_LOCK}
+        case VALVE_LOCK_SIG: {
             static struct {
                 QMState const *target;
                 QActionHandler act[3];
@@ -200,8 +200,8 @@ static QState ValveConf_Wait_x(ValveConf * const me) {
 static QState ValveConf_Wait(ValveConf * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        //${AOs::ValveConf::SM::Wait::UNLOCK}
-        case UNLOCK_SIG: {
+        //${AOs::ValveConf::SM::Wait::VALVE_UNLOCK}
+        case VALVE_UNLOCK_SIG: {
             static struct {
                 QMState const *target;
                 QActionHandler act[3];

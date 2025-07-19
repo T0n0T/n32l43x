@@ -47,9 +47,6 @@ typedef struct {
     int8_t  dir;  // 方向 (+1正转, -1反转)
 } TransitionRule;
 
-extern cmd_config_t global_config;
-extern ValveVal*    global_valve_value;
-
 static ValveEvt evt;
 
 #ifdef DEBUG
@@ -236,8 +233,11 @@ ValveCounter ValveCounter_inst;
 //${AOs::ValveCounter::SM} ...................................................
 static QState ValveCounter_initial(ValveCounter * const me, void const * const par) {
     //${AOs::ValveCounter::SM::initial}
-    QActive_subscribe((QActive*)me, LOCK_SIG);
-    QActive_subscribe((QActive*)me, UNLOCK_SIG);
+    QActive_subscribe((QActive*)me, VALVE_LOCK_SIG);
+    QActive_subscribe((QActive*)me, VALVE_UNLOCK_SIG);
+    #ifdef DEBUG
+    Xdata.pValue.pI32 = (I32 *)&global_valve_value->total_ticks;
+    #endif
     static struct {
         QMState const *target;
         QActionHandler act[2];
@@ -268,8 +268,8 @@ static QState ValveCounter_Wait_x(ValveCounter * const me) {
 static QState ValveCounter_Wait(ValveCounter * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        //${AOs::ValveCounter::SM::Wait::UNLOCK}
-        case UNLOCK_SIG: {
+        //${AOs::ValveCounter::SM::Wait::VALVE_UNLOCK}
+        case VALVE_UNLOCK_SIG: {
             static struct {
                 QMState const *target;
                 QActionHandler act[3];
@@ -309,8 +309,8 @@ static QState ValveCounter_Work_x(ValveCounter * const me) {
 static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        //${AOs::ValveCounter::SM::Work::LOCK}
-        case LOCK_SIG: {
+        //${AOs::ValveCounter::SM::Work::VALVE_LOCK}
+        case VALVE_LOCK_SIG: {
             static struct {
                 QMState const *target;
                 QActionHandler act[3];
@@ -337,7 +337,6 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
             #endif
                     global_valve_value->total_ticks += check_direction(&last_state, &new_state);
                     QEvt_ctor(&evt.super, VALVE_UPDATE_SIG);
-                    evt.evtType = VALVE_VALUE;
                     QACTIVE_PUBLISH(&evt.super, &me->super);
                     //QACTIVE_POST_X(AO_ValveHandler, &evt.super, 1, &me->super);
                 }

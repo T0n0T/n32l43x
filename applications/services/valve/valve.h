@@ -38,10 +38,21 @@
 #ifndef __VALVE_H__
 #define __VALVE_H__
 
+#include "cmd.h"
+
 #ifdef DEBUG
 #include "SEGGER_SYSVIEW.h"
 #define VALVE_UPDATE_EVENT 0x400
-#define VALVE_VALVE_TICK 0
+#define VALVE_IDLE_EVENT   0x401
+#define VALVE_VALVE_TICK   0
+#endif
+
+#define VALVE_STATUS_OFF  0
+#define VALVE_STATUS_ON   1
+
+#ifdef USE_MODBUS
+#include "user_mb_app.h"
+extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
 #endif
 
 #define TICKS_PER_ROTATION 6 // 每圈的跳变次数（6磁铁）
@@ -50,12 +61,11 @@
 
 //${Shared::AppSignals} ......................................................
 enum AppSignals {
-    LOCK_SIG = Q_USER_SIG,
-    UNLOCK_SIG,
+    VALVE_LOCK_SIG = Q_USER_SIG,
+    VALVE_UNLOCK_SIG,
     VALVE_REBOOT_SIG,
     VALVE_DAILY_SIG,
     VALVE_UPDATE_SIG,
-    VALVE_PERSIST_SIG,
     VALVE_EXIT_SIG,
     VALVE_CMD_PARSE_SIG,
     VALVE_REFACTORY_SIG,
@@ -64,6 +74,9 @@ enum AppSignals {
     VALVE_TUNING_START_SIG,
     VALVE_TUNING_STOP_SIG,
     VALVE_INFO_READ_SIG,
+    VALVE_PERSIST_SIG,
+    VALVE_PERSIST_START_SIG,
+    VALVE_PERSIST_PROCESS_SIG,
     MAX_PUB_SIG,
 
     TIMEOUT_SIG,
@@ -124,6 +137,14 @@ typedef struct {
     uint32_t flag;
     ValveVal val;
 } ValveValStore;
+
+//${Shared::ValvePersistRequest} .............................................
+typedef struct {
+// public:
+    uint32_t word_len;
+    uint32_t data_ptr;
+    uint32_t write_ptr;
+} ValvePersistRequest;
 //$enddecl${Shared} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$declare${AOs::AO_ValveCounter} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -155,5 +176,18 @@ extern QActive * const AO_ValveConf;
 //${AOs::ValveConf_ctor} .....................................................
 void ValveConf_ctor(void);
 //$enddecl${AOs::ValveConf_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//$declare${AOs::AO_ValvePersist} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+//${AOs::AO_ValvePersist} ....................................................
+extern QActive * const AO_ValvePersist;
+//$enddecl${AOs::AO_ValvePersist} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//$declare${AOs::ValvePersist_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+//${AOs::ValvePersist_ctor} ..................................................
+void ValvePersist_ctor(void);
+//$enddecl${AOs::ValvePersist_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+extern ValveVal*    global_valve_value;
+extern cmd_config_t global_config;
 
 #endif // __VALVE_H__
