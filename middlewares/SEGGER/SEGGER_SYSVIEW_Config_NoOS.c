@@ -101,7 +101,7 @@ extern unsigned int SystemCoreClock;
 #define NOCYCCNT_BIT  (1uL << 25)                                // Cycle counter support bit
 #define CYCCNTENA_BIT (1uL << 0)                                 // Cycle counter enable bit
 
-SEGGER_SYSVIEW_TASKINFO _Q_taskInfo[3];
+SEGGER_SYSVIEW_TASKINFO _Q_taskInfo[4];
 
 static const SEGGER_SYSVIEW_DATA_REGISTER regdataX = {
     .ID            = 0,
@@ -123,12 +123,21 @@ static void _cbSendSystemDesc(void)
 {
     SEGGER_SYSVIEW_SendSysDesc("N=" SYSVIEW_APP_NAME ",D=" SYSVIEW_DEVICE_NAME);
     SEGGER_SYSVIEW_SendSysDesc("I#15=SysTick");
+    SEGGER_SYSVIEW_NameMarker(0x400, "VALVE_IDLE_EVENT");
+    SEGGER_SYSVIEW_NameMarker(0x405, "FLASH_UNLOCK");
+    SEGGER_SYSVIEW_NameMarker(0x406, "FLASH_CLEAR_FLAG");
+    SEGGER_SYSVIEW_NameMarker(0x407, "FLASH_WAIT_READY");
+    SEGGER_SYSVIEW_NameMarker(0x408, "FLASH_SET_OP_TYPE");
+    SEGGER_SYSVIEW_NameMarker(0x409, "FLASH_SET_ADDRESS");
+    SEGGER_SYSVIEW_NameMarker(0x40A, "FLASH_START_OP");
+    SEGGER_SYSVIEW_NameMarker(0x40B, "FLASH_WAIT_COMPLETE");
+    SEGGER_SYSVIEW_NameMarker(0x40C, "FLASH_LOCK");
     SEGGER_SYSVIEW_RegisterData(&regdataX);
 }
 
 static void _cbSendTaskList(void)
 {
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < sizeof(_Q_taskInfo) / sizeof(_Q_taskInfo[0]); i++) {
         SEGGER_SYSVIEW_SendTaskInfo(&_Q_taskInfo[i]);
     }
 }

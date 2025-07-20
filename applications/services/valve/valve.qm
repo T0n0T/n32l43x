@@ -4,12 +4,11 @@
  <package name="Shared" stereotype="0x00">
   <attribute name="AppSignals" type="enum" visibility="0x04" properties="0x00">
    <code>{
-    LOCK_SIG = Q_USER_SIG,
-    UNLOCK_SIG,
+    VALVE_LOCK_SIG = Q_USER_SIG,
+    VALVE_UNLOCK_SIG,
     VALVE_REBOOT_SIG,
     VALVE_DAILY_SIG,
     VALVE_UPDATE_SIG,
-    VALVE_PERSIST_SIG,
     VALVE_EXIT_SIG,
     VALVE_CMD_PARSE_SIG,
     VALVE_REFACTORY_SIG,
@@ -18,6 +17,9 @@
     VALVE_TUNING_START_SIG,
     VALVE_TUNING_STOP_SIG,
     VALVE_INFO_READ_SIG,
+    VALVE_PERSIST_SIG,
+    VALVE_PERSIST_START_SIG,
+    VALVE_PERSIST_PROCESS_SIG,
     MAX_PUB_SIG,
 
     TIMEOUT_SIG,
@@ -61,6 +63,11 @@
    <attribute name="flag" type="uint32_t" visibility="0x00" properties="0x00"/>
    <attribute name="val" type="ValveVal" visibility="0x00" properties="0x00"/>
   </class>
+  <class name="ValvePersistRequest">
+   <attribute name="word_len" type="uint32_t" visibility="0x00" properties="0x00"/>
+   <attribute name="data_ptr" type="uint32_t" visibility="0x00" properties="0x00"/>
+   <attribute name="write_ptr" type="uint32_t" visibility="0x00" properties="0x00"/>
+  </class>
  </package>
  <package name="AOs" stereotype="0x02">
   <class name="ValveCounter" superclass="qpc::QMActive">
@@ -69,8 +76,11 @@
    <attribute name="inst" type="ValveCounter" visibility="0x00" properties="0x01"/>
    <statechart properties="0x00">
     <initial target="../1">
-     <action>QActive_subscribe((QActive*)me, LOCK_SIG);
-QActive_subscribe((QActive*)me, UNLOCK_SIG);</action>
+     <action>QActive_subscribe((QActive*)me, VALVE_LOCK_SIG);
+QActive_subscribe((QActive*)me, VALVE_UNLOCK_SIG);
+#ifdef DEBUG
+Xdata.pValue.pI32 = (I32 *)&amp;global_valve_value-&gt;total_ticks;
+#endif</action>
      <initial_glyph conn="26,14,5,1,18,7,-2">
       <action box="0,-2,10,2"/>
      </initial_glyph>
@@ -78,7 +88,7 @@ QActive_subscribe((QActive*)me, UNLOCK_SIG);</action>
     <state name="Wait">
      <entry brief="set sleep bits 1">Sleep_release(COUNTER_BIT);</entry>
      <exit brief="set sleep bits 0">Sleep_request(COUNTER_BIT);</exit>
-     <tran trig="UNLOCK" target="../../2">
+     <tran trig="VALVE_UNLOCK" target="../../2">
       <tran_glyph conn="42,25,1,1,2,13,-2">
        <action box="2,0,10,2"/>
       </tran_glyph>
@@ -93,7 +103,7 @@ QActive_subscribe((QActive*)me, UNLOCK_SIG);</action>
 QTimeEvt_armX(&amp;me-&gt;timeEvt, 1, 1);</entry>
      <exit brief="stop timer; switch off hall sensors;">QTimeEvt_disarm(&amp;me-&gt;timeEvt);
 hall_set_ctr(DISABLE);</exit>
-     <tran trig="LOCK" target="../../1">
+     <tran trig="VALVE_LOCK" target="../../1">
       <tran_glyph conn="28,38,3,3,-2,-13,2">
        <action box="-10,-2,10,2"/>
       </tran_glyph>
@@ -109,7 +119,6 @@ if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
 #endif
         global_valve_value-&gt;total_ticks += check_direction(&amp;last_state, &amp;new_state);        
         QEvt_ctor(&amp;evt.super, VALVE_UPDATE_SIG);
-        evt.evtType = VALVE_VALUE;
         QACTIVE_PUBLISH(&amp;evt.super, &amp;me-&gt;super);
         //QACTIVE_POST_X(AO_ValveHandler, &amp;evt.super, 1, &amp;me-&gt;super);
     } 
@@ -125,7 +134,7 @@ if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
       <exit box="0,5,4,2"/>
      </state_glyph>
     </state>
-    <state_diagram size="147,84"/>
+    <state_diagram size="73,80"/>
    </statechart>
   </class>
   <class name="ValveHandler" superclass="qpc::QMActive">
@@ -141,8 +150,8 @@ include:
    <attribute name="persistEvt" type="QTimeEvt" visibility="0x00" properties="0x00"/>
    <statechart properties="0x00">
     <initial target="../1">
-     <action>QActive_subscribe((QActive*)me, LOCK_SIG);
-QActive_subscribe((QActive*)me, UNLOCK_SIG);
+     <action>QActive_subscribe((QActive*)me, VALVE_LOCK_SIG);
+QActive_subscribe((QActive*)me, VALVE_UNLOCK_SIG);
 QActive_subscribe((QActive*)me, VALVE_UPDATE_SIG);
 QActive_subscribe((QActive*)me, VALVE_REBOOT_SIG);
 QActive_subscribe((QActive*)me, VALVE_REFACTORY_SIG);
@@ -157,16 +166,21 @@ if (_valve_store-&gt;flag == FLAG_VAILD) {
     memcpy(&amp;global_valve_store, (void*)DATA_ADDR_FLASH, sizeof(ValveValStore));
     APP_LOG_INFO(&quot;Load valve value from flash&quot;);
 }
+persist_request.word_len = sizeof(ValveValStore) / sizeof(uint32_t);
+persist_request.data_ptr = (uint32_t)&amp;global_valve_store;
+persist_request.write_ptr = DATA_ADDR_FLASH;
 if (global_valve_value-&gt;current_status == VALVE_STATUS_ON) {
-    lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
-    lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
-    lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
-    lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
+    LCD-&gt;RAM_COM[LCD_RAM1_COM0] = 0x00000000;
+    LCD-&gt;RAM_COM[LCD_RAM1_COM1] = 0x00000000;
+    LCD-&gt;RAM_COM[LCD_RAM1_COM2] = 0x00005000;
+    __LCD_CLEAR_FLAG(LCD_FLAG_UDD_CLEAR);
+    __LCD_UPDATE_REQUEST();
 } else {
-    lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
-    lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
-    lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
-    lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
+    LCD-&gt;RAM_COM[LCD_RAM1_COM0] = 0x00005000;
+    LCD-&gt;RAM_COM[LCD_RAM1_COM1] = 0x00000000;
+    LCD-&gt;RAM_COM[LCD_RAM1_COM2] = 0x00000000;
+    __LCD_CLEAR_FLAG(LCD_FLAG_UDD_CLEAR);
+    __LCD_UPDATE_REQUEST();
 }
 
 //get valve config from spi flash
@@ -183,7 +197,7 @@ sFLASH_DeInit();
 #ifdef USE_MODBUS
 eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
 eMBEnable();
-QTimeEvt_armX(&amp;me-&gt;timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));
+//QTimeEvt_armX(&amp;me-&gt;timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));
 #endif</action>
      <initial_glyph conn="18,12,5,1,62,7,-3">
       <action box="0,-2,10,2"/>
@@ -192,18 +206,18 @@ QTimeEvt_armX(&amp;me-&gt;timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));
     <state name="Idle">
      <entry>Sleep_release(HANDLER_BIT);</entry>
      <exit>Sleep_request(HANDLER_BIT);</exit>
-     <tran trig="UNLOCK" target="../3">
-      <action>QF_CRIT_ENTRY();
-if (global_valve_value-&gt;total_ticks &gt;= global_config.tick) {
+     <tran trig="VALVE_UNLOCK" target="../3">
+      <action>if (global_valve_value-&gt;total_ticks &gt;= global_config.tick) {
     global_valve_value-&gt;total_ticks = global_config.tick;
 } else if (global_valve_value-&gt;total_ticks &lt;= 0) {
     global_valve_value-&gt;total_ticks = 0;
 }
 last_total_ticks = global_valve_value-&gt;total_ticks;
+QF_CRIT_ENTRY();
 sFLASH_Init();
 QF_CRIT_EXIT();
-QEvt_ctor(&amp;self_evt, VALVE_UPDATE_SIG);
-QACTIVE_POST(AO_ValveHandler, &amp;self_evt, 0U);
+QEvt_ctor(&amp;evt.super, VALVE_UPDATE_SIG);
+QACTIVE_POST(AO_ValveHandler, &amp;evt.super, 0U);
 QTimeEvt_disarm(&amp;me-&gt;exitEvt);</action>
       <tran_glyph conn="77,30,1,1,-6">
        <action box="-8,-2,10,2"/>
@@ -224,58 +238,44 @@ eMBPoll();
       </tran_glyph>
      </tran>
      <state name="Handle">
-      <tran trig="LOCK">
+      <tran trig="VALVE_LOCK">
        <action>QTimeEvt_rearm(&amp;me-&gt;exitEvt, MS_TO_TICK(2000));</action>
        <tran_glyph conn="24,52,3,-1,14">
         <action box="0,-2,10,2"/>
        </tran_glyph>
       </tran>
       <tran trig="VALVE_UPDATE">
-       <action brief="handle data write flash action and lcd refresh">#ifdef DEBUG
-SEGGER_SYSVIEW_MarkStart(VALVE_UPDATE_EVENT);
-#endif
-QF_CRIT_ENTRY();
-if (global_valve_value-&gt;total_ticks &gt;= global_config.tick) {
+       <action brief="handle data write flash action and lcd refresh">if (global_valve_value-&gt;total_ticks &gt;= global_config.tick) {
     global_valve_value-&gt;current_status = VALVE_STATUS_ON;
-    lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
-    lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
-    lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
-    lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
 } else if (global_valve_value-&gt;total_ticks &lt;= 0) {
     global_valve_value-&gt;current_status = VALVE_STATUS_OFF;
-    lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
-    lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
-    lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
-    lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
 }
-QF_CRIT_EXIT();
 QTimeEvt_rearm(&amp;me-&gt;persistEvt, MS_TO_TICK(2000));
 
 if (update_handle != NULL) {
     update_handle(global_valve_value);
-}
-#ifdef DEBUG
-SEGGER_SYSVIEW_MarkStop(VALVE_UPDATE_EVENT);
-#endif</action>
+}</action>
        <tran_glyph conn="24,34,3,-1,14">
         <action box="0,-2,13,2"/>
        </tran_glyph>
       </tran>
       <tran trig="VALVE_CONFIG_WRITE">
        <action brief="handle config write flash action;if error happend, start timer for error blinky">ValveEvt const *ve = (ValveEvt const *)e;
-memcpy(&amp;global_config, ve-&gt;msg, sizeof(cmd_config_t));
-QF_CRIT_ENTRY();
-sFLASH_EraseSector(CONF_ADDR_EXFLASH);
-sFLASH_WriteBuffer((uint8_t*)&amp;global_config, CONF_ADDR_EXFLASH, sizeof(cmd_config_t));
-QF_CRIT_EXIT();
-APP_LOG_INFO(&quot;Config written to flash&quot;);</action>
+if (ve-&gt;evtType == VALVE_CMD){
+    memcpy(&amp;global_config, ve-&gt;msg, sizeof(cmd_config_t));
+    QF_CRIT_ENTRY();
+    sFLASH_EraseSector(CONF_ADDR_EXFLASH);
+    sFLASH_WriteBuffer((uint8_t*)&amp;global_config, CONF_ADDR_EXFLASH, sizeof(cmd_config_t));
+    QF_CRIT_EXIT();
+    APP_LOG_INFO(&quot;Config written to flash&quot;);
+}</action>
        <tran_glyph conn="24,42,3,-1,14">
         <action box="0,-2,19,2"/>
        </tran_glyph>
       </tran>
       <tran trig="VALVE_CONFIG_READ">
        <action>ValveEvt const* ve = (ValveEvt const*)e;
-if (ve-&gt;handle != NULL) {
+if (ve-&gt;handle != NULL &amp;&amp; ve-&gt;evtType == VALVE_CMD) {
     ve-&gt;handle(&amp;global_config);
 }</action>
        <tran_glyph conn="24,44,3,-1,14">
@@ -285,14 +285,11 @@ if (ve-&gt;handle != NULL) {
       <tran trig="VALVE_EXIT" target="../..">
        <action>QF_CRIT_ENTRY();
 APP_LOG_DEBUG(&quot;write flash %d&quot;, last_total_ticks);
-uint32_t *p = (uint32_t *)&amp;global_valve_store;
-size_t len = sizeof(ValveValStore) / sizeof(uint32_t);
-flash_erase_page(DATA_ADDR_FLASH);
-for (size_t i = 0; i &lt; len; ++i) {
-    flash_program_word(DATA_ADDR_FLASH + i * 4, p[i]);
-}
+QEvt_ctor(&amp;evt.super, VALVE_PERSIST_START_SIG);
+evt.msg     = (void *)&amp;persist_request;
+evt.evtType = VALVE_VALUE;
+QACTIVE_POST(AO_ValvePersist, &amp;evt.super, 0U);
 sFLASH_DeInit();
-use_flash_data = true;
 QF_CRIT_EXIT();</action>
        <tran_glyph conn="24,30,3,3,-6">
         <action box="-9,-2,10,2"/>
@@ -300,12 +297,12 @@ QF_CRIT_EXIT();</action>
       </tran>
       <tran trig="VALVE_INFO_READ">
        <action>ValveEvt const* ve = (ValveEvt const*)e;
-if (ve-&gt;handle != NULL &amp;&amp; ve-&gt;msg != NULL) {
+if (ve-&gt;handle != NULL &amp;&amp; ve-&gt;msg != NULL &amp;&amp; ve-&gt;evtType == VALVE_CMD) {
     int is_enable = (intptr_t)ve-&gt;msg;
     if (is_enable) {
         update_handle = ve-&gt;handle;
-        QEvt_ctor(&amp;self_evt, VALVE_UPDATE_SIG);
-        QACTIVE_POST(AO_ValveHandler, &amp;self_evt, 0U);
+        QEvt_ctor(&amp;evt.super, VALVE_UPDATE_SIG);
+        QACTIVE_POST(AO_ValveHandler, &amp;evt.super, 0U);
     }else{
         update_handle = NULL;
     }
@@ -315,13 +312,12 @@ if (ve-&gt;handle != NULL &amp;&amp; ve-&gt;msg != NULL) {
        </tran_glyph>
       </tran>
       <tran trig="VALVE_TUNING_START" target="../10">
-       <action>QF_CRIT_ENTRY();
-global_valve_value-&gt;total_ticks = 0;
-lcd_set_char(LCD_CHAR_CLOSE_CHINESE, true);
-lcd_set_char(LCD_CHAR_CLOSE_ARROW, true);
-lcd_set_char(LCD_CHAR_OPEN_CHINESE, false);
-lcd_set_char(LCD_CHAR_OPEN_ARROW, false);
-QF_CRIT_EXIT();
+       <action>global_valve_value-&gt;total_ticks = 0;
+LCD-&gt;RAM_COM[LCD_RAM1_COM0] = 0x00005000;
+LCD-&gt;RAM_COM[LCD_RAM1_COM1] = 0x00000000;
+LCD-&gt;RAM_COM[LCD_RAM1_COM2] = 0x00000000;
+__LCD_CLEAR_FLAG(LCD_FLAG_UDD_CLEAR);
+__LCD_UPDATE_REQUEST();
 APP_LOG_DEBUG(&quot;calibration Start&quot;);</action>
        <tran_glyph conn="24,48,3,3,22">
         <action box="0,-2,19,2"/>
@@ -329,17 +325,11 @@ APP_LOG_DEBUG(&quot;calibration Start&quot;);</action>
       </tran>
       <tran trig="VALVE_PERSIST">
        <action>if (global_valve_value-&gt;total_ticks != last_total_ticks) {
-    QF_CRIT_ENTRY();
-    uint32_t *p = (uint32_t *)&amp;global_valve_store;
-    size_t len = sizeof(ValveValStore) / sizeof(uint32_t);
-    flash_erase_page(DATA_ADDR_FLASH);
-    for (size_t i = 0; i &lt; len; ++i) {
-        flash_program_word(DATA_ADDR_FLASH + i * 4, p[i]);
-    }
+    QEvt_ctor(&amp;evt.super, VALVE_PERSIST_START_SIG);
+    evt.msg     = (void *)&amp;persist_request;
+    evt.evtType = VALVE_VALUE;
+    QACTIVE_POST(AO_ValvePersist, &amp;evt.super, 0U);
     last_total_ticks = global_valve_value-&gt;total_ticks;
-    use_flash_data = true;
-    APP_LOG_DEBUG(&quot;write flash %d&quot;, last_total_ticks);
-    QF_CRIT_EXIT();
 }</action>
        <tran_glyph conn="24,36,3,-1,14">
         <action box="0,-2,14,2"/>
@@ -364,7 +354,6 @@ QF_CRIT_EXIT();</action>
         flash_program_word(DATA_ADDR_FLASH + i * 4, p[i]);
     }
     last_total_ticks = global_valve_value-&gt;total_ticks;
-    use_flash_data = true;
     APP_LOG_DEBUG(&quot;write flash %d&quot;, last_total_ticks);
     QF_CRIT_EXIT();
 }
@@ -379,13 +368,14 @@ NVIC_SystemReset();</action>
 global_config.tick = global_valve_value-&gt;total_ticks;
 sFLASH_EraseSector(CONF_ADDR_EXFLASH);
 sFLASH_WriteBuffer((uint8_t*)&amp;global_config, CONF_ADDR_EXFLASH, sizeof(cmd_config_t));
-lcd_set_char(LCD_CHAR_OPEN_CHINESE, true);
-lcd_set_char(LCD_CHAR_OPEN_ARROW, true);
-lcd_set_char(LCD_CHAR_CLOSE_CHINESE, false);
-lcd_set_char(LCD_CHAR_CLOSE_ARROW, false);
 QF_CRIT_EXIT();
-QEvt_ctor(&amp;self_evt, VALVE_UPDATE_SIG);
-QACTIVE_POST(AO_ValveHandler, &amp;self_evt, 0U);
+LCD-&gt;RAM_COM[LCD_RAM1_COM0] = 0x00000000;
+LCD-&gt;RAM_COM[LCD_RAM1_COM1] = 0x00000000;
+LCD-&gt;RAM_COM[LCD_RAM1_COM2] = 0x00005000;
+__LCD_CLEAR_FLAG(LCD_FLAG_UDD_CLEAR);
+__LCD_UPDATE_REQUEST();
+QEvt_ctor(&amp;evt.super, VALVE_UPDATE_SIG);
+QACTIVE_POST(AO_ValveHandler, &amp;evt.super, 0U);
 APP_LOG_DEBUG(&quot;calibration Done&quot;);</action>
         <tran_glyph conn="46,50,3,3,-22">
          <action box="-17,-2,19,2"/>
@@ -408,7 +398,7 @@ APP_LOG_DEBUG(&quot;calibration Done&quot;);</action>
       <exit box="0,5,6,2"/>
      </state_glyph>
     </state>
-    <state_diagram size="141,83"/>
+    <state_diagram size="88,83"/>
    </statechart>
   </class>
   <class name="ValveConf" superclass="qpc::QMActive">
@@ -419,9 +409,9 @@ APP_LOG_DEBUG(&quot;calibration Done&quot;);</action>
    <attribute name="timeEvt" type="QTimeEvt" visibility="0x00" properties="0x00"/>
    <statechart properties="0x00">
     <initial target="../2">
-     <action>QActive_subscribe((QActive*)me, LOCK_SIG);
-QActive_subscribe((QActive*)me, UNLOCK_SIG);</action>
-     <initial_glyph conn="20,16,5,1,20,7,-2">
+     <action>QActive_subscribe((QActive*)me, VALVE_LOCK_SIG);
+QActive_subscribe((QActive*)me, VALVE_UNLOCK_SIG);</action>
+     <initial_glyph conn="20,16,5,1,20,6,-2">
       <action box="0,-2,10,2"/>
      </initial_glyph>
     </initial>
@@ -440,8 +430,8 @@ if(!count){
        <action box="0,-2,10,2"/>
       </tran_glyph>
      </tran>
-     <tran trig="LOCK" target="../../2">
-      <tran_glyph conn="20,40,3,3,-2,-14,2">
+     <tran trig="VALVE_LOCK" target="../../2">
+      <tran_glyph conn="20,40,3,3,-2,-15,2">
        <action box="0,-2,10,2"/>
       </tran_glyph>
      </tran>
@@ -462,29 +452,148 @@ if (evt-&gt;evtType == VALVE_CMD) {
     <state name="Wait">
      <entry>Sleep_release(CONFIG_BIT);</entry>
      <exit>Sleep_request(CONFIG_BIT);</exit>
-     <tran trig="UNLOCK" target="../../1">
-      <tran_glyph conn="38,26,1,1,2,14,-2">
+     <tran trig="VALVE_UNLOCK" target="../../1">
+      <tran_glyph conn="38,25,1,1,2,15,-2">
        <action box="0,-2,10,2"/>
       </tran_glyph>
      </tran>
-     <state_glyph node="20,20,18,10">
+     <state_glyph node="20,19,18,10">
       <entry box="0,3,6,2"/>
       <exit box="0,5,6,2"/>
      </state_glyph>
     </state>
-    <state_diagram size="135,88"/>
+    <state_diagram size="61,88"/>
    </statechart>
   </class>
-  <attribute name="AO_ValveCounter" type="QActive * const" visibility="0x00" properties="0x00">
-   <code>= (QActive* const)&amp;ValveCounter_inst.super;</code>
-  </attribute>
+  <class name="ValvePersist" superclass="qpc::QMActive">
+   <attribute name="processEvt" type="QTimeEvt" visibility="0x00" properties="0x00"/>
+   <attribute name="inst" type="ValvePersist" visibility="0x00" properties="0x01"/>
+   <attribute name="request" type="ValvePersistRequest" visibility="0x00" properties="0x00"/>
+   <statechart properties="0x00">
+    <initial target="../1">
+     <initial_glyph conn="31,18,5,1,21,6,-2">
+      <action box="1,-4,10,2"/>
+     </initial_glyph>
+    </initial>
+    <state name="Idle">
+     <tran trig="VALVE_PERSIST_START" target="../../3">
+      <action>ValveEvt const* ve = (ValveEvt const*)e;
+if (ve-&gt;evtType == VALVE_VALUE) {
+    memcpy(&amp;me-&gt;request, ve-&gt;msg, sizeof(ValvePersistRequest));
+    write_ptr = me-&gt;request.write_ptr;
+    QTimeEvt_armX(&amp;me-&gt;processEvt, MS_TO_TICK(1), MS_TO_TICK(1));
+}</action>
+      <tran_glyph conn="36,28,3,1,16,10,-2">
+       <action box="0,-2,19,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="36,20,14,12"/>
+    </state>
+    <state name="Complete">
+     <entry>me-&gt;request.word_len--;
+me-&gt;request.data_ptr  += 4;
+me-&gt;request.write_ptr += 4;</entry>
+     <tran trig="VALVE_PERSIST_PROCESS">
+      <choice target="../../../1">
+       <guard brief="remain == 0">me-&gt;request.word_len == 0</guard>
+       <action>QTimeEvt_disarm(&amp;me-&gt;processEvt);</action>
+       <choice_glyph conn="45,70,4,3,6,-16,-50,7">
+        <action box="-13,7,13,2"/>
+       </choice_glyph>
+      </choice>
+      <choice>
+       <guard brief="remain &gt; 0">me-&gt;request.word_len &gt; 0</guard>
+       <choice target="../../../../3">
+        <guard brief="need erase">me-&gt;request.write_ptr - write_ptr == PAGE_LEN</guard>
+        <action>write_ptr += PAGE_LEN;</action>
+        <choice_glyph conn="56,70,5,1,4,-30,-10">
+         <action box="5,-15,10,2"/>
+        </choice_glyph>
+       </choice>
+       <choice target="../../../../4">
+        <guard brief="directly write">me-&gt;request.write_ptr - write_ptr &lt; PAGE_LEN</guard>
+        <choice_glyph conn="56,70,4,1,-16,-6">
+         <action box="-5,-9,10,2"/>
+        </choice_glyph>
+       </choice>
+       <choice_glyph conn="45,70,5,-1,11">
+        <action box="1,0,13,2"/>
+       </choice_glyph>
+      </choice>
+      <tran_glyph conn="35,70,3,-1,10">
+       <action box="0,-2,22,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="35,62,14,12">
+      <entry box="0,3,6,2"/>
+     </state_glyph>
+    </state>
+    <state name="Prepare">
+     <entry brief="perpare page for writing, done earse">flash_fsm_init(&amp;flash_fsm);
+flash_request.type    = FLASH_OP_ERASE_PAGE;
+flash_request.address = write_ptr;
+flash_request.data    = 0;
+flash_fsm_start(&amp;flash_fsm, &amp;flash_request, NULL, NULL);</entry>
+     <tran trig="VALVE_PERSIST_PROCESS">
+      <action>flash_fsm_process(&amp;flash_fsm);</action>
+      <choice target="../../../4">
+       <guard brief="success">flash_fsm_get_result(&amp;flash_fsm) == FLASH_RESULT_SUCCESS</guard>
+       <choice_glyph conn="46,42,5,1,6,10,-2">
+        <action box="1,0,10,2"/>
+       </choice_glyph>
+      </choice>
+      <choice target="../../../1">
+       <guard brief="fail">(flash_fsm_get_result(&amp;flash_fsm) != FLASH_RESULT_SUCCESS) &amp;&amp; (flash_fsm_get_result(&amp;flash_fsm) != FLASH_RESULT_PENDING)</guard>
+       <choice_glyph conn="46,42,4,3,2,-12,-14,2">
+        <action box="-8,2,9,2"/>
+       </choice_glyph>
+      </choice>
+      <tran_glyph conn="36,42,3,-1,10">
+       <action box="0,-2,22,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="36,34,14,12">
+      <entry box="0,3,6,2"/>
+     </state_glyph>
+    </state>
+    <state name="Handle">
+     <entry>flash_fsm_init(&amp;flash_fsm);
+flash_request.type    = FLASH_OP_PROGRAM_WORD;
+flash_request.address = me-&gt;request.write_ptr;
+flash_request.data    = *(uint32_t*)me-&gt;request.data_ptr;
+flash_fsm_start(&amp;flash_fsm, &amp;flash_request, NULL, NULL);</entry>
+     <tran trig="VALVE_PERSIST_PROCESS">
+      <action>flash_fsm_process(&amp;flash_fsm);</action>
+      <choice target="../../../2">
+       <guard brief="success">flash_fsm_get_result(&amp;flash_fsm) == FLASH_RESULT_SUCCESS</guard>
+       <choice_glyph conn="46,56,5,1,6,10,-3">
+        <action box="1,0,10,2"/>
+       </choice_glyph>
+      </choice>
+      <choice target="../../../1">
+       <guard brief="fail">(flash_fsm_get_result(&amp;flash_fsm) != FLASH_RESULT_SUCCESS) &amp;&amp; (flash_fsm_get_result(&amp;flash_fsm) != FLASH_RESULT_PENDING)</guard>
+       <choice_glyph conn="46,56,4,3,2,-14,-30,4">
+        <action box="-8,2,10,2"/>
+       </choice_glyph>
+      </choice>
+      <tran_glyph conn="36,56,3,-1,10">
+       <action box="0,-2,22,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="36,48,14,12">
+      <entry box="0,3,6,2"/>
+     </state_glyph>
+    </state>
+    <state_diagram size="110,89"/>
+   </statechart>
+  </class>
   <operation name="ValveCounter_ctor" type="void" visibility="0x00" properties="0x00">
    <code>ValveCounter * const me = &amp;ValveCounter_inst;
 QMActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveCounter_initial));
 QTimeEvt_ctorX(&amp;me-&gt;timeEvt, (QActive*)me, TIMEOUT_SIG, 0U);</code>
   </operation>
-  <attribute name="AO_ValveHandler" type="QActive * const" visibility="0x00" properties="0x00">
-   <code>= (QActive* const)&amp;ValveHandler_inst.super;</code>
+  <attribute name="AO_ValveCounter" type="QActive * const" visibility="0x00" properties="0x00">
+   <code>= (QActive* const)&amp;ValveCounter_inst.super;</code>
   </attribute>
   <operation name="ValveHandler_ctor" type="void" visibility="0x00" properties="0x00">
    <code>ValveHandler * const me = &amp;ValveHandler_inst;
@@ -493,14 +602,25 @@ QTimeEvt_ctorX(&amp;me-&gt;timeEvt, (QActive*)me, TIMEOUT_SIG, 0U);
 QTimeEvt_ctorX(&amp;me-&gt;persistEvt, (QActive*)me, VALVE_PERSIST_SIG, 0U);
 QTimeEvt_ctorX(&amp;me-&gt;exitEvt, (QActive*)me, VALVE_EXIT_SIG, 0U);</code>
   </operation>
-  <attribute name="AO_ValveConf" type="QActive * const" visibility="0x00" properties="0x00">
-   <code>= (QActive* const)&amp;ValveConf_inst.super;</code>
+  <attribute name="AO_ValveHandler" type="QActive * const" visibility="0x00" properties="0x00">
+   <code>= (QActive* const)&amp;ValveHandler_inst.super;</code>
   </attribute>
   <operation name="ValveConf_ctor" type="void" visibility="0x00" properties="0x00">
    <code>ValveConf * const me = &amp;ValveConf_inst;
 QMActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveConf_initial));
 QTimeEvt_ctorX(&amp;me-&gt;timeEvt, (QActive*)me, TIMEOUT_SIG, 0U);</code>
   </operation>
+  <attribute name="AO_ValveConf" type="QActive * const" visibility="0x00" properties="0x00">
+   <code>= (QActive* const)&amp;ValveConf_inst.super;</code>
+  </attribute>
+  <operation name="ValvePersist_ctor" type="void" visibility="0x00" properties="0x00">
+   <code>ValvePersist * const me = &amp;ValvePersist_inst;
+QMActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValvePersist_initial));
+QTimeEvt_ctorX(&amp;me-&gt;processEvt, (QActive*)me, VALVE_PERSIST_PROCESS_SIG, 0U);</code>
+  </operation>
+  <attribute name="AO_ValvePersist" type="QActive * const" visibility="0x00" properties="0x00">
+   <code>= (QActive* const)&amp;ValvePersist_inst.super;</code>
+  </attribute>
  </package>
  <directory name=".">
   <file name="valve_counter.c">
@@ -515,9 +635,6 @@ typedef struct {
     uint8_t to;   // 目标状态
     int8_t  dir;  // 方向 (+1正转, -1反转)
 } TransitionRule;
-
-extern cmd_config_t global_config;
-extern ValveVal*    global_valve_value;
 
 static ValveEvt evt;
 
@@ -648,10 +765,24 @@ $define ${AOs::ValveCounter}</text>
    <text>#ifndef __VALVE_H__
 #define __VALVE_H__
 
+#include &quot;cmd.h&quot;
+
 #ifdef DEBUG
 #include &quot;SEGGER_SYSVIEW.h&quot;
-#define VALVE_UPDATE_EVENT 0x400
-#define VALVE_VALVE_TICK 0
+#define VALVE_IDLE_EVENT      0x400
+#define VALVE_PERSIST_START   0x401
+#define VALVE_PERSIST_EARSE   0x402
+#define VALVE_PERSIST_PROGRAM 0x403
+#define VALVE_PERSIST_DONE    0x404
+#define VALVE_VALVE_TICK      0
+#endif
+
+#define VALVE_STATUS_OFF  0
+#define VALVE_STATUS_ON   1
+
+#ifdef USE_MODBUS
+#include &quot;user_mb_app.h&quot;
+extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
 #endif
 
 #define TICKS_PER_ROTATION 6 // 每圈的跳变次数（6磁铁）
@@ -663,6 +794,11 @@ $declare ${AOs::AO_ValveHandler}
 $declare ${AOs::ValveHandler_ctor}
 $declare ${AOs::AO_ValveConf}
 $declare ${AOs::ValveConf_ctor}
+$declare ${AOs::AO_ValvePersist}
+$declare ${AOs::ValvePersist_ctor}
+
+extern ValveVal*    global_valve_value;
+extern cmd_config_t global_config;
 
 #endif // __VALVE_H__</text>
   </file>
@@ -685,9 +821,7 @@ $define ${AOs::ValveConf}</text>
 #include &quot;cmd.h&quot;
 #include &quot;spi_flash.h&quot;
 #include &quot;log.h&quot;
-#ifdef USE_MODBUS
-#include &quot;user_mb_app.h&quot;
-#endif
+
 #define CONF_ADDR_EXFLASH 0x0
 #define DATA_ADDR_FLASH   0x0801F800
 
@@ -697,16 +831,16 @@ $define ${AOs::ValveConf}</text>
 ValveValStore global_valve_store = {
     .flag = FLAG_VAILD,
 };
-ValveVal*    global_valve_value = &amp;global_valve_store.val;
-cmd_config_t global_config      = {
-         .flag  = FLAG_VAILD,
-         .tick  = 12,             // 默认旋转阈值
-         .dir   = -1,             // 默认方向，逆时针
-         .model = &quot;default_model&quot; // 默认模型名称
+ValveVal*           global_valve_value = &amp;global_valve_store.val;
+ValvePersistRequest persist_request;
+cmd_config_t        global_config = {
+           .flag  = FLAG_VAILD,
+           .tick  = 12,             // 默认旋转阈值
+           .dir   = -1,             // 默认方向，逆时针
+           .model = &quot;default_model&quot; // 默认模型名称
 };
+static ValveEvt  evt;
 static int32_t   last_total_ticks;
-static bool      use_flash_data;
-static QEvt      self_evt;
 static EvtHandle update_handle;
 
 $declare ${AOs::ValveHandler}
@@ -714,6 +848,25 @@ $declare ${AOs::ValveHandler}
 $define ${AOs::AO_ValveHandler}
 $define ${AOs::ValveHandler_ctor}
 $define ${AOs::ValveHandler}</text>
+  </file>
+  <file name="valve_persist.c">
+   <text>#include &quot;qpc.h&quot;
+#include &quot;bsp.h&quot;
+#include &quot;valve.h&quot;
+#include &quot;cmd.h&quot;
+#include &quot;log.h&quot;
+
+#define PAGE_LEN 2048
+
+static uint32_t        write_ptr;
+static flash_fsm_t     flash_fsm;
+static flash_request_t flash_request;
+
+$declare ${AOs::ValvePersist}
+
+$define ${AOs::AO_ValvePersist}
+$define ${AOs::ValvePersist_ctor}
+$define ${AOs::ValvePersist}</text>
   </file>
  </directory>
 </model>

@@ -3,7 +3,6 @@
  *****************************************************************************/
 #include "qpc.h" /* QP/C API */
 #include "bsp.h"
-#include "cmd.h"
 #include "valve.h"
 #include "log.h"
 
@@ -16,12 +15,6 @@
 uint32_t    Sleep_bits;
 static QEvt _lock_evt;
 
-#ifdef USE_MODBUS
-#include "user_mb_app.h"
-extern UCHAR        ucSCoilBuf[S_COIL_NCOILS / 8];
-#endif
-extern ValveVal*    global_valve_value;
-extern cmd_config_t global_config;
 
 /* Assertion handler  ======================================================*/
 Q_NORETURN Q_onAssert(char const* module, int_t id)
@@ -71,10 +64,10 @@ void SysTick_Handler(void)
 static void wakeup_handle(uint8_t bit)
 {
     if (bit == Bit_RESET) {
-        QEvt_ctor(&_lock_evt, LOCK_SIG);
+        QEvt_ctor(&_lock_evt, VALVE_LOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
     } else {
-        QEvt_ctor(&_lock_evt, UNLOCK_SIG);
+        QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
     }
 }
@@ -82,19 +75,9 @@ static void wakeup_handle(uint8_t bit)
 /*..........................................................................*/
 void QV_onIdle(void)
 {
-#ifdef DEBUG
-    SEGGER_SYSVIEW_OnIdle();
-#endif
-
-#ifdef USE_MODBUS
-    if (global_valve_value->total_ticks >= global_config.tick) {
-        ucSCoilBuf[0] |= (1 << 0);
-    } else if (global_valve_value->total_ticks <= 0) {
-        ucSCoilBuf[0] &= ~(1 << 0);
-    }
-#endif
+    extern void valve_idle(void);
+    valve_idle();
     QV_CPU_SLEEP();
-
     if (!Sleep_bits) {
         // PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
     }
@@ -172,7 +155,7 @@ void BSP_start(void)
     static QEvtPtr valveCounterQueueSto[128];
     ValveCounter_ctor();
     QActive_start(AO_ValveCounter,
-                  3U,
+                  4U,
                   valveCounterQueueSto,
                   Q_DIM(valveCounterQueueSto),
                   (void*)0, 0U,
@@ -181,7 +164,7 @@ void BSP_start(void)
     static QEvtPtr valveHandlerQueueSto[128];
     ValveHandler_ctor();
     QActive_start(AO_ValveHandler,
-                  2U,
+                  3U,
                   valveHandlerQueueSto,
                   Q_DIM(valveHandlerQueueSto),
                   (void*)0, 0U,
@@ -189,22 +172,33 @@ void BSP_start(void)
     static QEvtPtr valveConfQueueSto[16];
     ValveConf_ctor();
     QActive_start(AO_ValveConf,
-                  1U,
+                  2U,
                   valveConfQueueSto,
                   Q_DIM(valveConfQueueSto),
+                  (void*)0, 0U,
+                  (void*)0);
+    static QEvtPtr valveValvePersistQueueSto[16];
+    ValvePersist_ctor();
+    QActive_start(AO_ValvePersist,
+                  1U,
+                  valveValvePersistQueueSto,
+                  Q_DIM(valveValvePersistQueueSto),
                   (void*)0, 0U,
                   (void*)0);
 
 #ifdef DEBUG
     _Q_taskInfo[0].TaskID = (uint32_t)AO_ValveCounter;
     _Q_taskInfo[0].sName  = "AO_ValveCounter";
-    _Q_taskInfo[0].Prio   = 3U;
+    _Q_taskInfo[0].Prio   = 4U;
     _Q_taskInfo[1].TaskID = (uint32_t)AO_ValveHandler;
     _Q_taskInfo[1].sName  = "AO_ValveHandler";
-    _Q_taskInfo[1].Prio   = 2U;
+    _Q_taskInfo[1].Prio   = 3U;
     _Q_taskInfo[2].TaskID = (uint32_t)AO_ValveConf;
     _Q_taskInfo[2].sName  = "AO_ValveConf";
-    _Q_taskInfo[2].Prio   = 1U;
+    _Q_taskInfo[2].Prio   = 2U;
+    _Q_taskInfo[3].TaskID = (uint32_t)AO_ValvePersist;
+    _Q_taskInfo[3].sName  = "AO_ValvePersist";
+    _Q_taskInfo[3].Prio   = 1U;
 #endif
 }
 
@@ -219,7 +213,7 @@ void QF_onStartup(void)
     APP_LOG_INFO("PCLK2: %u", (unsigned int)RCC_ClockFreq.Pclk2Freq);
     SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
     // if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
-    QEvt_ctor(&_lock_evt, UNLOCK_SIG);
+    QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
     QACTIVE_PUBLISH(&_lock_evt, 0);
     // }
 }
@@ -232,11 +226,12 @@ void QF_onCleanup(void)
 void QF_onContextSw(QActive* prev, QActive* next)
 {
 #ifdef DEBUG
-    SEGGER_SYSVIEW_OnTaskStopExec();
+    if (prev) {
+        SEGGER_SYSVIEW_OnTaskStopExec();
+    }
     if (next) {
         SEGGER_SYSVIEW_OnTaskStartExec((uint32_t)next);
     }
-
 #endif
 }
 #endif
