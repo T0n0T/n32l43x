@@ -103,15 +103,24 @@ extern unsigned int SystemCoreClock;
 
 SEGGER_SYSVIEW_TASKINFO _Q_taskInfo[4];
 
-static const SEGGER_SYSVIEW_DATA_REGISTER regdataX = {
+static const SEGGER_SYSVIEW_DATA_REGISTER hallData = {
     .ID            = 0,
+    .DataType      = SEGGER_SYSVIEW_TYPE_U32,
+    .Offset        = 0,
+    .RangeMin      = 0,
+    .RangeMax      = 0,
+    .ScalingFactor = 1.0f, /* important: set to non-zero! */
+    .sName         = "hall status",
+    .sUnit         = ""};
+static const SEGGER_SYSVIEW_DATA_REGISTER valTick = {
+    .ID            = 1,
     .DataType      = SEGGER_SYSVIEW_TYPE_I32,
     .Offset        = 0,
     .RangeMin      = 0,
     .RangeMax      = 0,
     .ScalingFactor = 1.0f, /* important: set to non-zero! */
     .sName         = "valve tick",
-    .sUnit         = "ss"};
+    .sUnit         = ""};
 /*********************************************************************
  *
  *       _cbSendSystemDesc()
@@ -123,16 +132,14 @@ static void _cbSendSystemDesc(void)
 {
     SEGGER_SYSVIEW_SendSysDesc("N=" SYSVIEW_APP_NAME ",D=" SYSVIEW_DEVICE_NAME);
     SEGGER_SYSVIEW_SendSysDesc("I#15=SysTick");
-    SEGGER_SYSVIEW_NameMarker(0x400, "VALVE_IDLE_EVENT");
-    SEGGER_SYSVIEW_NameMarker(0x405, "FLASH_UNLOCK");
-    SEGGER_SYSVIEW_NameMarker(0x406, "FLASH_CLEAR_FLAG");
-    SEGGER_SYSVIEW_NameMarker(0x407, "FLASH_WAIT_READY");
-    SEGGER_SYSVIEW_NameMarker(0x408, "FLASH_SET_OP_TYPE");
-    SEGGER_SYSVIEW_NameMarker(0x409, "FLASH_SET_ADDRESS");
-    SEGGER_SYSVIEW_NameMarker(0x40A, "FLASH_START_OP");
-    SEGGER_SYSVIEW_NameMarker(0x40B, "FLASH_WAIT_COMPLETE");
-    SEGGER_SYSVIEW_NameMarker(0x40C, "FLASH_LOCK");
-    SEGGER_SYSVIEW_RegisterData(&regdataX);
+    SEGGER_SYSVIEW_NameMarker(0x400, "VALVE_IDLE");
+    SEGGER_SYSVIEW_NameMarker(0x401, "VALVE_UPDATE");
+    SEGGER_SYSVIEW_NameMarker(0x402, "VALVE_PERSIST_START");
+    SEGGER_SYSVIEW_NameMarker(0x403, "VALVE_PERSIST_EARSE");
+    SEGGER_SYSVIEW_NameMarker(0x404, "VALVE_PERSIST_PROGRAM");
+    SEGGER_SYSVIEW_NameMarker(0x405, "VALVE_PERSIST_DONE");
+    SEGGER_SYSVIEW_RegisterData(&hallData);
+    SEGGER_SYSVIEW_RegisterData(&valTick);
 }
 
 static void _cbSendTaskList(void)

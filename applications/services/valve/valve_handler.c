@@ -348,13 +348,18 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_TUNING_START}
         case VALVE_TUNING_START_SIG: {
-            global_valve_value->total_ticks = 0;
-            LCD->RAM_COM[LCD_RAM1_COM0] = 0x00005000;
-            LCD->RAM_COM[LCD_RAM1_COM1] = 0x00000000;
-            LCD->RAM_COM[LCD_RAM1_COM2] = 0x00000000;
-            __LCD_CLEAR_FLAG(LCD_FLAG_UDD_CLEAR);
-            __LCD_UPDATE_REQUEST();
-            APP_LOG_DEBUG("calibration Start");
+            ValveEvt const* ve = (ValveEvt const*)e;
+            if (ve->handle != NULL && ve->evtType == VALVE_CMD) {
+                update_handle = ve->handle;
+                global_valve_value->total_ticks = 0;
+                LCD->RAM_COM[LCD_RAM1_COM0] = 0x00005000;
+                LCD->RAM_COM[LCD_RAM1_COM1] = 0x00000000;
+                LCD->RAM_COM[LCD_RAM1_COM2] = 0x00000000;
+                __LCD_CLEAR_FLAG(LCD_FLAG_UDD_CLEAR);
+                __LCD_UPDATE_REQUEST();
+                APP_LOG_DEBUG("calibration Start");
+            }
+
             static QMTranActTable const tatbl_ = { // tran-action table
                 &ValveHandler_Tuning_s, // target state
                 {
@@ -419,8 +424,9 @@ static QState ValveHandler_Tuning(ValveHandler * const me, QEvt const * const e)
     switch (e->sig) {
         //${AOs::ValveHandler::SM::Idle::Handle::Tuning::VALVE_TUNING_STOP}
         case VALVE_TUNING_STOP_SIG: {
-            QF_CRIT_ENTRY();
+            update_handle = NULL;
             global_config.tick = global_valve_value->total_ticks;
+            QF_CRIT_ENTRY();
             sFLASH_EraseSector(CONF_ADDR_EXFLASH);
             sFLASH_WriteBuffer((uint8_t*)&global_config, CONF_ADDR_EXFLASH, sizeof(cmd_config_t));
             QF_CRIT_EXIT();

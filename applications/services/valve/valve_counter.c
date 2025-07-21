@@ -48,11 +48,11 @@ typedef struct {
 } TransitionRule;
 
 static ValveEvt evt;
-
+static uint32_t new_state;
+static uint32_t last_state;
 #ifdef DEBUG
-SEGGER_SYSVIEW_DATA_SAMPLE Xdata = {
-    .ID          = VALVE_VALVE_TICK,
-};
+SEGGER_SYSVIEW_DATA_SAMPLE _hall_data;
+SEGGER_SYSVIEW_DATA_SAMPLE _val_tick;
 #endif
 
 //$declare${AOs::ValveCounter} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -176,7 +176,7 @@ static inline uint8_t read_sensor_state(void)
 }
 
 // 检查是否为合法状态（单或双传感器触发）
-static bool is_valid_state(uint8_t* state)
+static bool is_valid_state(uint32_t* state)
 {
     switch (*state) {
         // 单传感器触发
@@ -200,7 +200,7 @@ static bool is_valid_state(uint8_t* state)
 }
 
 // 检查方向（允许1-bit误差）
-static int8_t check_direction(uint8_t* old, uint8_t* new)
+static int8_t check_direction(uint32_t* old, uint32_t* new)
 {
     return global_config.dir * rules[*old][*new]; // 直接访问映射表
 }
@@ -236,7 +236,10 @@ static QState ValveCounter_initial(ValveCounter * const me, void const * const p
     QActive_subscribe((QActive*)me, VALVE_LOCK_SIG);
     QActive_subscribe((QActive*)me, VALVE_UNLOCK_SIG);
     #ifdef DEBUG
-    Xdata.pValue.pI32 = (I32 *)&global_valve_value->total_ticks;
+    _hall_data.ID          = 0;
+    _hall_data.pValue.pU32 = (U32 *)&new_state;
+    _val_tick.ID           = 1;
+    _val_tick.pValue.pI32  = (I32*)&global_valve_value->total_ticks;
     #endif
     static struct {
         QMState const *target;
@@ -327,15 +330,17 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
         }
         //${AOs::ValveCounter::SM::Work::TIMEOUT}
         case TIMEOUT_SIG: {
-            static uint8_t last_state = 0;
-            uint8_t        new_state  = read_sensor_state();
+            new_state  = read_sensor_state();
+            #ifdef DEBUG
+                SEGGER_SYSVIEW_SampleData(&_hall_data);
+            #endif
             if (new_state != last_state && is_valid_state(&new_state)) {
                 // 检查方向并更新旋转计数
                 if (is_valid_state(&last_state)) {
-            #ifdef DEBUG
-                    SEGGER_SYSVIEW_SampleData(&Xdata);
-            #endif
                     global_valve_value->total_ticks += check_direction(&last_state, &new_state);
+            #ifdef DEBUG
+                    SEGGER_SYSVIEW_SampleData(&_val_tick);
+            #endif
                     QEvt_ctor(&evt.super, VALVE_UPDATE_SIG);
                     QACTIVE_PUBLISH(&evt.super, &me->super);
                     //QACTIVE_POST_X(AO_ValveHandler, &evt.super, 1, &me->super);

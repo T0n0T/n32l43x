@@ -15,7 +15,9 @@ void valve_idle(void)
     SEGGER_SYSVIEW_OnIdle();
 #endif
     if (last_status != global_valve_value->current_status) {
-        SEGGER_SYSVIEW_MarkStart(VALVE_IDLE_EVENT);
+#ifdef DEBUG
+        SEGGER_SYSVIEW_MarkStart(VALVE_IDLE);
+#endif
         if (global_valve_value->current_status == VALVE_STATUS_ON) {
             LCD->RAM_COM[LCD_RAM1_COM0] = 0x00000000;
             LCD->RAM_COM[LCD_RAM1_COM1] = 0x00000000;
@@ -35,7 +37,9 @@ void valve_idle(void)
             ucSCoilBuf[0] &= ~(1 << 0);
 #endif
         }
-        SEGGER_SYSVIEW_MarkStop(VALVE_IDLE_EVENT);
+#ifdef DEBUG
+        SEGGER_SYSVIEW_MarkStop(VALVE_IDLE);
+#endif
         last_status = global_valve_value->current_status;
     }
 }

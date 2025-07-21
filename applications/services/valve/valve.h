@@ -42,12 +42,12 @@
 
 #ifdef DEBUG
 #include "SEGGER_SYSVIEW.h"
-#define VALVE_IDLE_EVENT      0x400
-#define VALVE_PERSIST_START   0x401
-#define VALVE_PERSIST_EARSE   0x402
-#define VALVE_PERSIST_PROGRAM 0x403
-#define VALVE_PERSIST_DONE    0x404
-#define VALVE_VALVE_TICK      0
+#define VALVE_IDLE            0x400
+#define VALVE_UPDATE          0x401
+#define VALVE_PERSIST_START   0x402
+#define VALVE_PERSIST_EARSE   0x403
+#define VALVE_PERSIST_PROGRAM 0x404
+#define VALVE_PERSIST_DONE    0x405
 #endif
 
 #define VALVE_STATUS_OFF  0

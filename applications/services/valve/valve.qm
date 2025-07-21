@@ -79,7 +79,10 @@
      <action>QActive_subscribe((QActive*)me, VALVE_LOCK_SIG);
 QActive_subscribe((QActive*)me, VALVE_UNLOCK_SIG);
 #ifdef DEBUG
-Xdata.pValue.pI32 = (I32 *)&amp;global_valve_value-&gt;total_ticks;
+_hall_data.ID          = 0;
+_hall_data.pValue.pU32 = (U32 *)&amp;new_state;
+_val_tick.ID           = 1;
+_val_tick.pValue.pI32  = (I32*)&amp;global_valve_value-&gt;total_ticks;
 #endif</action>
      <initial_glyph conn="26,14,5,1,18,7,-2">
       <action box="0,-2,10,2"/>
@@ -109,15 +112,17 @@ hall_set_ctr(DISABLE);</exit>
       </tran_glyph>
      </tran>
      <tran trig="TIMEOUT">
-      <action>static uint8_t last_state = 0;
-uint8_t        new_state  = read_sensor_state();
+      <action>new_state  = read_sensor_state();
+#ifdef DEBUG
+    SEGGER_SYSVIEW_SampleData(&amp;_hall_data);
+#endif
 if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
     // 检查方向并更新旋转计数
     if (is_valid_state(&amp;last_state)) {
+        global_valve_value-&gt;total_ticks += check_direction(&amp;last_state, &amp;new_state);
 #ifdef DEBUG
-        SEGGER_SYSVIEW_SampleData(&amp;Xdata);
+        SEGGER_SYSVIEW_SampleData(&amp;_val_tick);
 #endif
-        global_valve_value-&gt;total_ticks += check_direction(&amp;last_state, &amp;new_state);        
         QEvt_ctor(&amp;evt.super, VALVE_UPDATE_SIG);
         QACTIVE_PUBLISH(&amp;evt.super, &amp;me-&gt;super);
         //QACTIVE_POST_X(AO_ValveHandler, &amp;evt.super, 1, &amp;me-&gt;super);
@@ -312,13 +317,18 @@ if (ve-&gt;handle != NULL &amp;&amp; ve-&gt;msg != NULL &amp;&amp; ve-&gt;evtTyp
        </tran_glyph>
       </tran>
       <tran trig="VALVE_TUNING_START" target="../10">
-       <action>global_valve_value-&gt;total_ticks = 0;
-LCD-&gt;RAM_COM[LCD_RAM1_COM0] = 0x00005000;
-LCD-&gt;RAM_COM[LCD_RAM1_COM1] = 0x00000000;
-LCD-&gt;RAM_COM[LCD_RAM1_COM2] = 0x00000000;
-__LCD_CLEAR_FLAG(LCD_FLAG_UDD_CLEAR);
-__LCD_UPDATE_REQUEST();
-APP_LOG_DEBUG(&quot;calibration Start&quot;);</action>
+       <action>ValveEvt const* ve = (ValveEvt const*)e;
+if (ve-&gt;handle != NULL &amp;&amp; ve-&gt;evtType == VALVE_CMD) {
+    update_handle = ve-&gt;handle;
+    global_valve_value-&gt;total_ticks = 0;
+    LCD-&gt;RAM_COM[LCD_RAM1_COM0] = 0x00005000;
+    LCD-&gt;RAM_COM[LCD_RAM1_COM1] = 0x00000000;
+    LCD-&gt;RAM_COM[LCD_RAM1_COM2] = 0x00000000;
+    __LCD_CLEAR_FLAG(LCD_FLAG_UDD_CLEAR);
+    __LCD_UPDATE_REQUEST();
+    APP_LOG_DEBUG(&quot;calibration Start&quot;);
+}
+</action>
        <tran_glyph conn="24,48,3,3,22">
         <action box="0,-2,19,2"/>
        </tran_glyph>
@@ -364,8 +374,9 @@ NVIC_SystemReset();</action>
       </tran>
       <state name="Tuning">
        <tran trig="VALVE_TUNING_STOP" target="../..">
-        <action>QF_CRIT_ENTRY();
+        <action>update_handle = NULL;
 global_config.tick = global_valve_value-&gt;total_ticks;
+QF_CRIT_ENTRY();
 sFLASH_EraseSector(CONF_ADDR_EXFLASH);
 sFLASH_WriteBuffer((uint8_t*)&amp;global_config, CONF_ADDR_EXFLASH, sizeof(cmd_config_t));
 QF_CRIT_EXIT();
@@ -623,6 +634,47 @@ QTimeEvt_ctorX(&amp;me-&gt;processEvt, (QActive*)me, VALVE_PERSIST_PROCESS_SIG, 
   </attribute>
  </package>
  <directory name=".">
+  <file name="valve.h">
+   <text>#ifndef __VALVE_H__
+#define __VALVE_H__
+
+#include &quot;cmd.h&quot;
+
+#ifdef DEBUG
+#include &quot;SEGGER_SYSVIEW.h&quot;
+#define VALVE_IDLE            0x400
+#define VALVE_UPDATE          0x401
+#define VALVE_PERSIST_START   0x402
+#define VALVE_PERSIST_EARSE   0x403
+#define VALVE_PERSIST_PROGRAM 0x404
+#define VALVE_PERSIST_DONE    0x405
+#endif
+
+#define VALVE_STATUS_OFF  0
+#define VALVE_STATUS_ON   1
+
+#ifdef USE_MODBUS
+#include &quot;user_mb_app.h&quot;
+extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
+#endif
+
+#define TICKS_PER_ROTATION 6 // 每圈的跳变次数（6磁铁）
+
+$declare ${Shared}
+$declare ${AOs::AO_ValveCounter}
+$declare ${AOs::ValveCounter_ctor}
+$declare ${AOs::AO_ValveHandler}
+$declare ${AOs::ValveHandler_ctor}
+$declare ${AOs::AO_ValveConf}
+$declare ${AOs::ValveConf_ctor}
+$declare ${AOs::AO_ValvePersist}
+$declare ${AOs::ValvePersist_ctor}
+
+extern ValveVal*    global_valve_value;
+extern cmd_config_t global_config;
+
+#endif // __VALVE_H__</text>
+  </file>
   <file name="valve_counter.c">
    <text>#include &quot;qpc.h&quot; 
 #include &quot;bsp.h&quot;
@@ -637,11 +689,11 @@ typedef struct {
 } TransitionRule;
 
 static ValveEvt evt;
-
+static uint32_t new_state;
+static uint32_t last_state;
 #ifdef DEBUG
-SEGGER_SYSVIEW_DATA_SAMPLE Xdata = {
-    .ID          = VALVE_VALVE_TICK,
-};
+SEGGER_SYSVIEW_DATA_SAMPLE _hall_data;
+SEGGER_SYSVIEW_DATA_SAMPLE _val_tick;
 #endif
 
 $declare ${AOs::ValveCounter}
@@ -728,7 +780,7 @@ static inline uint8_t read_sensor_state(void)
 }
 
 // 检查是否为合法状态（单或双传感器触发）
-static bool is_valid_state(uint8_t* state)
+static bool is_valid_state(uint32_t* state)
 {
     switch (*state) {
         // 单传感器触发
@@ -752,7 +804,7 @@ static bool is_valid_state(uint8_t* state)
 }
 
 // 检查方向（允许1-bit误差）
-static int8_t check_direction(uint8_t* old, uint8_t* new)
+static int8_t check_direction(uint32_t* old, uint32_t* new)
 {
     return global_config.dir * rules[*old][*new]; // 直接访问映射表
 }
@@ -760,47 +812,6 @@ static int8_t check_direction(uint8_t* old, uint8_t* new)
 $define ${AOs::AO_ValveCounter}
 $define ${AOs::ValveCounter_ctor}
 $define ${AOs::ValveCounter}</text>
-  </file>
-  <file name="valve.h">
-   <text>#ifndef __VALVE_H__
-#define __VALVE_H__
-
-#include &quot;cmd.h&quot;
-
-#ifdef DEBUG
-#include &quot;SEGGER_SYSVIEW.h&quot;
-#define VALVE_IDLE_EVENT      0x400
-#define VALVE_PERSIST_START   0x401
-#define VALVE_PERSIST_EARSE   0x402
-#define VALVE_PERSIST_PROGRAM 0x403
-#define VALVE_PERSIST_DONE    0x404
-#define VALVE_VALVE_TICK      0
-#endif
-
-#define VALVE_STATUS_OFF  0
-#define VALVE_STATUS_ON   1
-
-#ifdef USE_MODBUS
-#include &quot;user_mb_app.h&quot;
-extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
-#endif
-
-#define TICKS_PER_ROTATION 6 // 每圈的跳变次数（6磁铁）
-
-$declare ${Shared}
-$declare ${AOs::AO_ValveCounter}
-$declare ${AOs::ValveCounter_ctor}
-$declare ${AOs::AO_ValveHandler}
-$declare ${AOs::ValveHandler_ctor}
-$declare ${AOs::AO_ValveConf}
-$declare ${AOs::ValveConf_ctor}
-$declare ${AOs::AO_ValvePersist}
-$declare ${AOs::ValvePersist_ctor}
-
-extern ValveVal*    global_valve_value;
-extern cmd_config_t global_config;
-
-#endif // __VALVE_H__</text>
   </file>
   <file name="valve_conf.c">
    <text>#include &quot;qpc.h&quot;
