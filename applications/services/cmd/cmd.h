@@ -31,6 +31,7 @@ typedef struct {
 void cmd_init(void);
 void cmd_deinit(void);
 void cmd_execute(char* input);
+void cmd_dma_transmit(const uint8_t* data, uint16_t len);
 
 CMD_DEFINE(config_refactory)
 CMD_DEFINE(config_write)

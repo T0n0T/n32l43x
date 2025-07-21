@@ -18,7 +18,8 @@
 #define CMD_BUF_LEN          64U
 
 static ValveEvt          _cmd_evt;
-static uint8_t           _cmd_buf[CMD_BUF_LEN];
+static uint8_t           _cmd_buf_rx[CMD_BUF_LEN];
+static uint8_t           _cmd_buf_tx[CMD_BUF_LEN * 2];
 static volatile uint16_t _cmd_len; // Change to uint16_t for length
 static const command_t   commands[] = CMD_DEFINE_LIST;
 static uint8_t           _start_match_pos;
@@ -37,7 +38,7 @@ void USART_CMD_IRQHandler(void)
         if (!_start_string_received) {
             // Check for "Start" string in the received data
             for (uint16_t i = 0; i < _cmd_len; i++) {
-                if (_cmd_buf[i] == START_STRING[_start_match_pos]) {
+                if (_cmd_buf_rx[i] == START_STRING[_start_match_pos]) {
                     _start_match_pos++;
                     if (_start_match_pos == strlen(START_STRING)) {
                         APP_LOG_DEBUG("Start CMD");
@@ -52,8 +53,8 @@ void USART_CMD_IRQHandler(void)
         } else {
             // Process the received command
             // Assuming command ends with '\n'
-            if (_cmd_len > 0 && _cmd_buf[_cmd_len - 1] == '\n') {
-                _cmd_buf[_cmd_len] = '\0'; // Null-terminate the string
+            if (_cmd_len > 0 && _cmd_buf_rx[_cmd_len - 1] == '\n') {
+                _cmd_buf_rx[_cmd_len] = '\0'; // Null-terminate the string
                 QACTIVE_POST(AO_ValveConf, &_cmd_evt.super, 0U);
             }
         }
@@ -90,8 +91,8 @@ void cmd_init(void)
     RCC_EnableAHBPeriphClk(RCC_AHB_PERIPH_DMA, ENABLE);
     DMA_InitType DMA_InitStructure;
     DMA_DeInit(DMA_CH6);
-    DMA_InitStructure.PeriphAddr     = (USART2_BASE + 0x04);
-    DMA_InitStructure.MemAddr        = (uint32_t)_cmd_buf;
+    DMA_InitStructure.PeriphAddr     = (uint32_t)&USART_CMD->DAT;
+    DMA_InitStructure.MemAddr        = (uint32_t)_cmd_buf_rx;
     DMA_InitStructure.Direction      = DMA_DIR_PERIPH_SRC;
     DMA_InitStructure.BufSize        = CMD_BUF_LEN;
     DMA_InitStructure.PeriphInc      = DMA_PERIPH_INC_DISABLE;
@@ -110,13 +111,13 @@ void cmd_init(void)
 
     NVIC_EnableIRQ(USART_CMD_IRQn); // Enable USART2 interrupt
 
-    memset(_cmd_buf, 0, sizeof(_cmd_buf));
+    memset(_cmd_buf_rx, 0, sizeof(_cmd_buf_rx));
     _cmd_len               = 0;     // Initialize command buffer length
     _start_match_pos       = 0;     // Initialize Start string match position
     _start_string_received = false; // Initialize Start string received flag
 
     QEvt_ctor(&_cmd_evt.super, VALVE_CMD_PARSE_SIG);
-    _cmd_evt.msg     = _cmd_buf;  // 设置消息指针指向命令缓冲区
+    _cmd_evt.msg     = _cmd_buf_rx;  // 设置消息指针指向命令缓冲区
     _cmd_evt.evtType = VALVE_CMD; // 设置事件类型为命令解析
 
     if (RCC_GetFlagStatus(RCC_CTRLSTS_FLAG_SFTRSTF) == SET && !_module_already_off) {
@@ -133,6 +134,28 @@ void cmd_deinit(void)
     _start_match_pos       = 0;
     NVIC_DisableIRQ(USART_CMD_IRQn);
     uart_deinit(BLE_SERIAL);
+}
+
+void cmd_dma_transmit(const uint8_t* data, uint16_t len)
+{
+    memcpy(_cmd_buf_tx, data, len); // Copy data to transmit buffer
+    DMA_InitType DMA_InitStructure;
+    DMA_DeInit(DMA_CH5);
+    DMA_InitStructure.PeriphAddr     = (uint32_t)&USART_CMD->DAT;
+    DMA_InitStructure.MemAddr        = (uint32_t)_cmd_buf_tx;
+    DMA_InitStructure.Direction      = DMA_DIR_PERIPH_DST;
+    DMA_InitStructure.BufSize        = len;
+    DMA_InitStructure.PeriphInc      = DMA_PERIPH_INC_DISABLE;
+    DMA_InitStructure.DMA_MemoryInc  = DMA_MEM_INC_ENABLE;
+    DMA_InitStructure.PeriphDataSize = DMA_PERIPH_DATA_SIZE_BYTE;
+    DMA_InitStructure.MemDataSize    = DMA_MemoryDataSize_Byte;
+    DMA_InitStructure.CircularMode   = DMA_MODE_NORMAL;
+    DMA_InitStructure.Priority       = DMA_PRIORITY_HIGH;
+    DMA_InitStructure.Mem2Mem        = DMA_M2M_DISABLE;
+    DMA_Init(DMA_CH5, &DMA_InitStructure);
+    DMA_RequestRemap(DMA_REMAP_USART2_TX, DMA, DMA_CH5, ENABLE);
+    USART_EnableDMA(USART_CMD, USART_DMAREQ_TX, ENABLE);
+    DMA_EnableChannel(DMA_CH5, ENABLE);
 }
 
 void cmd_response(uint16_t result)
@@ -195,7 +218,7 @@ void cmd_execute(char* input)
 
 _clear:
     _cmd_len = 0;
-    memset(_cmd_buf, 0, sizeof(_cmd_buf)); // Clear command buffer
+    memset(_cmd_buf_rx, 0, sizeof(_cmd_buf_rx)); // Clear command buffer
 }
 
 int cmd_ping(int argc, char** argv)

@@ -151,10 +151,7 @@ int cmd_config_refactory(int argc, char** argv)
 
 void cmd_valve_info_wrapper(void* msg)
 {
-    uint8_t* valptr = (uint8_t*)msg;
-    for (size_t i = 0; i < sizeof(ValveVal); i++) {
-        uart_putc(BLE_SERIAL, valptr[i]);
-    }
+    cmd_dma_transmit((uint8_t*)msg, sizeof(ValveVal));
 }
 
 int cmd_valve_info(int argc, char** argv)

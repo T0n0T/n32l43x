@@ -140,7 +140,6 @@ void flash_fsm_process(flash_fsm_t* fsm)
             break;
 
         case FLASH_STATE_UNLOCK:
-            SEGGER_SYSVIEW_MarkStart(0x405);
             FLASH_Unlock();
             if (fsm->request.type == FLASH_OP_ERASE_OPTION ||
                 fsm->request.type == FLASH_OP_PROGRAM_OPTION) {
@@ -149,18 +148,14 @@ void flash_fsm_process(flash_fsm_t* fsm)
                 FLASH->OPTKEY = FLASH_KEY2;
             }
             fsm->state = FLASH_STATE_CLEAR_FLAG;
-            SEGGER_SYSVIEW_MarkStop(0x405);
             break;
 
         case FLASH_STATE_CLEAR_FLAG:
-            SEGGER_SYSVIEW_MarkStart(0x406);
             FLASH_ClearFlag(FLASH_STS_CLRFLAG);
             fsm->state = FLASH_STATE_WAIT_READY;
-            SEGGER_SYSVIEW_MarkStop(0x406);
             break;
 
         case FLASH_STATE_WAIT_READY:
-            SEGGER_SYSVIEW_MarkStart(0x407);
             status = FLASH_GetSTS();
             if (status == FLASH_BUSY) {
                 if (flash_fsm_check_timeout(fsm)) {
@@ -172,11 +167,9 @@ void flash_fsm_process(flash_fsm_t* fsm)
                 flash_fsm_set_result(fsm, FLASH_RESULT_ERROR);
                 fsm->state = FLASH_STATE_ERROR;
             }
-            SEGGER_SYSVIEW_MarkStop(0x407);
             break;
 
         case FLASH_STATE_SET_OP_TYPE:
-            SEGGER_SYSVIEW_MarkStart(0x408);
             switch (fsm->request.type) {
                 case FLASH_OP_ERASE_PAGE:
                     FLASH->CTRL |= CTRL_Set_PER;
@@ -195,7 +188,6 @@ void flash_fsm_process(flash_fsm_t* fsm)
                     fsm->state = FLASH_STATE_SET_ADDRESS;
                     break;
             }
-            SEGGER_SYSVIEW_MarkStop(0x408);
             break;
 
         case FLASH_STATE_SET_ADDRESS:
@@ -203,9 +195,7 @@ void flash_fsm_process(flash_fsm_t* fsm)
                 FLASH->ADD = fsm->request.address;
                 fsm->state = FLASH_STATE_START_OP;
             } else if (fsm->request.type == FLASH_OP_PROGRAM_WORD) {
-                SEGGER_SYSVIEW_MarkStart(0x409);
                 *(__IO uint32_t*)fsm->request.address = fsm->request.data;
-                SEGGER_SYSVIEW_MarkStop(0x409);
                 fsm->state = FLASH_STATE_START_OP;
             } else if (fsm->request.type == FLASH_OP_PROGRAM_OPTION) {
                 uint32_t data = ((uint32_t)fsm->request.option_data & 0xFF) |
@@ -216,14 +206,11 @@ void flash_fsm_process(flash_fsm_t* fsm)
             break;
 
         case FLASH_STATE_START_OP:
-            SEGGER_SYSVIEW_MarkStart(0x40A);
             FLASH->CTRL |= CTRL_Set_START;
-            SEGGER_SYSVIEW_MarkStop(0x40A);
             fsm->state = FLASH_STATE_WAIT_COMPLETE;
             break;
 
         case FLASH_STATE_WAIT_COMPLETE:
-            SEGGER_SYSVIEW_MarkStart(0x40B);
             status = FLASH_GetSTS();
             if (status == FLASH_BUSY) {
                 if (flash_fsm_check_timeout(fsm)) {
@@ -235,12 +222,10 @@ void flash_fsm_process(flash_fsm_t* fsm)
                 flash_fsm_set_result(fsm, FLASH_RESULT_ERROR);
                 fsm->state = FLASH_STATE_ERROR;
             }
-            SEGGER_SYSVIEW_MarkStop(0x40B);
             break;
 
         case FLASH_STATE_LOCK:
             /* 清除操作位 */
-            SEGGER_SYSVIEW_MarkStart(0x40C);
             switch (fsm->request.type) {
                 case FLASH_OP_ERASE_PAGE:
                     FLASH->CTRL &= CTRL_Reset_PER;
@@ -259,7 +244,6 @@ void flash_fsm_process(flash_fsm_t* fsm)
             FLASH_Lock();
             flash_fsm_set_result(fsm, FLASH_RESULT_SUCCESS);
             fsm->state = FLASH_STATE_DONE;
-            SEGGER_SYSVIEW_MarkStop(0x40C);
             break;
 
         default:
