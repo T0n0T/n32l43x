@@ -4,6 +4,7 @@ applications_incdirs = include_directories(
   'services/cmd',
   'services/valve',
   'services/log',
+  'services/guard',
   # 'services',
   # 'tasks',
 )
@@ -19,5 +20,6 @@ applications_sources = files(
   'services/valve/valve_persist.c',
   'services/cmd/cmd.c',
   'services/cmd/cmd_valve.c',
-  'services/log/log.c'
+  'services/log/log.c',
+  'services/guard/guard.c'
 )
