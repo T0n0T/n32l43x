@@ -72,6 +72,11 @@ static void wakeup_handle(uint8_t bit)
     }
 }
 
+static void pvd_handle(void)
+{
+    /* 设置守卫检阅值 */
+}
+
 /*..........................................................................*/
 void QV_onIdle(void)
 {
@@ -92,29 +97,6 @@ void BSP_init(void)
 #ifdef DEBUG
     cm_backtrace_init("build/n32l43x", "V1.0", "1.0.0");
     SEGGER_SYSVIEW_Conf();
-    // DBG->CTRL |= (1 << 5);
-    // CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-    // TPI->ACPR = 7;
-    // TPI->SPPR = 2;
-    // TPI->FFCR = 0x100;
-    // DWT->CTRL = (1 << DWT_CTRL_CYCTAP_Pos)       // Prescaler for PC sampling
-    //                                              // 0 = x64, 1 = x1024
-    //             | (0 << DWT_CTRL_POSTPRESET_Pos) // Postscaler for PC sampling
-    //                                              // Divider = value + 1
-    //             | (1 << DWT_CTRL_PCSAMPLENA_Pos) // Enable PC sampling
-    //             | (2 << DWT_CTRL_SYNCTAP_Pos)    // Sync packet interval
-    //                                              // 0 = Off, 1 = Every 2^23 cycles,
-    //                                              // 2 = Every 2^25, 3 = Every 2^27
-    //             | (1 << DWT_CTRL_EXCTRCENA_Pos)  // Enable exception trace
-    //             | (1 << DWT_CTRL_CYCCNTENA_Pos); // Enable cycle counter
-
-    // /* Configure instrumentation trace macroblock */
-    // ITM->LAR = 0xC5ACCE55;
-    // ITM->TCR = (1 << ITM_TCR_TraceBusID_Pos) // Trace bus ID for TPIU
-    //            | (1 << ITM_TCR_DWTENA_Pos)   // Enable events from DWT
-    //            | (1 << ITM_TCR_SYNCENA_Pos)  // Enable sync packets
-    //            | (1 << ITM_TCR_ITMENA_Pos);  // Main enable for ITM
-    // ITM->TER = 0xFFFFFFFF;                   // Enable all stimulus ports
 #endif
     NVIC_SetPriorityGrouping(4);
     NVIC_SetPriority(SysTick_IRQn, DEF_ISR_PRI);
@@ -134,7 +116,8 @@ void BSP_init(void)
     lcd_init(); /* initialize the LCD */
     // dump_clk();
     // rtc_init();
-    // wakeup_pin_init(wakeup_handle);
+    // wakeup_init(wakeup_handle);
+    // pvd_init(pvd_handle);
 }
 
 void BSP_start(void)

@@ -75,6 +75,16 @@ SECTIONS
         _eretain = .;
     } >SRAM2
 
+    .segger :
+    {
+        . = ALIGN(4);
+        _sseg = .;
+        *(.rtt)
+        *(.rtt.*)
+        . = ALIGN(4);
+        _eseg = . ;
+    } >SRAM1
+
     /* 栈放在SRAM1 */
     .stack :
     {
@@ -96,7 +106,7 @@ SECTIONS
         _ebss = . ;
     } >SRAM1
     __bss_end = .;
-    __heap_start = .;
     _end = .;
+    __heap_start = .;
     __heap_end = 0x20000000 + 24*1024;
 }

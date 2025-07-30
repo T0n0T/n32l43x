@@ -237,7 +237,7 @@ static QState ValveCounter_initial(ValveCounter * const me, void const * const p
     QActive_subscribe((QActive*)me, VALVE_UNLOCK_SIG);
     #ifdef DEBUG
     _hall_data.ID          = 0;
-    _hall_data.pValue.pU32 = (U32 *)&new_state;
+    _hall_data.pValue.pU32 = (U32*)&new_state;
     _val_tick.ID           = 1;
     _val_tick.pValue.pI32  = (I32*)&global_valve_value->total_ticks;
     #endif
@@ -332,7 +332,14 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
         case TIMEOUT_SIG: {
             new_state  = read_sensor_state();
             #ifdef DEBUG
+            static bool first_load = true;
+            if (new_state) {
                 SEGGER_SYSVIEW_SampleData(&_hall_data);
+            }
+            if (first_load) {
+                SEGGER_SYSVIEW_SampleData(&_val_tick);
+                SEGGER_SYSVIEW_SampleData(&_hall_data);
+            }
             #endif
             if (new_state != last_state && is_valid_state(&new_state)) {
                 // 检查方向并更新旋转计数
@@ -340,6 +347,7 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
                     global_valve_value->total_ticks += check_direction(&last_state, &new_state);
             #ifdef DEBUG
                     SEGGER_SYSVIEW_SampleData(&_val_tick);
+                    first_load = false;
             #endif
                     QEvt_ctor(&evt.super, VALVE_UPDATE_SIG);
                     QACTIVE_PUBLISH(&evt.super, &me->super);
