@@ -24,8 +24,11 @@ static void LPTIMNVIC_Config(FunctionalState Cmd)
     NVIC_EnableIRQ(LPTIM_WKUP_IRQn);
 }
 
+#include "SEGGER_SYSVIEW.h"
+
 void LPTIM_WKUP_IRQHandler(void)
 {
+    SEGGER_SYSVIEW_RecordEnterISR();
     if (LPTIM_IsActiveFlag_CMPM(LPTIM) != RESET) {
         if (lptimer_callback != NULL) {
             lptimer_callback();
@@ -33,6 +36,7 @@ void LPTIM_WKUP_IRQHandler(void)
         LPTIM_ClearFLAG_CMPM(LPTIM);
         EXTI_ClrITPendBit(EXTI_LINE24);
     }
+    SEGGER_SYSVIEW_RecordExitISR();
 }
 
 void lptimer_init(void) {
@@ -42,7 +46,6 @@ void lptimer_init(void) {
     RCC_EnableRETPeriphClk(RCC_RET_PERIPH_LPTIM, ENABLE);
 
     /* Initialize LPTIM */
-    LPTIM_InitType LPTIM_InitStruct = {0};
     LPTIMNVIC_Config(ENABLE);
     LPTIM_SetPrescaler(LPTIM, LPTIM_PRESCALER_DIV1);
 }
@@ -54,8 +57,8 @@ void lptimer_start(uint32_t cnt, lptimer_irq_callback_t cb)
 
     lptimer_callback = cb;
     /* Set compare value */
-    LPTIM_SetAutoReload(LPTIM, 0xFFFF);
-    LPTIM_SetCompare(LPTIM, 1);
+    LPTIM_SetAutoReload(LPTIM, cnt);
+    LPTIM_SetCompare(LPTIM, 0);
     LPTIM_StartCounter(LPTIM, LPTIM_OPERATING_MODE_CONTINUOUS);
 }
 

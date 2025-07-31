@@ -5,6 +5,7 @@
 #include "bsp.h"
 #include "valve.h"
 #include "log.h"
+#include "guard.h"
 
 #ifdef DEBUG
 #include "cm_backtrace.h"
@@ -114,6 +115,8 @@ void BSP_init(void)
     APP_LOG_RAW("│   N32L43x Valve App  %s-%s    │\r\n", __DATE__, __TIME__);
     APP_LOG_RAW("└──────────────────────────────────────────────┘\r\n");
     lcd_init(); /* initialize the LCD */
+    lptimer_init();
+    lptimer_start(LPTIMER_MS_TO_TICKS(1000), task_guard_process);
     // dump_clk();
     // rtc_init();
     // wakeup_init(wakeup_handle);

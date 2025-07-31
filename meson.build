@@ -12,7 +12,7 @@ cross_file = 'tools/toolchains/arm-none-eabi-gcc.txt'
 # 全局编译参数
 c_args = [
   '-D__FPU_PRESENT',
-  '-DQF_ON_CONTEXT_SW',
+  # '-DQF_ON_CONTEXT_SW',
   '-mcpu=cortex-m4',
   '-mthumb',
   '-mfpu=fpv4-sp-d16',

@@ -6,7 +6,7 @@
 typedef void (*guard_handle_func)(int task_id, void* data);
 
 typedef enum guard_type {
-    GUARD_TYPE_CONTINUOUS, // 持续任务
+    GUARD_TYPE_CONTINUOUS = 1, // 持续任务
     GUARD_TYPE_DISCRETE,   // 离散任务
     GUARD_TYPE_CUSTOM,     // 自定义类型任务
 } guard_type_t;
@@ -40,10 +40,22 @@ void task_guard_mask(int task_id);
 void task_guard_unmask(int task_id);
 
 /**
+ * @brief 处理任务守护
+ */
+void task_guard_process(void);
+
+/**
  * @brief 持续任务报告状态
  * @param task_id 任务ID
  */
 void task_guard_continuous_report(int task_id);
+
+/**
+ * @brief 离散任务设置容忍时间
+ * @param task_id 任务ID
+ * @param tolerance_period 容忍时间
+ */
+void task_guard_discreate_set_tolerance(int task_id, uint32_t tolerance_period);
 
 /**
  * @brief 离散任务标记起点
@@ -64,4 +76,9 @@ void task_guard_discrete_unmark(int task_id);
  */
 void task_guard_custom_report(int task_id, int error);
 
+/**
+ * @brief 第三方重置自定义任务的故障状态
+ * @param task_id 任务ID
+ */
+void task_guard_custom_reset(int task_id);
 #endif
