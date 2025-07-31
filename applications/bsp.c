@@ -9,13 +9,12 @@
 
 #ifdef DEBUG
 #include "cm_backtrace.h"
-#include "SEGGER_SYSVIEW.h"
 #endif
 
 /* Use for sleep judgement */
-uint32_t    Sleep_bits;
-static QEvt _lock_evt;
-
+volatile uint32_t Sleep_bits;
+volatile bool     pvd_is_power_low;
+static QEvt       _lock_evt;
 
 /* Assertion handler  ======================================================*/
 Q_NORETURN Q_onAssert(char const* module, int_t id)
@@ -45,7 +44,6 @@ void RTC_WKUP_IRQHandler(void)
     if (EXTI_GetITStatus(EXTI_LINE20)) {
         EXTI_ClrITPendBit(EXTI_LINE20);
         RTC_ClrIntPendingBit(RTC_INT_WUT);
-        QTIMEEVT_TICK_X(0, 0);
     }
     QV_ARM_ERRATUM_838869();
 }
@@ -68,6 +66,7 @@ static void wakeup_handle(uint8_t bit)
         QEvt_ctor(&_lock_evt, VALVE_LOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
     } else {
+        guard_wakeup();
         QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
     }
@@ -75,7 +74,7 @@ static void wakeup_handle(uint8_t bit)
 
 static void pvd_handle(void)
 {
-    /* 设置守卫检阅值 */
+    pvd_is_power_low = !pvd_is_power_low;
 }
 
 /*..........................................................................*/
@@ -83,10 +82,13 @@ void QV_onIdle(void)
 {
     extern void valve_idle(void);
     valve_idle();
-    QV_CPU_SLEEP();
     if (!Sleep_bits) {
+        guard_sleep();
         // PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
+    } else {
+        PWR_EnterSLEEPMode(1, PWR_SLEEPENTRY_WFI);
     }
+    QF_INT_ENABLE();
 }
 
 /* BSP functions ===========================================================*/
@@ -97,7 +99,6 @@ void BSP_init(void)
      */
 #ifdef DEBUG
     cm_backtrace_init("build/n32l43x", "V1.0", "1.0.0");
-    SEGGER_SYSVIEW_Conf();
 #endif
     NVIC_SetPriorityGrouping(4);
     NVIC_SetPriority(SysTick_IRQn, DEF_ISR_PRI);
@@ -115,19 +116,14 @@ void BSP_init(void)
     APP_LOG_RAW("│   N32L43x Valve App  %s-%s    │\r\n", __DATE__, __TIME__);
     APP_LOG_RAW("└──────────────────────────────────────────────┘\r\n");
     lcd_init(); /* initialize the LCD */
-    lptimer_init();
-    lptimer_start(LPTIMER_MS_TO_TICKS(1000), task_guard_process);
     // dump_clk();
     // rtc_init();
     // wakeup_init(wakeup_handle);
-    // pvd_init(pvd_handle);
+    pvd_init(pvd_handle);
 }
 
 void BSP_start(void)
 {
-#ifdef DEBUG
-    extern SEGGER_SYSVIEW_TASKINFO _Q_taskInfo[3];
-#endif
     // initialize event pools
     // static QF_MPOOL_EL(QEvt) smlPoolSto[10];
     // QF_poolInit(smlPoolSto, sizeof(smlPoolSto), sizeof(smlPoolSto[0]));
@@ -171,21 +167,6 @@ void BSP_start(void)
                   Q_DIM(valveValvePersistQueueSto),
                   (void*)0, 0U,
                   (void*)0);
-
-#ifdef DEBUG
-    _Q_taskInfo[0].TaskID = (uint32_t)AO_ValveCounter;
-    _Q_taskInfo[0].sName  = "AO_ValveCounter";
-    _Q_taskInfo[0].Prio   = 4U;
-    _Q_taskInfo[1].TaskID = (uint32_t)AO_ValveHandler;
-    _Q_taskInfo[1].sName  = "AO_ValveHandler";
-    _Q_taskInfo[1].Prio   = 3U;
-    _Q_taskInfo[2].TaskID = (uint32_t)AO_ValveConf;
-    _Q_taskInfo[2].sName  = "AO_ValveConf";
-    _Q_taskInfo[2].Prio   = 2U;
-    _Q_taskInfo[3].TaskID = (uint32_t)AO_ValvePersist;
-    _Q_taskInfo[3].sName  = "AO_ValvePersist";
-    _Q_taskInfo[3].Prio   = 1U;
-#endif
 }
 
 /*..........................................................................*/
@@ -207,17 +188,3 @@ void QF_onStartup(void)
 void QF_onCleanup(void)
 {
 }
-
-#ifdef QF_ON_CONTEXT_SW
-void QF_onContextSw(QActive* prev, QActive* next)
-{
-#ifdef DEBUG
-    if (prev) {
-        SEGGER_SYSVIEW_OnTaskStopExec();
-    }
-    if (next) {
-        SEGGER_SYSVIEW_OnTaskStartExec((uint32_t)next);
-    }
-#endif
-}
-#endif

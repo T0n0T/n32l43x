@@ -40,11 +40,19 @@
 #include "spi_flash.h"
 #include "uart.h"
 
-#define DEF_ISR_PRI 5
-#define TICK_RATE 1000
+#define DEF_ISR_PRI    5
+#define TICK_RATE      1000
 #define MS_TO_TICK(ms) ((ms) * TICK_RATE / 1000)
 
+extern volatile bool pvd_is_power_low;
+
+extern int g_cmd_id;
+extern int g_counter_id;
+extern int g_handle_id;
+extern int g_persist_id;
+
 void BSP_init(void);
+void BSP_init_ext(void);
 void BSP_start(void);
 
 #endif // BSP_H_

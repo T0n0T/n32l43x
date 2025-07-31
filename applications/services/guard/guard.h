@@ -15,7 +15,7 @@ typedef enum guard_type {
  * @brief 初始化任务守护模块
  * @return 成功返回0，失败返回非0错误码
  */
-int task_guard_init(void);
+int guard_init(void);
 
 /**
  * @brief 注册任务的守护处理函数
@@ -25,60 +25,65 @@ int task_guard_init(void);
  * @param data 自定义数据指针
  * @return 成功返回0，失败返回非0错误码
  */
-int task_guard_register(guard_type_t type, guard_handle_func handle, void* data);
+int guard_register(guard_type_t type, guard_handle_func handle, void* data);
 
 /**
  * @brief 屏蔽指定任务的守护功能
  * @param task_id 任务ID
  */
-void task_guard_mask(int task_id);
+void guard_mask(int task_id);
 
 /**
  * @brief 解除指定任务的守护功能屏蔽
  * @param task_id 任务ID
  */
-void task_guard_unmask(int task_id);
+void guard_unmask(int task_id);
 
 /**
- * @brief 处理任务守护
+ * @brief 指示守护模块将要进入睡眠模式
  */
-void task_guard_process(void);
+void guard_sleep(void);
+
+/**
+ * @brief 指示守护模块已经从睡眠中唤醒
+ */
+void guard_wakeup(void);
 
 /**
  * @brief 持续任务报告状态
  * @param task_id 任务ID
  */
-void task_guard_continuous_report(int task_id);
+void guard_continuous_report(int task_id);
 
 /**
  * @brief 离散任务设置容忍时间
  * @param task_id 任务ID
  * @param tolerance_period 容忍时间
  */
-void task_guard_discreate_set_tolerance(int task_id, uint32_t tolerance_period);
+void guard_discreate_set_tolerance(int task_id, uint32_t tolerance_period);
 
 /**
  * @brief 离散任务标记起点
  * @param task_id 任务ID
  */
-void task_guard_discrete_mark(int task_id);
+void guard_discrete_mark(int task_id);
 
 /**
  * @brief 离散任务标记终点
  * @param task_id 任务ID
  */
-void task_guard_discrete_unmark(int task_id);
+void guard_discrete_unmark(int task_id);
 
 /**
  * @brief 第三方报告自定义任务的运行故障
  * @param task_id 任务ID
  * @param error 故障错误码（自定义含义）
  */
-void task_guard_custom_report(int task_id, int error);
+void guard_custom_report(int task_id, int error);
 
 /**
  * @brief 第三方重置自定义任务的故障状态
  * @param task_id 任务ID
  */
-void task_guard_custom_reset(int task_id);
+void guard_custom_reset(int task_id);
 #endif

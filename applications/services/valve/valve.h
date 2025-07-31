@@ -87,7 +87,7 @@ enum AppSignals {
 };
 
 //${Shared::Sleep_bits} ......................................................
-extern uint32_t Sleep_bits;
+extern volatile uint32_t Sleep_bits;
 
 //${Shared::Sleep_slotbit} ...................................................
 enum Sleep_slotbit {

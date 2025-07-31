@@ -26,7 +26,7 @@
     MAX_SIG,
 };</code>
   </attribute>
-  <attribute name="Sleep_bits" type="uint32_t" visibility="0x00" properties="0x00"/>
+  <attribute name="Sleep_bits" type="volatile uint32_t" visibility="0x00" properties="0x00"/>
   <attribute name="Sleep_slotbit" type="enum" visibility="0x04" properties="0x00">
    <code>{
     LOCK_BIT    = 1 &lt;&lt; 0,
