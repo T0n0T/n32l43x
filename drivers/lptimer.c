@@ -20,11 +20,7 @@ static void LPTIMNVIC_Config(FunctionalState Cmd)
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_InitPeripheral(&EXTI_InitStructure);
 
-    NVIC_InitStructure.NVIC_IRQChannel                   = LPTIM_WKUP_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 1;
-    NVIC_InitStructure.NVIC_IRQChannelCmd                = Cmd;
-    NVIC_Init(&NVIC_InitStructure);
+    NVIC_EnableIRQ(LPTIM_WKUP_IRQn);
 }
 
 void LPTIM_WKUP_IRQHandler(void)
@@ -45,7 +41,6 @@ void lptimer_init(void) {
     RCC_EnableRETPeriphClk(RCC_RET_PERIPH_LPTIM, ENABLE);
 
     /* Initialize LPTIM */
-    LPTIM_InitType LPTIM_InitStruct = {0};
     LPTIMNVIC_Config(ENABLE);
     LPTIM_SetPrescaler(LPTIM, LPTIM_PRESCALER_DIV1);
 }
@@ -57,8 +52,8 @@ void lptimer_start(uint32_t cnt, lptimer_irq_callback_t cb)
 
     lptimer_callback = cb;
     /* Set compare value */
-    LPTIM_SetAutoReload(LPTIM, 0xFFFF);
-    LPTIM_SetCompare(LPTIM, 1);
+    LPTIM_SetAutoReload(LPTIM, cnt);
+    LPTIM_SetCompare(LPTIM, 0);
     LPTIM_StartCounter(LPTIM, LPTIM_OPERATING_MODE_CONTINUOUS);
 }
 

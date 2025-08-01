@@ -2,6 +2,7 @@
 #include "bsp.h" // Board Support Package interface
 #include "stdio.h"
 #include "string.h"
+#include "log.h"
 #include "cmd.h"
 #include "hello.h"
 
@@ -73,7 +74,6 @@ void cmd_init(void)
 void cmd_execute(char* input)
 {
     // 去除换行符(如果有)
-    printf("cmd_execute: %s\r\n", input);
     input[strcspn(input, "\r\n")] = 0;
 
     // 跳过前导空格
@@ -103,7 +103,7 @@ void cmd_execute(char* input)
         if (strcmp(args[0], commands[i].name) == 0) {
             // 检查参数数量
             if (argc - 1 > commands[i].max_args) {
-                printf("Error: Too many arguments for command '%s'. Max is %d.\r\n",
+                APP_LOG_ERROR("Error: Too many arguments for command '%s'. Max is %d.",
                        commands[i].name, commands[i].max_args);
                 goto _clear;
             }
@@ -114,7 +114,7 @@ void cmd_execute(char* input)
         }
     }
 
-    printf("Error: Unknown command '%s'\r\n", args[0]);
+    APP_LOG_ERROR("Error: Unknown command '%s'", args[0]);
 
 _clear:
     _cmd_pos = 0;
@@ -125,7 +125,7 @@ int cmd_reboot(int argc, char** argv)
 {
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
-    printf("System is rebooting...\r\n");
+    APP_LOG_INFO("System is rebooting...");
     NVIC_SystemReset(); // 调用系统重启函数
     return 0;
 }
@@ -136,7 +136,7 @@ int cmd_update(int argc, char** argv)
     (void)argv; // 未使用参数
     flash_erase_option();
     flash_program_option(0x1234);
-    printf("System  updating...\r\n");
+    APP_LOG_INFO("System  updating...");
     NVIC_SystemReset();
     // 这里可以添加实际的更新逻辑
     return 0;

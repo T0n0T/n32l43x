@@ -3,6 +3,7 @@ applications_incdirs = include_directories(
   '.',
   'hello',
   'cmd',
+  'log',
   # 'services',
   # 'services/cmd',
   # 'services/log',
