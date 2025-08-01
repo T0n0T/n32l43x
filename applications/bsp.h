@@ -40,11 +40,14 @@
 #include "spi_flash.h"
 #include "uart.h"
 
-#define DEF_ISR_PRI    5
-#define TICK_RATE      1000
-#define MS_TO_TICK(ms) ((ms) * TICK_RATE / 1000)
+#define DEF_ISR_PRI       5
+#define TICK_RATE         1000
+#define LPTIM_INTERVAL_MS 500
+#define LPTIM_REPORT_MS   10000
+#define MS_TO_TICK(ms)    ((ms) * TICK_RATE / 1000)
 
 extern volatile bool pvd_is_power_low;
+extern volatile bool run_is_reporting;
 
 extern int g_cmd_id;
 extern int g_counter_id;

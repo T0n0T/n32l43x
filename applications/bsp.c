@@ -13,6 +13,7 @@
 
 /* Use for sleep judgement */
 volatile uint32_t Sleep_bits;
+volatile bool     run_is_reporting;
 volatile bool     pvd_is_power_low;
 static QEvt       _lock_evt;
 
@@ -77,16 +78,29 @@ static void pvd_handle(void)
     pvd_is_power_low = !pvd_is_power_low;
 }
 
+static void lptimer_handle(void)
+{
+    static uint32_t lptime_tick = 0;
+    lptime_tick++;
+    if (lptime_tick % (LPTIM_REPORT_MS / LPTIM_INTERVAL_MS) == 0) {
+        run_is_reporting = true;
+        lptime_tick      = 0;
+    }
+    guard_process();
+}
+
 /*..........................................................................*/
 void QV_onIdle(void)
 {
     extern void valve_idle(void);
     valve_idle();
-    if (!Sleep_bits) {
+    if (!Sleep_bits && !run_is_reporting) {
         guard_sleep();
         // PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
     } else {
-        PWR_EnterSLEEPMode(1, PWR_SLEEPENTRY_WFI);
+        /* NOTE: should not use SLEEPONEXIT mode, it will cause qv sheduling blocked
+         */
+        PWR_EnterSLEEPMode(0, PWR_SLEEPENTRY_WFI);
     }
     QF_INT_ENABLE();
 }
@@ -99,14 +113,17 @@ void BSP_init(void)
      */
 #ifdef DEBUG
     cm_backtrace_init("build/n32l43x", "V1.0", "1.0.0");
+    DBG_ConfigPeriph(DBG_SLEEP | DBG_STOP | DBG_CTRL_TIM1_STOP, ENABLE);
 #endif
     NVIC_SetPriorityGrouping(4);
     NVIC_SetPriority(SysTick_IRQn, DEF_ISR_PRI);
     NVIC_SetPriority(RTC_IRQn, DEF_ISR_PRI);
+    NVIC_SetPriority(LPTIM_WKUP_IRQn, DEF_ISR_PRI);
     NVIC_SetPriority(USART2_IRQn, DEF_ISR_PRI - 1);
     NVIC_SetPriority(UART5_IRQn, DEF_ISR_PRI - 2);
     NVIC_SetPriority(TIM1_UP_IRQn, DEF_ISR_PRI - 2);
     NVIC_SetPriority(EXTI15_10_IRQn, DEF_ISR_PRI - 2);
+
     board_init(); /* initialize the board */
     led_init();   /* initialize the LEDs */
     hall_init();  /* initialize the Hall sensor */
@@ -116,6 +133,7 @@ void BSP_init(void)
     APP_LOG_RAW("│   N32L43x Valve App  %s-%s    │\r\n", __DATE__, __TIME__);
     APP_LOG_RAW("└──────────────────────────────────────────────┘\r\n");
     lcd_init(); /* initialize the LCD */
+    lptimer_init();
     // dump_clk();
     // rtc_init();
     // wakeup_init(wakeup_handle);
@@ -179,6 +197,7 @@ void QF_onStartup(void)
     APP_LOG_INFO("PCLK1: %u", (unsigned int)RCC_ClockFreq.Pclk1Freq);
     APP_LOG_INFO("PCLK2: %u", (unsigned int)RCC_ClockFreq.Pclk2Freq);
     SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
+    lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);
     // if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
     QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
     QACTIVE_PUBLISH(&_lock_evt, 0);

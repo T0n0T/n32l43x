@@ -12,6 +12,11 @@ typedef enum guard_type {
 } guard_type_t;
 
 /**
+ * @brief 守护任务处理函数
+ */
+void guard_process(void);
+
+/**
  * @brief 初始化任务守护模块
  * @return 成功返回0，失败返回非0错误码
  */

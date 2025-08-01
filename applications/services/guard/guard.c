@@ -1,10 +1,10 @@
 #include "guard.h"
 #include "lptimer.h"
+#include "log.h"
 #include <string.h>
 
-#define GUARD_INTERVAL_MS 500
-#define GUARD_TASK_NUM    8
-#define GUARD_TASK_MASK   0x80000000 // 任务屏蔽标志位
+#define GUARD_TASK_NUM  8
+#define GUARD_TASK_MASK 0x80000000 // 任务屏蔽标志位
 
 typedef struct guard_continuous_priv {
     volatile uint32_t last_report;
@@ -93,7 +93,7 @@ static void guard_atomic_pluse(volatile uint32_t* key)
     } while ((__STREXW(temp + 1, key)));
 }
 
-static void guard_process(void)
+void guard_process(void)
 {
     for (int i = 0; i < GUARD_TASK_NUM; i++) {
         if (!(guard_ins.task[i].mask & GUARD_TASK_MASK) && !guard_ins.is_sleep &&
@@ -127,14 +127,12 @@ static void guard_process(void)
             }
         }
     }
-    // 喂狗
     guard_atomic_pluse(&guard_ins.current_period);
+    // 喂狗
 }
 
 int guard_init(void)
 {
-    lptimer_init();
-    lptimer_start(LPTIMER_MS_TO_TICKS(GUARD_INTERVAL_MS), guard_process);
     // 初始化看门狗
     return 0;
 }
@@ -152,7 +150,7 @@ int guard_register(guard_type_t type, guard_handle_func handle, void* data)
     }
 
     // 如果找到了空闲槽位,则初始化任务,并屏蔽
-    if (task_id > 0) {
+    if (task_id >= 0) {
         guard_ins.task[task_id].mask   = 0;
         guard_ins.task[task_id].type   = type;
         guard_ins.task[task_id].handle = handle;
@@ -203,6 +201,8 @@ void guard_discreate_set_tolerance(int task_id, uint32_t tolerance_period)
         guard_ins.task[task_id].type == GUARD_TYPE_DISCRETE) {
         // 设置离散任务的容忍时间
         guard_ins.task[task_id].record.decrete_priv.tolerance_period = tolerance_period;
+        // 重置任务状态
+        guard_ins.task[task_id].record.decrete_priv.finished = true;
     }
 }
 

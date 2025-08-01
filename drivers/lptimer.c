@@ -20,7 +20,6 @@ static void LPTIMNVIC_Config(FunctionalState Cmd)
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_InitPeripheral(&EXTI_InitStructure);
 
-    NVIC_SetPriority(LPTIM_WKUP_IRQn, 5);
     NVIC_EnableIRQ(LPTIM_WKUP_IRQn);
 }
 

@@ -24,22 +24,22 @@ int g_persist_id;
 
 static void cmd_guard_handle(int task_id, void* data)
 {
-    assert_param(true);
+    assert_param(false);
 }
 
 static void counter_guard_handle(int task_id, void* data)
 {
-    assert_param(true);
+    assert_param(false);
 }
 
 static void handle_guard_handle(int task_id, void* data)
 {
-    assert_param(true);
+    assert_param(false);
 }
 
 static void persist_guard_handle(int task_id, void* data)
 {
-    assert_param(true);
+    assert_param(false);
 }
 
 void BSP_init_ext(void)
@@ -54,7 +54,7 @@ void BSP_init_ext(void)
     g_persist_id = guard_register(GUARD_TYPE_DISCRETE, persist_guard_handle, NULL);
     assert_param(g_persist_id >= 0);
 
-    // 每个周期按 GUARD_INTERVAL_MS 计算
+    // 每个周期按 LPTIM_INTERVAL_MS 计算
     guard_discreate_set_tolerance(g_cmd_id, 1);
     guard_discreate_set_tolerance(g_handle_id, 1);
     guard_discreate_set_tolerance(g_persist_id, 5);
@@ -106,7 +106,7 @@ void QF_onContextSw(QActive* prev, QActive* next)
         if (next == AO_ValveHandler) {
             guard_discrete_mark(g_handle_id);
         }
-        if (prev == AO_ValvePersist) {
+        if (next == AO_ValvePersist) {
             guard_discrete_mark(g_persist_id);
         }
     }

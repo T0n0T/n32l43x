@@ -25,39 +25,24 @@ typedef struct {
 
 static valve_status_ctx_t status_ctx;
 
-static void valve_check_status(void)
+static void valve_report(void)
 {
     static uint32_t current_time = 0;
-
-    // 由于1ms调用一次，直接递增计数器
+    static uint8_t  blink_count  = 0;
     current_time++;
+    if (current_time >= (blink_count + 1) * 50) {
+        led_toggle(LED_1);
+        if (pvd_is_power_low) {
+            led_toggle(LED_2);
+        }
 
-    switch (status_ctx.state) {
-        case STATUS_IDLE:
-            // 检查是否达到10秒（10000ms）
-            if (current_time >= 10000) {
-                status_ctx.state            = STATUS_BLINKING;
-                status_ctx.blink_start_time = current_time;
-                status_ctx.blink_count      = 0;
-            }
-            break;
-
-        case STATUS_BLINKING:
-            // 检查是否完成500ms闪烁（500ms / 50ms = 10次）
-            // 每50ms执行一次LED反转
-            if ((current_time - status_ctx.blink_start_time) >= (status_ctx.blink_count + 1) * 50) {
-                led_toggle(LED_1);
-                status_ctx.blink_count++;
-            }
-            if (status_ctx.blink_count == 10) {
-                // 闪烁完成，返回空闲状态
-                status_ctx.state = STATUS_IDLE;
-                current_time     = 0;
-            }
-            break;
-
-        default:
-            break;
+        blink_count++;
+    }
+    if (blink_count == 20) {
+        // 闪烁完成，返回空闲状态
+        current_time     = 0;
+        blink_count      = 0;
+        run_is_reporting = false;
     }
 }
 
@@ -66,8 +51,9 @@ void valve_idle(void)
 #ifdef DEBUG
     SEGGER_SYSVIEW_OnIdle();
 #endif
-
-    valve_check_status();
+    if (run_is_reporting) {
+        valve_report();
+    }
 
     if (last_status != global_valve_value->current_status) {
 #ifdef DEBUG
