@@ -50,27 +50,21 @@ void QV_onIdle(void)
     static bool     sleep = false;
     static uint32_t count = 0;
     if (sleep) {
-        APP_LOG_DEBUG("sleep");
+        SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
         PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
-        // PWR_EnterSLEEPMode(0, PWR_SLEEPENTRY_WFI);
-        count = 0;
+        SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
+        led_toggle(LED_2);
+        APP_LOG_DEBUG("wakeup");        
         sleep = false;
     } else {
         count++;
-        if (count == 2000) {
+        if (count == 5000) {
+            count = 0;
             sleep = true;
         }
+        PWR_EnterSLEEPMode(SLEEP_OFF_EXIT, PWR_SLEEPENTRY_WFI);
     }
     QF_INT_ENABLE();
-}
-
-static void lptimer_handle(void)
-{
-    extern ErrorStatus SetSysClockToPLL(uint32_t freq, uint8_t src);
-    RCC_EnableAPB1PeriphClk(RCC_APB1_PERIPH_PWR, ENABLE);
-    SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
-    SystemCoreClockUpdate();
-    APP_LOG_DEBUG("lptimer_handle wakeup");
 }
 
 /* BSP functions ===========================================================*/
@@ -85,9 +79,9 @@ void BSP_init(void)
 #endif
     board_init();       /* initialize the board */
     led_init();         /* initialize the LEDs */
-    // uart_init(CONSOLE); /* initialize the console UART */
+    uart_init(CONSOLE); /* initialize the console UART */
+    APP_LOG_INFO("MCU RESET Systemclock: %d", SystemCoreClock);
     lptimer_init();
-    lptimer_start(LPTIMER_MS_TO_TICKS(5000), lptimer_handle);
 }
 
 void BSP_start(void)
@@ -115,13 +109,19 @@ void BSP_start(void)
 /*..........................................................................*/
 void QF_onStartup(void)
 {
-    /* set up the SysTick timer to fire at BSP_TICKS_PER_SEC rate
-     * NOTE: do NOT call OS_CPU_SysTickInit() from uC/OS-II
-     */
-    SysTick_Config(SystemCoreClock / BSP_TICKS_PER_SEC);
+#define NVIC_PRI_GROUP 4
 
-    // /* set priorities of ALL ISRs used in the system, see NOTE1 */
-    NVIC_SetPriority(SysTick_IRQn, QF_AWARE_ISR_CMSIS_PRI + 1U);
+    /* set priorities of ALL ISRs used in the system, see NOTE1 */
+    // NVIC_SetPriorityGrouping(NVIC_PRI_GROUP);
+    NVIC_SetPriority(SysTick_IRQn, 0xf);
+    NVIC_SetPriority(LPTIM_WKUP_IRQn, 0);
+
+    SysTick->LOAD = (uint32_t)(SystemCoreClock / BSP_TICKS_PER_SEC - 1UL);
+    SysTick->VAL  = 0UL;
+    SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk |
+                    SysTick_CTRL_TICKINT_Msk |
+                    SysTick_CTRL_ENABLE_Msk;
+    lptimer_start(LPTIMER_MS_TO_TICKS(1000), NULL);
 }
 /*..........................................................................*/
 void QF_onCleanup(void)

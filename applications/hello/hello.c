@@ -96,7 +96,7 @@ static QState Hello_initial(Hello * const me, void const * const par) {
     //${AOs::Hello::SM::initial}
     (void)par; // unused parameter
     QTimeEvt_armX(&me->ledEvt, BSP_TICKS_PER_SEC/2, BSP_TICKS_PER_SEC/2);
-    QTimeEvt_armX(&me->modbusEvt, 1, 1);
+    // QTimeEvt_armX(&me->modbusEvt, 1, 1);
 
     eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
     eMBEnable();

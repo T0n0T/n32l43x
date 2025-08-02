@@ -1,5 +1,5 @@
 #include <stdio.h>
-
+#include "bsp.h"
 #ifdef __GNUC__
 #ifdef TINY_STDIO
 
@@ -22,13 +22,32 @@ STDIO_ALIAS(stderr);
 
 static int __fputc(char ch, FILE* file)
 {
-#ifdef DEBUG
-    SEGGER_RTT_Write(0, &ch, 1);
-#else
+// #ifdef DEBUG
+//     SEGGER_RTT_Write(0, &ch, 1);
+// #else
     uart_putc(CONSOLE, ch);
-#endif
+// #endif
     return (ch);
 }
+#else
+int _write(int fd, char* ptr, int len)
+{
+    /*
+     * write "len" of char from "ptr" to file id "fd"
+     * Return number of char written.
+     *
+     * Only work for STDOUT, STDIN, and STDERR
+     */
+    if (fd > 2) {
+        return -1;
+    }
+    while (len--)
+    {
+        uart_putc(CONSOLE, *ptr);
+        ptr++;
+    }
 
+    return len;
+}
 #endif
 #endif

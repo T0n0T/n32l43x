@@ -52,6 +52,7 @@ void lptimer_start(uint32_t cnt, lptimer_irq_callback_t cb)
 
     lptimer_callback = cb;
     /* Set compare value */
+    assert_param(cnt < 0xffff);
     LPTIM_SetAutoReload(LPTIM, cnt);
     LPTIM_SetCompare(LPTIM, 0);
     LPTIM_StartCounter(LPTIM, LPTIM_OPERATING_MODE_CONTINUOUS);

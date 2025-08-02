@@ -12,12 +12,13 @@ cross_file = 'tools/toolchains/arm-none-eabi-gcc.txt'
 # 全局编译参数
 c_args = [
   '-D__FPU_PRESENT',
+  '-DQF_NDUMMY_SYS',
   '-mcpu=cortex-m4',
   '-mthumb',
   '-mfpu=fpv4-sp-d16',
   '-mfloat-abi=hard',
   '-Wall',
-  '-specs=picolibc.specs',
+  '-specs=nosys.specs',
   '-ffunction-sections',
   '-fdata-sections',
   '-O0',                    # 优化等级2
@@ -32,7 +33,7 @@ link_args = [
   '-mfpu=fpv4-sp-d16',
   '-mfloat-abi=hard',
   '-Wl,--gc-sections',
-  '-specs=picolibc.specs',
+  '-specs=nosys.specs',
   '-Xlinker',
   '-Map=' + meson.current_build_dir() + '/n32l43x.map',
   '-T', meson.current_source_dir() + '/n32l43x.ld',

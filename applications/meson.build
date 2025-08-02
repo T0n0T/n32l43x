@@ -16,4 +16,5 @@ applications_sources = files(
   'bsp.c',
   'hello/hello.c',
   'cmd/cmd.c',
+  'log/log.c',
 )
