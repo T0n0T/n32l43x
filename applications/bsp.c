@@ -12,8 +12,7 @@
 #include "SEGGER_SYSVIEW.h"
 #endif
 
-#define BTN_SW1 (1U << 4)
-#define BTN_SW2 (1U << 0)
+static bool sleep = true;
 
 /* Assertion handler  ======================================================*/
 Q_NORETURN Q_onAssert(char const* module, int_t id)
@@ -47,21 +46,14 @@ void SysTick_Handler(void)
 /*..........................................................................*/
 void QV_onIdle(void)
 {
-    static bool     sleep = false;
-    static uint32_t count = 0;
     if (sleep) {
         SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
         PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
         SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
-        led_toggle(LED_2);
-        APP_LOG_DEBUG("wakeup");        
-        sleep = false;
+        SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
+        SystemCoreClockUpdate();
+        APP_LOG_INFO("SYSCLK: %u", SystemCoreClock);
     } else {
-        count++;
-        if (count == 5000) {
-            count = 0;
-            sleep = true;
-        }
         PWR_EnterSLEEPMode(SLEEP_OFF_EXIT, PWR_SLEEPENTRY_WFI);
     }
     QF_INT_ENABLE();
@@ -98,12 +90,12 @@ void BSP_start(void)
 
     static QEvtPtr helloQueueSto[10];
     Hello_ctor();
-    QActive_start(AO_Hello,
-                  1U,                   // QP prio. of the AO
-                  helloQueueSto,        // event queue storage
-                  Q_DIM(helloQueueSto), // queue length [events]
-                  (void*)0, 0U,         // no stack storage
-                  (void*)0);            // no initialization param
+    // QActive_start(AO_Hello,
+    //               1U,                   // QP prio. of the AO
+    //               helloQueueSto,        // event queue storage
+    //               Q_DIM(helloQueueSto), // queue length [events]
+    //               (void*)0, 0U,         // no stack storage
+    //               (void*)0);            // no initialization param
 }
 
 /*..........................................................................*/

@@ -18,6 +18,11 @@ typedef enum {
     SYSCLK_PLLSRC_HSEDIV2_PLLDIV2,
 } SYSCLK_PLL_TYPE;
 
+ErrorStatus SetSysClockToMSI(void);
+ErrorStatus SetSysClockToHSI(void);
+ErrorStatus SetSysClockToHSE(void);
+ErrorStatus SetSysClockToPLL(uint32_t freq, uint8_t src);
+
 typedef void (*wakeup_handle_func)(uint8_t);
 
 void board_init(void);
