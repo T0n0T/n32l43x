@@ -12,3 +12,8 @@ option('N32_USBFS_DRV',
   type: 'boolean',
   value: false,
   description: 'Enable USBFS driver')
+
+option('JLINK_REMOTE',
+  type: 'string',
+  value: 'disabled',
+  description: 'Enable JLink remote debug')

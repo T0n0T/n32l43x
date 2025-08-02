@@ -239,15 +239,13 @@ static void sleep(struct rt_pm* pm, uint8_t mode)
             break;
 
         case PM_SLEEP_MODE_DEEP:
-            PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET);
-            /*Reset SRAM2 when wake up from stop2 mode*/
-            sram2_reset();
+            PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
             /*multiply System Clock Frequency*/
-            set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
+            // set_sysclock_to_pll(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
             break;
 
         case PM_SLEEP_MODE_STANDBY:
-            PWR_EnterSTANDBYMode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM2RET);
+            // PWR_EnterSTANDBYMode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM2RET);
             break;
 
         case PM_SLEEP_MODE_SHUTDOWN:

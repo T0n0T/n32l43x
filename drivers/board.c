@@ -48,6 +48,8 @@ void rt_hw_board_init()
     /* NVIC Configuration */
     NVIC_Configuration();
 
+    DBG_ConfigPeriph(DBG_SLEEP | DBG_STOP, ENABLE);
+    
     /* Configure the SysTick */
     SysTick_Config(SystemCoreClock / RT_TICK_PER_SECOND);
 

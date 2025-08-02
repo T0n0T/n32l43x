@@ -13,5 +13,7 @@
         "text_encoding": "c",
         "typeinfo": "c",
         "n32l43x_lpuart.h": "c"
-    }
+    },
+    "C_Cpp.default.configurationProvider": "mesonbuild.mesonbuild",
+    "C_Cpp.default.compileCommands": "/workspaces/build/compile_commands.json"
 }

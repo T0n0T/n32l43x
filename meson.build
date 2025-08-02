@@ -43,7 +43,7 @@ subdir('applications')
 subdir('drivers')
 
 # 创建最终可执行文件
-executable('n32l43x',
+n32l43x_elf = executable('n32l43x',
   sources: [ 
     applications_sources,
     drivers_sources,
@@ -62,3 +62,68 @@ executable('n32l43x',
   link_args: link_args,
   name_suffix: 'elf'
 )
+
+
+# 配置objcopy工具
+objcopy = find_program('arm-none-eabi-objcopy')
+objdump = find_program('arm-none-eabi-objdump')
+
+# 根据操作系统选择JLink可执行文件名称
+jlink_exe = 'JLinkExe'
+if build_machine.system() == 'windows'
+  jlink_exe = 'JLink'
+endif
+
+# 配置JLink工具
+jlink = find_program(jlink_exe)
+
+# 添加hex文件生成目标
+custom_target('hex',
+  input: n32l43x_elf,
+  output: 'n32l43x.hex',
+  command: [objcopy, '-O', 'ihex', '@INPUT@', '@OUTPUT@'],
+  build_by_default: true
+)
+
+# 添加bin文件生成目标
+custom_target('bin',
+  input: n32l43x_elf,
+  output: 'n32l43x.bin',
+  command: [objcopy, '-O', 'binary', '@INPUT@', '@OUTPUT@'],
+  build_by_default: true
+)
+
+run_target('disasm',
+  command: [
+    'sh', '-c',
+    objdump.full_path() + ' -d -S -l -C ' + n32l43x_elf.full_path() + ' > ' + 
+    meson.current_build_dir() / 'n32l43x.dis'
+  ]
+)
+
+# 添加下载目标
+if get_option('JLINK_REMOTE') != 'disabled'
+  message('JLink remote debug enabled')
+  run_target('flash',
+    command: [
+      jlink,
+      '-ip', get_option('JLINK_REMOTE'),
+      '-device', 'N32L436RB',
+      '-if', 'SWD',
+      '-speed', '4000',
+      '-autoconnect', '1',
+      '-CommanderScript', meson.current_source_dir() + '/tools/flash.jlink'
+    ]
+  )
+else
+  run_target('flash',
+    command: [
+      jlink,
+      '-device', 'N32L436RB',
+      '-if', 'SWD',
+      '-speed', '4000',
+      '-autoconnect', '1',
+      '-CommanderScript', meson.current_source_dir() + '/tools/flash.jlink'
+    ]
+  )
+endif
