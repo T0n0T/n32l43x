@@ -474,51 +474,77 @@ ErrorStatus SetSysClockToPLL(uint32_t freq, uint8_t src)
 //     PWR_WakeUpPinEnable(wkup_pin, ENABLE);
 // }
 
-static wakeup_handle_func handler;
+static wakeup_handle_func wakeup_handler;
 
-void wakeup_pin_init(wakeup_handle_func h)
+void wakeup_init(wakeup_handle_func h)
 {
     GPIO_InitType GPIO_InitStructure;
     EXTI_InitType EXTI_InitStructure;
-    NVIC_InitType NVIC_InitStructure;
     GPIO_InitStruct(&GPIO_InitStructure);
     EXTI_InitStruct(&EXTI_InitStructure);
 
     /* Enable the GPIO Clock */
-    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOC, ENABLE);
+    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOA, ENABLE);
 
     /*Configure the GPIO pin as input floating*/
-    GPIO_InitStructure.Pin       = GPIO_PIN_13;
+    GPIO_InitStructure.Pin       = GPIO_PIN_0;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Input;
     GPIO_InitStructure.GPIO_Pull = GPIO_No_Pull;
-    GPIO_InitPeripheral(GPIOC, &GPIO_InitStructure);
+    GPIO_InitPeripheral(GPIOA, &GPIO_InitStructure);
 
     /*Configure key EXTI Line to key input  Pin*/
-    GPIO_ConfigEXTILine(GPIOC_PORT_SOURCE, GPIO_PIN_SOURCE13);
+    GPIO_ConfigEXTILine(GPIOA_PORT_SOURCE, GPIO_PIN_SOURCE0);
 
     /*Configure key EXTI line*/
-    EXTI_InitStructure.EXTI_Line    = EXTI_LINE13;
+    EXTI_InitStructure.EXTI_Line    = EXTI_LINE0;
     EXTI_InitStructure.EXTI_Mode    = EXTI_Mode_Interrupt;
     EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_InitPeripheral(&EXTI_InitStructure);
 
-    /*Set key input interrupt priority*/
-    NVIC_InitStructure.NVIC_IRQChannel                   = EXTI15_10_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 1;
-    NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
+    wakeup_handler = h;
 
-    NVIC_Init(&NVIC_InitStructure);
+    /*Set key input interrupt priority*/
+    NVIC_EnableIRQ(EXTI0_IRQn);
 }
 
-void EXTI15_10_IRQHandler(void)
+void EXTI0_IRQHandler(void)
 {
-    if (RESET != EXTI_GetITStatus(EXTI_LINE3)) {
-        uint8_t bit = GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13);
-        if (handler != NULL) {
-            handler(bit);
+    if (RESET != EXTI_GetITStatus(EXTI_LINE0)) {
+        uint8_t bit = GPIO_ReadInputDataBit(GPIOA, GPIO_PIN_0);
+        if (wakeup_handler != NULL) {
+            wakeup_handler(bit);
         }
-        EXTI_ClrITPendBit(EXTI_LINE13);
+        EXTI_ClrITPendBit(EXTI_LINE0);
     }
 }
+
+static pvd_handle_func pvd_handler;
+
+void pvd_init(pvd_handle_func h)
+{
+    EXTI_InitType EXTI_InitStructure;
+    EXTI_InitStruct(&EXTI_InitStructure);
+    /* Configure EXTI Line16(PVD Output) to generate an interrupt on rising and
+       falling edges */
+    EXTI_ClrITPendBit(EXTI_LINE16);
+    EXTI_InitStructure.EXTI_Line    = EXTI_LINE16;
+    EXTI_InitStructure.EXTI_Mode    = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    EXTI_InitPeripheral(&EXTI_InitStructure);
+    PWR_PVDLevelConfig(PWR_PVDLEVEL_2V25);
+    PWR_PvdEnable(ENABLE);
+    NVIC_EnableIRQ(PVD_IRQn);
+}
+
+void PVD_IRQHandler(void)
+{
+    if (EXTI_GetITStatus(EXTI_LINE16) != RESET) {
+        if (pvd_handler != NULL) {
+            pvd_handler(); // Call the PVD handler with a dummy value
+        }
+        EXTI_ClrITPendBit(EXTI_LINE16);
+    }
+}
+

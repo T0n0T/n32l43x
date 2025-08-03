@@ -24,9 +24,10 @@ ErrorStatus SetSysClockToHSE(void);
 ErrorStatus SetSysClockToPLL(uint32_t freq, uint8_t src);
 
 typedef void (*wakeup_handle_func)(uint8_t);
+typedef void (*pvd_handle_func)(void);
 
 void board_init(void);
 void dump_clk(void);
-void wakeup_pin_init(wakeup_handle_func h);
-
+void pvd_init(pvd_handle_func h);
+void wakeup_init(wakeup_handle_func h);
 #endif /* __BOARD_H__ */

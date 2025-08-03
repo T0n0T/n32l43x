@@ -59,6 +59,15 @@ void QV_onIdle(void)
     QF_INT_ENABLE();
 }
 
+static void wakeup_handle(uint8_t bit)
+{
+    if (bit == Bit_RESET) {
+        sleep = true;
+    } else {
+        sleep = false;
+    }
+}
+
 /* BSP functions ===========================================================*/
 void BSP_init(void)
 {
@@ -74,6 +83,7 @@ void BSP_init(void)
     uart_init(CONSOLE); /* initialize the console UART */
     APP_LOG_INFO("MCU RESET Systemclock: %d", SystemCoreClock);
     lptimer_init();
+    wakeup_init(wakeup_handle);
 }
 
 void BSP_start(void)
@@ -90,12 +100,12 @@ void BSP_start(void)
 
     static QEvtPtr helloQueueSto[10];
     Hello_ctor();
-    // QActive_start(AO_Hello,
-    //               1U,                   // QP prio. of the AO
-    //               helloQueueSto,        // event queue storage
-    //               Q_DIM(helloQueueSto), // queue length [events]
-    //               (void*)0, 0U,         // no stack storage
-    //               (void*)0);            // no initialization param
+    QActive_start(AO_Hello,
+                  1U,                   // QP prio. of the AO
+                  helloQueueSto,        // event queue storage
+                  Q_DIM(helloQueueSto), // queue length [events]
+                  (void*)0, 0U,         // no stack storage
+                  (void*)0);            // no initialization param
 }
 
 /*..........................................................................*/
