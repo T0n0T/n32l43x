@@ -23,7 +23,7 @@ static void valve_report(void)
 
         blink_count++;
     }
-    if (blink_count == 20) {
+    if (blink_count == 100) {
         // 闪烁完成，返回空闲状态
         current_time     = 0;
         blink_count      = 0;

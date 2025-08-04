@@ -67,7 +67,7 @@ if get_option('buildtype').startswith('debug')
   appdep_incdirs += segger_incs
 endif
 
-c_args += '-DUSE_MODBUS'
+# c_args += '-DUSE_MODBUS'
 # c_args += '-DQF_USE_BASEPRI=7'
 
 firmware_dep = dependency('firmware')
