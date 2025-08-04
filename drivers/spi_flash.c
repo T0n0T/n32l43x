@@ -7,18 +7,12 @@ void sFLASH_LowLevel_DeInit(void)
 {
     GPIO_InitType GPIO_InitStructure = {0};
 
-    /*!< Disable the sFLASH_SPI  */
-    SPI_Enable(sFLASH_SPI, DISABLE);
-
-    /*!< DeInitializes the sFLASH_SPI */
-    SPI_I2S_DeInit(sFLASH_SPI);
-
     /*!< sFLASH_SPI Periph clock disable */
     RCC_EnableAPB2PeriphClk(sFLASH_SPI_CLK, DISABLE);
 
     /*!< Configure sFLASH_SPI pins: SCK */
     GPIO_InitStructure.Pin       = sFLASH_SPI_SCK_PIN;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Input;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitPeripheral(sFLASH_SPI_SCK_GPIO_PORT, &GPIO_InitStructure);
 
     /*!< Configure sFLASH_SPI pins: MISO */
@@ -32,6 +26,10 @@ void sFLASH_LowLevel_DeInit(void)
     /*!< Configure sFLASH_CS_PIN pin: sFLASH Card CS pin */
     GPIO_InitStructure.Pin = sFLASH_CS_PIN;
     GPIO_InitPeripheral(sFLASH_CS_GPIO_PORT, &GPIO_InitStructure);
+
+    /*!< Configure FLASH PWR ENABLE PIN */
+    GPIO_InitStructure.Pin = sFLASH_PWR_PIN;
+    GPIO_InitPeripheral(sFLASH_PWR_GPIO_PORT, &GPIO_InitStructure);
 }
 
 /**
@@ -76,7 +74,7 @@ void sFLASH_LowLevel_Init(void)
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitPeripheral(sFLASH_CS_GPIO_PORT, &GPIO_InitStructure);
 
-    /*!< Configure FLASH PWR ENABLE PIN*/
+    /*!< Configure FLASH PWR ENABLE PIN */
     GPIO_InitStructure.Pin       = sFLASH_PWR_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitPeripheral(sFLASH_PWR_GPIO_PORT, &GPIO_InitStructure);
@@ -88,6 +86,12 @@ void sFLASH_LowLevel_Init(void)
 void sFLASH_DeInit(void)
 {
     // GPIO_ResetBits(sFLASH_PWR_GPIO_PORT, sFLASH_PWR_PIN);
+    // sFLASH_CS_LOW();
+    /*!< Disable the sFLASH_SPI  */
+    SPI_Enable(sFLASH_SPI, DISABLE);
+    /*!< DeInitializes the sFLASH_SPI */
+    SPI_I2S_DeInit(sFLASH_SPI);
+
     sFLASH_LowLevel_DeInit();
 }
 
