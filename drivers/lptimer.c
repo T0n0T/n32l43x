@@ -27,7 +27,6 @@ static void LPTIMNVIC_Config(FunctionalState Cmd)
 
 void LPTIM_WKUP_IRQHandler(void)
 {
-    SEGGER_SYSVIEW_RecordEnterISR();
     if (LPTIM_IsActiveFlag_CMPM(LPTIM) != RESET) {
         if (lptimer_callback != NULL) {
             lptimer_callback();
@@ -35,7 +34,6 @@ void LPTIM_WKUP_IRQHandler(void)
         LPTIM_ClearFLAG_CMPM(LPTIM);
         EXTI_ClrITPendBit(EXTI_LINE24);
     }
-    SEGGER_SYSVIEW_RecordExitISR();
 }
 
 void lptimer_init(void) {

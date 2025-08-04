@@ -57,7 +57,7 @@ void BSP_init_ext(void)
     // 每个周期按 LPTIM_INTERVAL_MS 计算
     guard_discreate_set_tolerance(g_cmd_id, 1);
     guard_discreate_set_tolerance(g_handle_id, 1);
-    guard_discreate_set_tolerance(g_persist_id, 5);
+    guard_discreate_set_tolerance(g_persist_id, 2);
 #ifdef DEBUG
     SEGGER_SYSVIEW_Conf();
     extern SEGGER_SYSVIEW_TASKINFO _Q_taskInfo[3];

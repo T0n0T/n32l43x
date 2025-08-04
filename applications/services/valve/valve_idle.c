@@ -10,21 +10,6 @@
 
 static uint32_t last_status;
 
-// 状态机状态定义
-typedef enum {
-    STATUS_IDLE = 0, // 空闲状态，等待10秒超时
-    STATUS_BLINKING, // 闪烁状态
-} valve_status_state_t;
-
-// 状态机数据结构
-typedef struct {
-    valve_status_state_t state;
-    uint32_t             blink_start_time;
-    uint8_t              blink_count;
-} valve_status_ctx_t;
-
-static valve_status_ctx_t status_ctx;
-
 static void valve_report(void)
 {
     static uint32_t current_time = 0;

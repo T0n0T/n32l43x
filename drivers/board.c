@@ -5,11 +5,6 @@
 #include "n32l43x_lptim.h"
 #include "n32l43x_lpuart.h"
 
-ErrorStatus SetSysClockToMSI(void);
-ErrorStatus SetSysClockToHSI(void);
-ErrorStatus SetSysClockToHSE(void);
-ErrorStatus SetSysClockToPLL(uint32_t freq, uint8_t src);
-
 void board_init(void)
 {
     SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);

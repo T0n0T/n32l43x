@@ -134,6 +134,7 @@ void guard_process(void)
 int guard_init(void)
 {
     // 初始化看门狗
+    guard_ins.is_sleep = true;
     return 0;
 }
 

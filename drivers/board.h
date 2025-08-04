@@ -20,6 +20,11 @@ typedef enum {
 typedef void (*wakeup_handle_func)(uint8_t);
 typedef void (*pvd_handle_func)(void);
 
+ErrorStatus SetSysClockToMSI(void);
+ErrorStatus SetSysClockToHSI(void);
+ErrorStatus SetSysClockToHSE(void);
+ErrorStatus SetSysClockToPLL(uint32_t freq, uint8_t src);
+
 void board_init(void);
 void pvd_init(pvd_handle_func h);
 void wakeup_init(wakeup_handle_func h);
