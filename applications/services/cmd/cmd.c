@@ -6,17 +6,6 @@
 #include "valve.h"
 #include "log.h"
 
-#define BLE_PWR_PORT         GPIOB
-#define BLE_PWR_CLK          RCC_APB2_PERIPH_GPIOB
-#define BLE_PWR_PIN          GPIO_PIN_6
-#define BLE_PWR_HIGH         BLE_PWR_PORT->PBSC = BLE_PWR_PIN;
-#define BLE_PWR_LOW          BLE_PWR_PORT->PBC = BLE_PWR_PIN;
-
-#define USART_CMD            USART2
-#define USART_CMD_IRQn       USART2_IRQn
-#define USART_CMD_IRQHandler USART2_IRQHandler
-#define CMD_BUF_LEN          64U
-
 static ValveEvt          _cmd_evt;
 static uint8_t           _cmd_buf_rx[CMD_BUF_LEN];
 static uint8_t           _cmd_buf_tx[CMD_BUF_LEN * 2];
@@ -25,7 +14,7 @@ static const command_t   commands[] = CMD_DEFINE_LIST;
 static uint8_t           _start_match_pos;
 static const char*       START_STRING = "Start";
 static bool              _start_string_received;
-static bool              _module_already_off;
+bool                     _module_already_on;
 
 void USART_CMD_IRQHandler(void)
 {
@@ -76,13 +65,6 @@ void USART_CMD_IRQHandler(void)
 
 void cmd_init(void)
 {
-    GPIO_InitType GPIO_InitStructure;
-    GPIO_InitStruct(&GPIO_InitStructure);
-    RCC_EnableAPB2PeriphClk(BLE_PWR_CLK, ENABLE);
-    GPIO_InitStructure.Pin       = BLE_PWR_PIN;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-    GPIO_InitPeripheral(BLE_PWR_PORT, &GPIO_InitStructure);
-
     BLE_PWR_HIGH;
 
     uart_init(BLE_SERIAL);
@@ -117,10 +99,10 @@ void cmd_init(void)
     _start_string_received = false; // Initialize Start string received flag
 
     QEvt_ctor(&_cmd_evt.super, VALVE_CMD_PARSE_SIG);
-    _cmd_evt.msg     = _cmd_buf_rx;  // 设置消息指针指向命令缓冲区
-    _cmd_evt.evtType = VALVE_CMD; // 设置事件类型为命令解析
+    _cmd_evt.msg     = _cmd_buf_rx; // 设置消息指针指向命令缓冲区
+    _cmd_evt.evtType = VALVE_CMD;   // 设置事件类型为命令解析
 
-    if (RCC_GetFlagStatus(RCC_CTRLSTS_FLAG_SFTRSTF) == SET && !_module_already_off) {
+    if (RCC_GetFlagStatus(RCC_CTRLSTS_FLAG_SFTRSTF) == SET && _module_already_on) {
         APP_LOG_DEBUG("System is reboot from software ...");
         _start_string_received = true;
     }
@@ -130,8 +112,11 @@ void cmd_deinit(void)
 {
     BLE_PWR_LOW;
     _start_string_received = false;
-    _module_already_off    = true;
+    _module_already_on     = false;
     _start_match_pos       = 0;
+    DMA_EnableChannel(DMA_CH6, DISABLE);
+    DMA_DeInit(DMA_CH6);
+    DMA_DeInit(DMA_CH5);
     NVIC_DisableIRQ(USART_CMD_IRQn);
     uart_deinit(BLE_SERIAL);
 }

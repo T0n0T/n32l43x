@@ -3,6 +3,17 @@
 
 #include "cmd_impl.h" // 包含cmd_impl.h
 
+#define BLE_PWR_PORT         GPIOB
+#define BLE_PWR_CLK          RCC_APB2_PERIPH_GPIOB
+#define BLE_PWR_PIN          GPIO_PIN_6
+#define BLE_PWR_HIGH         BLE_PWR_PORT->PBSC = BLE_PWR_PIN;
+#define BLE_PWR_LOW          BLE_PWR_PORT->PBC = BLE_PWR_PIN;
+
+#define USART_CMD            USART2
+#define USART_CMD_IRQn       USART2_IRQn
+#define USART_CMD_IRQHandler USART2_IRQHandler
+#define CMD_BUF_LEN          64U
+
 #define CMD_OK           0xcafe
 #define CMD_ERR          0xdead
 #define CMD_DEFINE(func) int cmd_##func(int argc, char** argv);
@@ -17,6 +28,8 @@
     {"valve_info", cmd_valve_info, 1},             \
     {"valve_tuning", cmd_valve_tuning, 1},         \
 }
+
+extern bool _module_already_on;
 
 // 命令处理函数类型定义
 typedef int (*cmd_handler_t)(int argc, char** argv);

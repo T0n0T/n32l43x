@@ -111,6 +111,31 @@ void uart_deinit(uart_index_t index)
     USART_Enable(usart, DISABLE);
     /* Deinitialize the USARTx peripheral */
     USART_DeInit(usart);
+
+    GPIO_InitType GPIO_InitStructure;
+    GPIO_InitStruct(&GPIO_InitStructure);
+
+    /* Configure USARTx Tx  */
+    GPIO_InitStructure.Pin            = uarts[index].tx_pin;
+    GPIO_InitStructure.GPIO_Pull      = GPIO_Pull_Up;
+    GPIO_InitStructure.GPIO_Mode      = GPIO_Mode_Analog;
+    GPIO_InitStructure.GPIO_Alternate = GPIO_NO_AF;
+    GPIO_InitPeripheral(uarts[index].tx_port, &GPIO_InitStructure);
+
+    /* Configure USARTx Rx  */
+    GPIO_InitStructure.Pin            = uarts[index].rx_pin;
+    GPIO_InitStructure.GPIO_Pull      = GPIO_Pull_Up;
+    GPIO_InitStructure.GPIO_Alternate = uarts[index].rx_af;
+    GPIO_InitPeripheral(uarts[index].rx_port, &GPIO_InitStructure);
+
+    if (uarts[index].handle == USART1 ||
+        uarts[index].handle == UART4 ||
+        uarts[index].handle == UART5) {
+        RCC_EnableAPB2PeriphClk(uarts[index].clk_src, DISABLE);
+    } else if (uarts[index].handle == USART2 ||
+               uarts[index].handle == USART3) {
+        RCC_EnableAPB1PeriphClk(uarts[index].clk_src, DISABLE);
+    }
 }
 
 void uart_control(uart_index_t index, uint16_t int_flag, bool state)

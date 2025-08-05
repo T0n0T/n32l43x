@@ -43,8 +43,27 @@ static void persist_guard_handle(int task_id, void* data)
     assert_param(false);
 }
 
+static void low_power_gpio_optimize(void)
+{
+    GPIO_InitType GPIO_InitStructure;
+    GPIO_InitStruct(&GPIO_InitStructure);
+
+    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOA |
+                                RCC_APB2_PERIPH_GPIOB |
+                                RCC_APB2_PERIPH_GPIOC |
+                                RCC_APB2_PERIPH_GPIOD,
+                            ENABLE);
+    GPIO_InitStructure.Pin       = BLE_PWR_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitPeripheral(BLE_PWR_PORT, &GPIO_InitStructure);
+    // BLE_PWR_LOW;
+
+    uart_deinit(BLE_SERIAL);
+}
+
 void BSP_init_ext(void)
 {
+    low_power_gpio_optimize();
     guard_init();
     g_cmd_id = guard_register(GUARD_TYPE_DISCRETE, cmd_guard_handle, NULL);
     assert_param(g_cmd_id >= 0);

@@ -128,7 +128,7 @@ void BSP_init(void)
     APP_LOG_RAW("┌──────────────────────────────────────────────┐\r\n");
     APP_LOG_RAW("│   N32L43x Valve App  %s-%s    │\r\n", __DATE__, __TIME__);
     APP_LOG_RAW("└──────────────────────────────────────────────┘\r\n");
-    lcd_init(); /* initialize the LCD */
+    // lcd_init(); /* initialize the LCD */
     lptimer_init();
     // dump_clk();
     // rtc_init();
@@ -203,6 +203,7 @@ void QF_onStartup(void)
     SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
     lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);
     if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
+        _module_already_on = true;
         QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
     }
