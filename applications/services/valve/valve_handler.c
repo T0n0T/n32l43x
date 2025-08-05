@@ -185,7 +185,7 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
     #ifdef USE_MODBUS
     eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
     eMBEnable();
-    //QTimeEvt_armX(&me->timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));
+    QTimeEvt_armX(&me->timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));
     #endif
     static struct {
         QMState const *target;
@@ -313,12 +313,15 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_EXIT}
         case VALVE_EXIT_SIG: {
+            if (global_valve_value->total_ticks != last_total_ticks) {
+                APP_LOG_DEBUG("write flash %d", last_total_ticks);
+                QEvt_ctor(&evt.super, VALVE_PERSIST_START_SIG);
+                evt.msg     = (void *)&persist_request;
+                evt.evtType = VALVE_VALUE;
+                QACTIVE_POST(AO_ValvePersist, &evt.super, 0U);
+                last_total_ticks = global_valve_value->total_ticks;
+            }
             QF_CRIT_ENTRY();
-            APP_LOG_DEBUG("write flash %d", last_total_ticks);
-            QEvt_ctor(&evt.super, VALVE_PERSIST_START_SIG);
-            evt.msg     = (void *)&persist_request;
-            evt.evtType = VALVE_VALUE;
-            QACTIVE_POST(AO_ValvePersist, &evt.super, 0U);
             sFLASH_DeInit();
             QF_CRIT_EXIT();
             static QMTranActTable const tatbl_ = { // tran-action table
