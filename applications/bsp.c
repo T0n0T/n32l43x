@@ -193,6 +193,7 @@ void QF_onStartup(void)
     APP_LOG_INFO("PCLK1: %u", (unsigned int)RCC_ClockFreq.Pclk1Freq);
     APP_LOG_INFO("PCLK2: %u", (unsigned int)RCC_ClockFreq.Pclk2Freq);
 
+    NVIC_SetPriorityGrouping(NVIC_PriorityGroup_0);
     NVIC_SetPriority(RTC_IRQn, DEF_ISR_PRI);
     NVIC_SetPriority(LPTIM_WKUP_IRQn, DEF_ISR_PRI);
     NVIC_SetPriority(USART2_IRQn, DEF_ISR_PRI - 1);
@@ -201,10 +202,10 @@ void QF_onStartup(void)
     NVIC_SetPriority(EXTI15_10_IRQn, DEF_ISR_PRI - 2);
     SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
     lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);
-    // if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
-    // QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
-    // QACTIVE_PUBLISH(&_lock_evt, 0);
-    // }
+    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
+        QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
+        QACTIVE_PUBLISH(&_lock_evt, 0);
+    }
 }
 /*..........................................................................*/
 void QF_onCleanup(void)
