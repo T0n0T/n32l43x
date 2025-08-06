@@ -73,13 +73,11 @@ extern ValveCounter ValveCounter_inst;
 // protected:
 static QState ValveCounter_initial(ValveCounter * const me, void const * const par);
 static QState ValveCounter_Wait  (ValveCounter * const me, QEvt const * const e);
-static QState ValveCounter_Wait_e(ValveCounter * const me);
-static QState ValveCounter_Wait_x(ValveCounter * const me);
 static QMState const ValveCounter_Wait_s = {
     QM_STATE_NULL, // superstate (top)
     Q_STATE_CAST(&ValveCounter_Wait),
-    Q_ACTION_CAST(&ValveCounter_Wait_e),
-    Q_ACTION_CAST(&ValveCounter_Wait_x),
+    Q_ACTION_NULL, // no entry action
+    Q_ACTION_NULL, // no exit action
     Q_ACTION_NULL  // no initial tran.
 };
 static QState ValveCounter_Work  (ValveCounter * const me, QEvt const * const e);
@@ -241,13 +239,9 @@ static QState ValveCounter_initial(ValveCounter * const me, void const * const p
     _val_tick.ID           = 1;
     _val_tick.pValue.pI32  = (I32*)&global_valve_value->total_ticks;
     #endif
-    static struct {
-        QMState const *target;
-        QActionHandler act[2];
-    } const tatbl_ = { // tran-action table
+    static QMTranActTable const tatbl_ = { // tran-action table
         &ValveCounter_Wait_s, // target state
         {
-            Q_ACTION_CAST(&ValveCounter_Wait_e), // entry
             Q_ACTION_NULL // zero terminator
         }
     };
@@ -256,30 +250,18 @@ static QState ValveCounter_initial(ValveCounter * const me, void const * const p
 
 //${AOs::ValveCounter::SM::Wait} .............................................
 //${AOs::ValveCounter::SM::Wait}
-static QState ValveCounter_Wait_e(ValveCounter * const me) {
-    Sleep_release(COUNTER_BIT);
-    Q_UNUSED_PAR(me);
-    return QM_ENTRY(&ValveCounter_Wait_s);
-}
-//${AOs::ValveCounter::SM::Wait}
-static QState ValveCounter_Wait_x(ValveCounter * const me) {
-    Sleep_request(COUNTER_BIT);
-    (void)me; // unused parameter
-    return QM_EXIT(&ValveCounter_Wait_s);
-}
-//${AOs::ValveCounter::SM::Wait}
 static QState ValveCounter_Wait(ValveCounter * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
         //${AOs::ValveCounter::SM::Wait::VALVE_UNLOCK}
         case VALVE_UNLOCK_SIG: {
+            Sleep_request(COUNTER_BIT);
             static struct {
                 QMState const *target;
-                QActionHandler act[3];
+                QActionHandler act[2];
             } const tatbl_ = { // tran-action table
                 &ValveCounter_Work_s, // target state
                 {
-                    Q_ACTION_CAST(&ValveCounter_Wait_x), // exit
                     Q_ACTION_CAST(&ValveCounter_Work_e), // entry
                     Q_ACTION_NULL // zero terminator
                 }
@@ -314,14 +296,14 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
     switch (e->sig) {
         //${AOs::ValveCounter::SM::Work::VALVE_LOCK}
         case VALVE_LOCK_SIG: {
+            Sleep_release(COUNTER_BIT);
             static struct {
                 QMState const *target;
-                QActionHandler act[3];
+                QActionHandler act[2];
             } const tatbl_ = { // tran-action table
                 &ValveCounter_Wait_s, // target state
                 {
                     Q_ACTION_CAST(&ValveCounter_Work_x), // exit
-                    Q_ACTION_CAST(&ValveCounter_Wait_e), // entry
                     Q_ACTION_NULL // zero terminator
                 }
             };

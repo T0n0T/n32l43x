@@ -33,6 +33,7 @@
             "type": "cortex-debug",
             "request": "attach",
             "servertype": "jlink",
+            "ipAddress": "192.168.1.111",
             "cwd": "${workspaceRoot}",
             "executable": "${workspaceRoot}/build/n32l43x.elf",
             "device": "N32L436RB",

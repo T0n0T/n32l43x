@@ -128,7 +128,7 @@ void BSP_init(void)
     APP_LOG_RAW("┌──────────────────────────────────────────────┐\r\n");
     APP_LOG_RAW("│   N32L43x Valve App  %s-%s    │\r\n", __DATE__, __TIME__);
     APP_LOG_RAW("└──────────────────────────────────────────────┘\r\n");
-    // lcd_init(); /* initialize the LCD */
+    lcd_init(); /* initialize the LCD */
     lptimer_init();
     // dump_clk();
     // rtc_init();

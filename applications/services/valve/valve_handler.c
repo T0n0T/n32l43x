@@ -81,13 +81,11 @@ extern ValveHandler ValveHandler_inst;
 // protected:
 static QState ValveHandler_initial(ValveHandler * const me, void const * const par);
 static QState ValveHandler_Idle  (ValveHandler * const me, QEvt const * const e);
-static QState ValveHandler_Idle_e(ValveHandler * const me);
-static QState ValveHandler_Idle_x(ValveHandler * const me);
 static QMState const ValveHandler_Idle_s = {
     QM_STATE_NULL, // superstate (top)
     Q_STATE_CAST(&ValveHandler_Idle),
-    Q_ACTION_CAST(&ValveHandler_Idle_e),
-    Q_ACTION_CAST(&ValveHandler_Idle_x),
+    Q_ACTION_NULL, // no entry action
+    Q_ACTION_NULL, // no exit action
     Q_ACTION_NULL  // no initial tran.
 };
 static QState ValveHandler_Handle  (ValveHandler * const me, QEvt const * const e);
@@ -187,13 +185,9 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
     eMBEnable();
     QTimeEvt_armX(&me->timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));
     #endif
-    static struct {
-        QMState const *target;
-        QActionHandler act[2];
-    } const tatbl_ = { // tran-action table
+    static QMTranActTable const tatbl_ = { // tran-action table
         &ValveHandler_Idle_s, // target state
         {
-            Q_ACTION_CAST(&ValveHandler_Idle_e), // entry
             Q_ACTION_NULL // zero terminator
         }
     };
@@ -202,23 +196,12 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
 
 //${AOs::ValveHandler::SM::Idle} .............................................
 //${AOs::ValveHandler::SM::Idle}
-static QState ValveHandler_Idle_e(ValveHandler * const me) {
-    Sleep_release(HANDLER_BIT);
-    Q_UNUSED_PAR(me);
-    return QM_ENTRY(&ValveHandler_Idle_s);
-}
-//${AOs::ValveHandler::SM::Idle}
-static QState ValveHandler_Idle_x(ValveHandler * const me) {
-    Sleep_request(HANDLER_BIT);
-    (void)me; // unused parameter
-    return QM_EXIT(&ValveHandler_Idle_s);
-}
-//${AOs::ValveHandler::SM::Idle}
 static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
         //${AOs::ValveHandler::SM::Idle::VALVE_UNLOCK}
         case VALVE_UNLOCK_SIG: {
+            Sleep_request(HANDLER_BIT);
             if (global_valve_value->total_ticks >= global_config.tick) {
                 global_valve_value->total_ticks = global_config.tick;
             } else if (global_valve_value->total_ticks <= 0) {
@@ -324,6 +307,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             QF_CRIT_ENTRY();
             sFLASH_DeInit();
             QF_CRIT_EXIT();
+            Sleep_release(HANDLER_BIT);
             static QMTranActTable const tatbl_ = { // tran-action table
                 &ValveHandler_Idle_s, // target state
                 {

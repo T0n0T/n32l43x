@@ -15,7 +15,7 @@ static void valve_report(void)
     static uint32_t current_time = 0;
     static uint8_t  blink_count  = 0;
     current_time++;
-    if (current_time >= (blink_count + 1) * 50) {
+    if (current_time >= (blink_count + 1) * 30) {
         led_toggle(LED_1);
         if (pvd_is_power_low) {
             led_toggle(LED_2);
@@ -24,7 +24,6 @@ static void valve_report(void)
         blink_count++;
     }
     if (blink_count == 100) {
-        // 闪烁完成，返回空闲状态
         current_time     = 0;
         blink_count      = 0;
         run_is_reporting = false;

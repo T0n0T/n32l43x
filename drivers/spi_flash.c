@@ -86,7 +86,7 @@ void sFLASH_LowLevel_Init(void)
 void sFLASH_DeInit(void)
 {
     // GPIO_ResetBits(sFLASH_PWR_GPIO_PORT, sFLASH_PWR_PIN);
-    // sFLASH_CS_LOW();
+    sFLASH_CS_LOW();
     /*!< Disable the sFLASH_SPI  */
     SPI_Enable(sFLASH_SPI, DISABLE);
     /*!< DeInitializes the sFLASH_SPI */
