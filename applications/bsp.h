@@ -43,7 +43,7 @@
 #define DEF_ISR_PRI       5
 #define TICK_RATE         1000
 #define LPTIM_INTERVAL_MS 1000
-#define LPTIM_REPORT_MS   10000
+#define LPTIM_REPORT_MS   60000
 #define MS_TO_TICK(ms)    ((ms) * TICK_RATE / 1000)
 
 extern volatile bool pvd_is_power_low;

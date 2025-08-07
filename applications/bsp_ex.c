@@ -56,7 +56,7 @@ static void low_power_gpio_optimize(void)
     GPIO_InitStructure.Pin       = BLE_PWR_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitPeripheral(BLE_PWR_PORT, &GPIO_InitStructure);
-    // BLE_PWR_LOW;
+    BLE_PWR_LOW;
 
     uart_deinit(BLE_SERIAL);
 }

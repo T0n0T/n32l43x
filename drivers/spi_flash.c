@@ -85,7 +85,7 @@ void sFLASH_LowLevel_Init(void)
  */
 void sFLASH_DeInit(void)
 {
-    // GPIO_ResetBits(sFLASH_PWR_GPIO_PORT, sFLASH_PWR_PIN);
+    GPIO_SetBits(sFLASH_PWR_GPIO_PORT, sFLASH_PWR_PIN);
     sFLASH_CS_LOW();
     /*!< Disable the sFLASH_SPI  */
     SPI_Enable(sFLASH_SPI, DISABLE);
@@ -103,7 +103,7 @@ void sFLASH_Init(void)
     SPI_InitType SPI_InitStructure = {0};
 
     sFLASH_LowLevel_Init();
-    // GPIO_SetBits(sFLASH_PWR_GPIO_PORT, sFLASH_PWR_PIN);
+    GPIO_ResetBits(sFLASH_PWR_GPIO_PORT, sFLASH_PWR_PIN);
 
     /*!< Deselect the FLASH: Chip Select high */
     sFLASH_CS_HIGH();

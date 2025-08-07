@@ -42,7 +42,7 @@ extern "C" {
 #define sFLASH_CS_PIN             GPIO_PIN_4 /* PA.04 */
 #define sFLASH_CS_GPIO_PORT       GPIOA      /* GPIOA */
 #define sFLASH_CS_GPIO_CLK        RCC_APB2_PERIPH_GPIOA
-#define sFLASH_PWR_PIN            GPIO_PIN_9 /* PA.09 */
+#define sFLASH_PWR_PIN            GPIO_PIN_9 /* PC.09 */
 #define sFLASH_PWR_GPIO_PORT      GPIOC      /* GPIOC */
 #define sFLASH_PWR_GPIO_CLK       RCC_APB2_PERIPH_GPIOC
 
