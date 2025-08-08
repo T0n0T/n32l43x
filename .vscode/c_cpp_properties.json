@@ -1,9 +1,0 @@
-{
-    "configurations": [
-        {
-            "name": "n32l43x",
-            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
-        }
-    ],
-    "version": 4
-}

@@ -182,6 +182,7 @@ void guard_sleep(void)
 
 void guard_wakeup(void)
 {
+    guard_atomic_set(&guard_ins.current_period, 0);
     guard_atomic_set_bool(&guard_ins.is_sleep, false);
 }
 

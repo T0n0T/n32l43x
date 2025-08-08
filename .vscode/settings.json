@@ -3,7 +3,13 @@
     "files.associations": {
         "*.json5": "jsonc",
         "*.inc": "shellscript",
-        "*.h": "c",
+        "*.h": "c"
     },
-    "cortex-debug.variableUseNaturalFormat": true,
+    "clangd.enable": true,
+    "clangd.arguments": [
+        "--query-driver=/usr/bin/arm-none-eabi-gcc",
+        "--compile-commands-dir=/workspaces/build",
+        "--clang-tidy"
+    ],
+    "clangd.path": "/opt/clangd/bin/clangd",
 }
