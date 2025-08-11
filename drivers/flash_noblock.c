@@ -1,5 +1,4 @@
 #include "flash_noblock.h"
-#include "SEGGER_SYSVIEW.h"
 
 /* 超时时间定义 */
 #define FLASH_OP_TIMEOUT_ERASE   0x000B0000

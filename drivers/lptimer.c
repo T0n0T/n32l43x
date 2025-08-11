@@ -6,7 +6,6 @@ static lptimer_irq_callback_t lptimer_callback = NULL;
 static void LPTIMNVIC_Config(FunctionalState Cmd)
 {
     EXTI_InitType EXTI_InitStructure;
-    NVIC_InitType NVIC_InitStructure;
     EXTI_InitStruct(&EXTI_InitStructure);
 
     EXTI_ClrITPendBit(EXTI_LINE24);
@@ -22,8 +21,6 @@ static void LPTIMNVIC_Config(FunctionalState Cmd)
 
     NVIC_EnableIRQ(LPTIM_WKUP_IRQn);
 }
-
-#include "SEGGER_SYSVIEW.h"
 
 void LPTIM_WKUP_IRQHandler(void)
 {
