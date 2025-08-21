@@ -15,6 +15,7 @@
 volatile uint32_t Sleep_bits;
 volatile bool     run_is_reporting;
 volatile bool     pvd_is_power_low;
+volatile bool     transfer_is_error;
 static QEvt       _lock_evt;
 
 /* Assertion handler  ======================================================*/
@@ -203,7 +204,7 @@ void QF_onStartup(void)
     SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
     lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);
     if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
-        _module_already_on = true;
+        cmd_module_already_on = true;
         QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
     }

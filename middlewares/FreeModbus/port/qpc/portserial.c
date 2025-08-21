@@ -56,7 +56,7 @@ BOOL xMBPortSerialInit(UCHAR ucPort, ULONG ulBaudRate,
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitPeripheral(RS485_RTS_PORT, &GPIO_InitStructure);
 
-    uart_init(BUS_485);
+    uart_init(RS485);
 
     NVIC_EnableIRQ(USART_MODBUS_IRQn);
 

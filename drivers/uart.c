@@ -49,6 +49,22 @@ static uart_t uarts[] = {
         .parity      = USART_PE_NO,
         .stop_bits   = USART_STPB_1,
     },
+    {
+        .tx_port     = GPIOB,
+        .rx_port     = GPIOB,
+        .tx_pin      = GPIO_PIN_10,
+        .rx_pin      = GPIO_PIN_11,
+        .tx_gpio_clk = RCC_APB2_PERIPH_GPIOB,
+        .rx_gpio_clk = RCC_APB2_PERIPH_GPIOB,
+        .tx_af       = GPIO_AF0_USART3,
+        .rx_af       = GPIO_AF5_USART3,
+        .handle      = USART3,
+        .irqn        = USART3_IRQn,
+        .clk_src     = RCC_APB1_PERIPH_USART3,
+        .baudrate    = 115200,
+        .parity      = USART_PE_NO,
+        .stop_bits   = USART_STPB_1,
+    },
 };
 
 void uart_init(uart_index_t index)

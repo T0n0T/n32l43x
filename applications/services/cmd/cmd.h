@@ -12,13 +12,17 @@
 #define USART_CMD            USART2
 #define USART_CMD_IRQn       USART2_IRQn
 #define USART_CMD_IRQHandler USART2_IRQHandler
+#define USART_CMD_DMA_TX     DMA_CH5
+#define USART_CMD_DMA_TX_MAP DMA_REMAP_USART2_TX
+#define USART_CMD_DMA_RX     DMA_CH6
+#define USART_CMD_DMA_RX_MAP DMA_REMAP_USART2_RX
 #define CMD_BUF_LEN          64U
 
-#define CMD_OK           0xcafe
-#define CMD_ERR          0xdead
-#define CMD_DEFINE(func) int cmd_##func(int argc, char** argv);
+#define CMD_OK               0xcafe
+#define CMD_ERR              0xdead
+#define CMD_DEFINE(func)     int cmd_##func(int argc, char** argv);
 
-#define CMD_DEFINE_LIST  {                         \
+#define CMD_DEFINE_LIST      {                     \
     {"config_refactory", cmd_config_refactory, 0}, \
     {"config_write", cmd_config_write, 1},         \
     {"config_read", cmd_config_read, 0},           \
@@ -29,7 +33,7 @@
     {"valve_tuning", cmd_valve_tuning, 1},         \
 }
 
-extern bool _module_already_on;
+extern bool cmd_module_already_on;
 
 // 命令处理函数类型定义
 typedef int (*cmd_handler_t)(int argc, char** argv);

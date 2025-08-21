@@ -48,6 +48,7 @@
 
 extern volatile bool pvd_is_power_low;
 extern volatile bool run_is_reporting;
+extern volatile bool transfer_is_error;
 
 extern int g_cmd_id;
 extern int g_counter_id;

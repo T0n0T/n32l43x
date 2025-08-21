@@ -5,8 +5,9 @@
 
 typedef enum uart_index {
     CONSOLE = 0,
-    BLE_SERIAL,
-    BUS_485,
+    BLE,
+    RS485,
+    LORAWAN,
     UART_MAX,
 } uart_index_t;
 

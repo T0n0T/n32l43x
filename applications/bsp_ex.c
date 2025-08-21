@@ -58,7 +58,7 @@ static void low_power_gpio_optimize(void)
     GPIO_InitPeripheral(BLE_PWR_PORT, &GPIO_InitStructure);
     BLE_PWR_LOW;
 
-    uart_deinit(BLE_SERIAL);
+    uart_deinit(BLE);
 }
 
 void BSP_init_ext(void)

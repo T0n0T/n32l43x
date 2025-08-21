@@ -20,7 +20,9 @@ static void valve_report(void)
         if (pvd_is_power_low) {
             led_toggle(LED_2);
         }
-
+        if (transfer_is_error) {
+            led_toggle(LED_3);
+        }
         blink_count++;
     }
     if (blink_count == 100) {
@@ -52,6 +54,8 @@ void valve_idle(void)
 #ifdef USE_MODBUS
             ucSCoilBuf[0] |= (1 << 0);
 #endif
+#ifdef USE_LORAWAN
+#endif
         } else if (global_valve_value->current_status == VALVE_STATUS_OFF) {
             LCD->RAM_COM[LCD_RAM1_COM0] = 0x00005000;
             LCD->RAM_COM[LCD_RAM1_COM1] = 0x00000000;
@@ -60,6 +64,8 @@ void valve_idle(void)
             __LCD_UPDATE_REQUEST();
 #ifdef USE_MODBUS
             ucSCoilBuf[0] &= ~(1 << 0);
+#endif
+#ifdef USE_LORAWAN
 #endif
         }
 #ifdef DEBUG

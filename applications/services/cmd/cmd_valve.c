@@ -85,10 +85,10 @@ void cmd_config_read_wrapper(void* msg)
     APP_LOG_DEBUG("read valve config");
     if (json_string != NULL) {
         for (size_t i = 0; i < strlen(json_string); i++) {
-            uart_putc(BLE_SERIAL, json_string[i]); // 逐字符发送JSON字符串
+            uart_putc(BLE, json_string[i]); // 逐字符发送JSON字符串
         }
-        uart_putc(BLE_SERIAL, '\n'); // 发送换行符
-        uart_putc(BLE_SERIAL, '\r'); // 发送回车符
+        uart_putc(BLE, '\n'); // 发送换行符
+        uart_putc(BLE, '\r'); // 发送回车符
         free(json_string);           // 释放编码后的JSON字符串
     } else {
         APP_LOG_ERROR("Error: Failed to encode command configuration.");

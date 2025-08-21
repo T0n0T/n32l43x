@@ -9,6 +9,7 @@
     "clangd.arguments": [
         "--query-driver=/usr/bin/arm-none-eabi-gcc",
         "--compile-commands-dir=/workspaces/build",
+        "--header-insertion=never",
         "--clang-tidy"
     ],
     "clangd.path": "/opt/clangd/bin/clangd",

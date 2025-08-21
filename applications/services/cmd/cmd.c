@@ -9,34 +9,34 @@
 static ValveEvt          _cmd_evt;
 static uint8_t           _cmd_buf_rx[CMD_BUF_LEN];
 static uint8_t           _cmd_buf_tx[CMD_BUF_LEN * 2];
+static uint8_t           _cmd_start_match_pos;
+static bool              _cmd_start_string_received;
 static volatile uint16_t _cmd_len; // Change to uint16_t for length
 static const command_t   commands[] = CMD_DEFINE_LIST;
-static uint8_t           _start_match_pos;
-static const char*       START_STRING = "Start";
-static bool              _start_string_received;
-bool                     _module_already_on;
+static const char*       CMD_START_STRING = "Start";
+bool                     cmd_module_already_on;
 
 void USART_CMD_IRQHandler(void)
 {
     if (USART_GetIntStatus(USART_CMD, USART_INT_IDLEF) != RESET) {
         (void)USART_CMD->STS;
         (void)USART_CMD->DAT;
-        DMA_EnableChannel(DMA_CH6, DISABLE); // Disable DMA to get current count
-        _cmd_len = CMD_BUF_LEN - DMA_GetCurrDataCounter(DMA_CH6);
+        DMA_EnableChannel(USART_CMD_DMA_RX, DISABLE); // Disable DMA to get current count
+        _cmd_len = CMD_BUF_LEN - DMA_GetCurrDataCounter(USART_CMD_DMA_RX);
 
-        if (!_start_string_received) {
+        if (!_cmd_start_string_received) {
             // Check for "Start" string in the received data
             for (uint16_t i = 0; i < _cmd_len; i++) {
-                if (_cmd_buf_rx[i] == START_STRING[_start_match_pos]) {
-                    _start_match_pos++;
-                    if (_start_match_pos == strlen(START_STRING)) {
+                if (_cmd_buf_rx[i] == CMD_START_STRING[_cmd_start_match_pos]) {
+                    _cmd_start_match_pos++;
+                    if (_cmd_start_match_pos == strlen(CMD_START_STRING)) {
                         APP_LOG_DEBUG("Start CMD");
-                        _start_string_received = true;
-                        _start_match_pos       = 0; // Reset for next potential "Start" if needed
+                        _cmd_start_string_received = true;
+                        _cmd_start_match_pos       = 0; // Reset for next potential "Start" if needed
                         break;                      // Found "Start", no need to check further in this packet
                     }
                 } else {
-                    _start_match_pos = 0; // Reset if mismatch
+                    _cmd_start_match_pos = 0; // Reset if mismatch
                 }
             }
         } else {
@@ -48,8 +48,8 @@ void USART_CMD_IRQHandler(void)
             }
         }
 
-        DMA_SetCurrDataCounter(DMA_CH6, CMD_BUF_LEN); // Reset DMA buffer size
-        DMA_EnableChannel(DMA_CH6, ENABLE);           // Re-enable DMA
+        DMA_SetCurrDataCounter(USART_CMD_DMA_RX, CMD_BUF_LEN); // Reset DMA buffer size
+        DMA_EnableChannel(USART_CMD_DMA_RX, ENABLE);           // Re-enable DMA
     }
     if ((USART_GetFlagStatus(USART_CMD, USART_FLAG_OREF) != RESET) ||
         (USART_GetFlagStatus(USART_CMD, USART_FLAG_NEF) != RESET) ||
@@ -67,12 +67,12 @@ void cmd_init(void)
 {
     BLE_PWR_HIGH;
 
-    uart_init(BLE_SERIAL);
+    uart_init(BLE);
     USART_Enable(USART_CMD, DISABLE);
 
     RCC_EnableAHBPeriphClk(RCC_AHB_PERIPH_DMA, ENABLE);
     DMA_InitType DMA_InitStructure;
-    DMA_DeInit(DMA_CH6);
+    DMA_DeInit(USART_CMD_DMA_RX);
     DMA_InitStructure.PeriphAddr     = (uint32_t)&USART_CMD->DAT;
     DMA_InitStructure.MemAddr        = (uint32_t)_cmd_buf_rx;
     DMA_InitStructure.Direction      = DMA_DIR_PERIPH_SRC;
@@ -84,10 +84,10 @@ void cmd_init(void)
     DMA_InitStructure.CircularMode   = DMA_MODE_CIRCULAR;
     DMA_InitStructure.Priority       = DMA_PRIORITY_VERY_HIGH;
     DMA_InitStructure.Mem2Mem        = DMA_M2M_DISABLE;
-    DMA_Init(DMA_CH6, &DMA_InitStructure);
-    DMA_RequestRemap(DMA_REMAP_USART2_RX, DMA, DMA_CH6, ENABLE);
+    DMA_Init(USART_CMD_DMA_RX, &DMA_InitStructure);
+    DMA_RequestRemap(USART_CMD_DMA_RX_MAP, DMA, USART_CMD_DMA_RX, ENABLE);
     USART_EnableDMA(USART_CMD, USART_DMAREQ_RX, ENABLE);
-    DMA_EnableChannel(DMA_CH6, ENABLE);
+    DMA_EnableChannel(USART_CMD_DMA_RX, ENABLE);
     USART_Enable(USART_CMD, ENABLE);
     USART_ConfigInt(USART_CMD, USART_INT_IDLEF, ENABLE); // Enable USART IDLE interrupt
 
@@ -95,37 +95,37 @@ void cmd_init(void)
 
     memset(_cmd_buf_rx, 0, sizeof(_cmd_buf_rx));
     _cmd_len               = 0;     // Initialize command buffer length
-    _start_match_pos       = 0;     // Initialize Start string match position
-    _start_string_received = false; // Initialize Start string received flag
+    _cmd_start_match_pos       = 0;     // Initialize Start string match position
+    _cmd_start_string_received = false; // Initialize Start string received flag
 
     QEvt_ctor(&_cmd_evt.super, VALVE_CMD_PARSE_SIG);
     _cmd_evt.msg     = _cmd_buf_rx; // 设置消息指针指向命令缓冲区
     _cmd_evt.evtType = VALVE_CMD;   // 设置事件类型为命令解析
 
-    if (RCC_GetFlagStatus(RCC_CTRLSTS_FLAG_SFTRSTF) == SET && _module_already_on) {
+    if (RCC_GetFlagStatus(RCC_CTRLSTS_FLAG_SFTRSTF) == SET && cmd_module_already_on) {
         APP_LOG_DEBUG("System is reboot from software ...");
-        _start_string_received = true;
+        _cmd_start_string_received = true;
     }
 }
 
 void cmd_deinit(void)
 {
     BLE_PWR_LOW;
-    _start_string_received = false;
-    _module_already_on     = false;
-    _start_match_pos       = 0;
-    DMA_EnableChannel(DMA_CH6, DISABLE);
-    DMA_DeInit(DMA_CH6);
-    DMA_DeInit(DMA_CH5);
+    _cmd_start_string_received = false;
+    cmd_module_already_on     = false;
+    _cmd_start_match_pos       = 0;
+    DMA_EnableChannel(USART_CMD_DMA_RX, DISABLE);
+    DMA_DeInit(USART_CMD_DMA_RX);
+    DMA_DeInit(USART_CMD_DMA_TX);
     NVIC_DisableIRQ(USART_CMD_IRQn);
-    uart_deinit(BLE_SERIAL);
+    uart_deinit(BLE);
 }
 
 void cmd_dma_transmit(const uint8_t* data, uint16_t len)
 {
     memcpy(_cmd_buf_tx, data, len); // Copy data to transmit buffer
     DMA_InitType DMA_InitStructure;
-    DMA_DeInit(DMA_CH5);
+    DMA_DeInit(USART_CMD_DMA_TX);
     DMA_InitStructure.PeriphAddr     = (uint32_t)&USART_CMD->DAT;
     DMA_InitStructure.MemAddr        = (uint32_t)_cmd_buf_tx;
     DMA_InitStructure.Direction      = DMA_DIR_PERIPH_DST;
@@ -137,16 +137,16 @@ void cmd_dma_transmit(const uint8_t* data, uint16_t len)
     DMA_InitStructure.CircularMode   = DMA_MODE_NORMAL;
     DMA_InitStructure.Priority       = DMA_PRIORITY_HIGH;
     DMA_InitStructure.Mem2Mem        = DMA_M2M_DISABLE;
-    DMA_Init(DMA_CH5, &DMA_InitStructure);
-    DMA_RequestRemap(DMA_REMAP_USART2_TX, DMA, DMA_CH5, ENABLE);
+    DMA_Init(USART_CMD_DMA_TX, &DMA_InitStructure);
+    DMA_RequestRemap(USART_CMD_DMA_TX_MAP, DMA, USART_CMD_DMA_TX, ENABLE);
     USART_EnableDMA(USART_CMD, USART_DMAREQ_TX, ENABLE);
-    DMA_EnableChannel(DMA_CH5, ENABLE);
+    DMA_EnableChannel(USART_CMD_DMA_TX, ENABLE);
 }
 
 void cmd_response(uint16_t result)
 {
-    uart_putc(BLE_SERIAL, (uint8_t)(result & 0xff));
-    uart_putc(BLE_SERIAL, (uint8_t)(result >> 8));
+    uart_putc(BLE, (uint8_t)(result & 0xff));
+    uart_putc(BLE, (uint8_t)(result >> 8));
 }
 
 // 解析并执行命令
