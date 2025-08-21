@@ -21,4 +21,17 @@
 #define USART_AT_DMA_RX_MAP DMA_REMAP_USART3_RX
 #define AT_BUF_LEN          64U
 
+typedef struct at_cmd_s {
+    char*    cmd_expr;
+    char*    resp_keyword;
+    uint32_t timeout;
+} at_cmd_t;
+
+#define AT_CMD(CMD_NUM)      (&at_cmd_list[CMD_NUM])
+#define AT_CMD_NAME(CMD_NUM) (#CMD_NUM)
+
+void at_init(const at_cmd_t* at_cmd_list);
+void at_deinit(void);
+void at_process(char* input);
+
 #endif /* __AT_H__ */

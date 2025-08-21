@@ -6,14 +6,16 @@
 #include "valve.h"
 #include "log.h"
 
+bool                     at_module_already_on;
+static const char*       AT_START_STRING = "start\r\n";
 static QEvt              _at_evt;
 static uint8_t           _at_buf_rx[AT_BUF_LEN];
 static uint8_t           _at_buf_tx[AT_BUF_LEN * 2];
 static uint8_t           _at_start_match_pos;
 static bool              _at_start_string_received;
 static volatile uint16_t _at_len; // Change to uint16_t for length
-static const char*       AT_START_STRING = "start\r\n";
-bool                     at_module_already_on;
+
+static at_cmd_t* _at_cmd_list; // 存储传递给at_init的at_cmd参数
 
 void USART_AT_IRQHandler(void)
 {
@@ -32,7 +34,7 @@ void USART_AT_IRQHandler(void)
                         APP_LOG_DEBUG("Start AT");
                         _at_start_string_received = true;
                         _at_start_match_pos       = 0; // Reset for next potential "Start" if needed
-                        break;                          // Found "Start", no need to check further in this packet
+                        break;                         // Found "Start", no need to check further in this packet
                     }
                 } else {
                     _at_start_match_pos = 0; // Reset if mismatch
@@ -48,7 +50,7 @@ void USART_AT_IRQHandler(void)
         }
 
         DMA_SetCurrDataCounter(USART_AT_DMA_RX, AT_BUF_LEN); // Reset DMA buffer size
-        DMA_EnableChannel(USART_AT_DMA_RX, ENABLE);           // Re-enable DMA
+        DMA_EnableChannel(USART_AT_DMA_RX, ENABLE);          // Re-enable DMA
     }
     if ((USART_GetFlagStatus(USART_AT, USART_FLAG_OREF) != RESET) ||
         (USART_GetFlagStatus(USART_AT, USART_FLAG_NEF) != RESET) ||
@@ -62,9 +64,10 @@ void USART_AT_IRQHandler(void)
     }
 }
 
-void at_init(void)
+void at_init(const at_cmd_t* at_cmd_list)
 {
     AT_PWR_HIGH;
+    _at_cmd_list = at_cmd_list; // 存储传递的at_cmd参数
 
     uart_init(AT);
     USART_Enable(USART_AT, DISABLE);
@@ -137,4 +140,30 @@ void at_dma_transmit(const uint8_t* data, uint16_t len)
     DMA_RequestRemap(USART_AT_DMA_TX_MAP, DMA, USART_AT_DMA_TX, ENABLE);
     USART_EnableDMA(USART_AT, USART_DMAREQ_TX, ENABLE);
     DMA_EnableChannel(USART_AT_DMA_TX, ENABLE);
+}
+// 解析AT模块的回复
+void at_process(char* input)
+{
+    // 跳过前导空格
+    while (*input == ' ') input++;
+
+    // 空回复处理
+    if (*input == '\0') {
+        return;
+    }
+
+    // 查找匹配的AT回复
+    if (_at_cmd_list != NULL) {
+        for (int i = 0; _at_cmd_list[i].resp_keyword != NULL; i++) {
+            if (strcmp(input, _at_cmd_list[i].resp_keyword) == 0) {
+                // 找到匹配的回复
+                APP_LOG_DEBUG("Received matching AT reply: %s", input);
+                // 这里可以添加处理匹配回复的代码
+                return;
+            }
+        }
+    }
+
+    // 如果没有找到匹配的回复，记录日志
+    APP_LOG_DEBUG("Received AT reply: %s", input);
 }
