@@ -62,10 +62,8 @@ typedef struct ValveCounter {
 // protected:
     QMActive super;
 
-// private:
-    QTimeEvt timeEvt;
-
 // public:
+    QTimeEvt timeEvt;
 } ValveCounter;
 
 extern ValveCounter ValveCounter_inst;

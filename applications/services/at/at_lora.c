@@ -1,21 +1,58 @@
-#include "qpc.h" // QP/C real-time embedded framework
-#include "bsp.h" // Board Support Package interface
-#include "stdio.h"
-#include "string.h"
-#include "at.h"
+#include "qpc.h"
+#include "bsp.h"
 #include "valve.h"
+#include "at.h"
 #include "log.h"
+
+#define AT_PWR_PORT         GPIOB
+#define AT_PWR_CLK          RCC_APB2_PERIPH_GPIOB
+#define AT_PWR_PIN          GPIO_PIN_2
+#define AT_PWR_HIGH         AT_PWR_PORT->PBSC = AT_PWR_PIN;
+#define AT_PWR_LOW          AT_PWR_PORT->PBC = AT_PWR_PIN;
+
+#define AT                  LORAWAN
+#define USART_AT            USART3
+#define USART_AT_IRQn       USART3_IRQn
+#define USART_AT_IRQHandler USART3_IRQHandler
+#define USART_AT_DMA_TX     DMA_CH7
+#define USART_AT_DMA_TX_MAP DMA_REMAP_USART3_TX
+#define USART_AT_DMA_RX     DMA_CH8
+#define USART_AT_DMA_RX_MAP DMA_REMAP_USART3_RX
+#define AT_BUF_LEN          64U
+
+typedef enum at_lora_cmd_enum {
+    AT_LORA_CMD_WAKE,
+    AT_LORA_CMD_SET_PID,
+    AT_LORA_CMD_SET_NIP,
+    AT_LORA_CMD_SET_TYP,
+    AT_LORA_CMD_SET_LFR,
+    AT_LORA_CMD_SET_LRS,
+    AT_LORA_CMD_SET_TPR,
+    AT_LORA_CMD_JOIN,
+    AT_LORA_CMD_ENUM_MAX,
+} at_lora_cmd_enum_t;
+
+static const at_cmd_t at_lora_cmd[] = {
+    {AT_CMD_NAME(AT_LORA_CMD_WAKE), "+++", "OK\r\n", 500, 3},
+    {AT_CMD_NAME(AT_LORA_CMD_SET_PID), "AT+PID=0\r\n", "OK\r\n", 500, 3},
+    // {AT_CMD_NAME(AT_LORA_CMD_SET_NIP), "AT+NIP=0\r\n", "OK\r\n", 500, 3},
+    {AT_CMD_NAME(AT_LORA_CMD_SET_TYP), "AT+TYP=2\r\n", "OK\r\n", 500, 3},
+    {AT_CMD_NAME(AT_LORA_CMD_SET_LFR), "AT+LFR=470\r\n", "OK\r\n", 500, 3},
+    {AT_CMD_NAME(AT_LORA_CMD_SET_LRS), "AT+LRS=3\r\n", "OK\r\n", 500, 3},
+    {AT_CMD_NAME(AT_LORA_CMD_SET_TPR), "AT+TPR=20\r\n", "OK\r\n", 500, 3},
+    {AT_CMD_NAME(AT_LORA_CMD_JOIN), "AT+RJN\r\n", "+JON: %d OK\r\n", 30000, 5},
+};
 
 bool                     at_module_already_on;
 static const char*       AT_START_STRING = "start\r\n";
-static QEvt              _at_evt;
 static uint8_t           _at_buf_rx[AT_BUF_LEN];
 static uint8_t           _at_buf_tx[AT_BUF_LEN * 2];
 static uint8_t           _at_start_match_pos;
 static bool              _at_start_string_received;
-static volatile uint16_t _at_len; // Change to uint16_t for length
+static volatile uint32_t _at_len; // Change to uint16_t for length
+static QEvt              _at_evt;
 
-static at_cmd_t* _at_cmd_list; // 存储传递给at_init的at_cmd参数
+static at_t at_lora;
 
 void USART_AT_IRQHandler(void)
 {
@@ -45,7 +82,9 @@ void USART_AT_IRQHandler(void)
             // Assuming command ends with '\n'
             if (_at_len > 0 && _at_buf_rx[_at_len - 1] == '\n') {
                 _at_buf_rx[_at_len] = '\0'; // Null-terminate the string
-                // QACTIVE_POST(AO_ValveTransfer, &_at_evt, 0U);
+
+                // 通过QPC事件队列发送事件
+                // QACTIVE_POST(AO_ValveTransfer, &_at_evt, 0);
             }
         }
 
@@ -64,11 +103,9 @@ void USART_AT_IRQHandler(void)
     }
 }
 
-void at_init(const at_cmd_t* at_cmd_list)
+static void at_transfer_layer_init(void)
 {
     AT_PWR_HIGH;
-    _at_cmd_list = at_cmd_list; // 存储传递的at_cmd参数
-
     uart_init(AT);
     USART_Enable(USART_AT, DISABLE);
 
@@ -100,16 +137,13 @@ void at_init(const at_cmd_t* at_cmd_list)
     _at_start_match_pos       = 0;     // Initialize Start string match position
     _at_start_string_received = false; // Initialize Start string received flag
 
-    // QEvt_ctor(&_at_evt, VALVE_AT_PASS_SIG);// here declare at pass event
-
     if (RCC_GetFlagStatus(RCC_CTRLSTS_FLAG_SFTRSTF) == SET && at_module_already_on) {
         _at_start_string_received = true;
     }
 }
 
-void at_deinit(void)
+static void at_transfer_layer_deinit(void)
 {
-    BLE_PWR_LOW;
     at_module_already_on      = false;
     _at_start_string_received = false;
     _at_start_match_pos       = 0;
@@ -118,9 +152,11 @@ void at_deinit(void)
     DMA_DeInit(USART_AT_DMA_TX);
     NVIC_DisableIRQ(USART_AT_IRQn);
     uart_deinit(BLE);
+
+    AT_PWR_LOW;
 }
 
-void at_dma_transmit(const uint8_t* data, uint16_t len)
+static void at_transfer_layer_transmit(const uint8_t* data, uint16_t len)
 {
     memcpy(_at_buf_tx, data, len); // Copy data to transmit buffer
     DMA_InitType DMA_InitStructure;
@@ -141,29 +177,14 @@ void at_dma_transmit(const uint8_t* data, uint16_t len)
     USART_EnableDMA(USART_AT, USART_DMAREQ_TX, ENABLE);
     DMA_EnableChannel(USART_AT_DMA_TX, ENABLE);
 }
-// 解析AT模块的回复
-void at_process(char* input)
+
+void at_lorawan_init(void)
 {
-    // 跳过前导空格
-    while (*input == ' ') input++;
+    at_lora.transfer_init     = at_transfer_layer_init;
+    at_lora.transfer_deinit   = at_transfer_layer_deinit;
+    at_lora.transfer_transmit = at_transfer_layer_transmit;
 
-    // 空回复处理
-    if (*input == '\0') {
-        return;
-    }
-
-    // 查找匹配的AT回复
-    if (_at_cmd_list != NULL) {
-        for (int i = 0; _at_cmd_list[i].resp_keyword != NULL; i++) {
-            if (strcmp(input, _at_cmd_list[i].resp_keyword) == 0) {
-                // 找到匹配的回复
-                APP_LOG_DEBUG("Received matching AT reply: %s", input);
-                // 这里可以添加处理匹配回复的代码
-                return;
-            }
-        }
-    }
-
-    // 如果没有找到匹配的回复，记录日志
-    APP_LOG_DEBUG("Received AT reply: %s", input);
+    at_lora.current_process_buf = (char*)_at_buf_rx;
+    at_lora.current_process_len = (uint32_t*)&_at_len;
+    at_init(&at_lora);
 }

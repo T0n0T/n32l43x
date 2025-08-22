@@ -20,6 +20,7 @@
     VALVE_PERSIST_SIG,
     VALVE_PERSIST_START_SIG,
     VALVE_PERSIST_PROCESS_SIG,
+    VALVE_TRANSFER_PASS_SIG,
     MAX_PUB_SIG,
 
     TIMEOUT_SIG,
@@ -72,7 +73,7 @@
  <package name="AOs" stereotype="0x02">
   <class name="ValveCounter" superclass="qpc::QMActive">
    <documentation>Trigger by timeout, then collect hall sensor data and decode it. If there's a leagal update action,will publish event to ValveHandler</documentation>
-   <attribute name="timeEvt" type="QTimeEvt" visibility="0x02" properties="0x00"/>
+   <attribute name="timeEvt" type="QTimeEvt" visibility="0x00" properties="0x00"/>
    <attribute name="inst" type="ValveCounter" visibility="0x00" properties="0x01"/>
    <statechart properties="0x00">
     <initial target="../1">
@@ -600,6 +601,94 @@ flash_fsm_start(&amp;flash_fsm, &amp;flash_request, NULL, NULL);</entry>
     <state_diagram size="110,89"/>
    </statechart>
   </class>
+  <class name="ValveTransfer" superclass="qpc::QMActive">
+   <attribute name="inst" type="ValveTransfer" visibility="0x00" properties="0x01"/>
+   <attribute name="timeEvt" type="QTimeEvt" visibility="0x00" properties="0x00"/>
+   <attribute name="retry" type="uint32_t" visibility="0x00" properties="0x00"/>
+   <attribute name="timeout" type="uint32_t" visibility="0x00" properties="0x00"/>
+   <attribute name="at" type="at_t" visibility="0x00" properties="0x00"/>
+   <statechart properties="0x00">
+    <initial target="../1">
+     <initial_glyph conn="26,14,5,1,18,4,-2">
+      <action box="0,-2,10,2"/>
+     </initial_glyph>
+    </initial>
+    <state name="Idle">
+     <tran trig="VALVE_TRANSFER_PASS" target="../../2">
+      <tran_glyph conn="26,22,3,1,18,12,-2">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <tran trig="TIMEOUT">
+      <action>me-&gt;timeout++;</action>
+      <tran_glyph conn="26,24,3,-1,10">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="26,16,16,10"/>
+    </state>
+    <state name="Prepare">
+     <tran trig="TIMEOUT">
+      <action>me-&gt;timeout++;
+if (at_request_is_expired(me-&gt;timeout)) {
+    me-&gt;timeout = 0;
+    me-&gt;retry--;
+}
+if (me-&gt;retry) {
+    
+}</action>
+      <choice target="../../../1">
+       <guard brief="&gt;retry">me-&gt;retry == 0</guard>
+       <action>APP_LOG_ERROR(&quot;Transfer error at %s&quot;, at_request_description());</action>
+       <choice_glyph conn="20,34,4,3,-10,6">
+        <action box="-2,-12,10,2"/>
+       </choice_glyph>
+      </choice>
+      <tran_glyph conn="26,34,5,-1,-6">
+       <action box="0,-1,10,2"/>
+      </tran_glyph>
+     </tran>
+     <tran trig="VALVE_TRANSFER_PASS">
+      <action>me-&gt;timeout = 0;
+me-&gt;retry   = 3;
+</action>
+      <choice target="../../../3">
+       <guard brief="over"/>
+       <choice_glyph conn="38,38,5,1,6,10,-2">
+        <action box="1,0,10,2"/>
+       </choice_glyph>
+      </choice>
+      <tran_glyph conn="26,38,3,-1,12">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="26,30,16,10"/>
+    </state>
+    <state name="Transfer">
+     <tran trig="TIMEOUT">
+      <action>me-&gt;timeout++;</action>
+      <choice target="../../../1">
+       <guard brief="&gt;retry">retry == 0</guard>
+       <action>APP_LOG_ERROR(&quot;Transfer error at %s&quot;, at_request_description());</action>
+       <choice_glyph conn="18,48,4,3,-26,8">
+        <action box="0,-28,10,2"/>
+       </choice_glyph>
+      </choice>
+      <tran_glyph conn="26,48,3,-1,-8">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <tran trig="VALVE_TRANSFER_PASS" target="../../1">
+      <action>APP_LOG_DEBUG(&quot;Transfer success&quot;);</action>
+      <tran_glyph conn="26,52,3,1,20,-32,-4">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <state_glyph node="26,44,16,10"/>
+    </state>
+    <state_diagram size="84,84"/>
+   </statechart>
+  </class>
   <operation name="ValveCounter_ctor" type="void" visibility="0x00" properties="0x00">
    <code>ValveCounter * const me = &amp;ValveCounter_inst;
 QMActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveCounter_initial));
@@ -633,6 +722,14 @@ QTimeEvt_ctorX(&amp;me-&gt;processEvt, (QActive*)me, VALVE_PERSIST_PROCESS_SIG, 
   </operation>
   <attribute name="AO_ValvePersist" type="QActive * const" visibility="0x00" properties="0x00">
    <code>= (QActive* const)&amp;ValvePersist_inst.super;</code>
+  </attribute>
+  <operation name="ValveTransfer_ctor" type="void" visibility="0x00" properties="0x00">
+   <code>ValvePersist * const me = &amp;ValveTransfer_inst;
+QMActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveTransfer_initial));
+QTimeEvt_ctorX(&amp;me-&gt;timeEvt, (QActive*)me, TIMEOUT_SIG, 0U);</code>
+  </operation>
+  <attribute name="AO_ValveTransfer" type="QActive * const" visibility="0x00" properties="0x00">
+   <code>= (QActive* const)&amp;ValveTransfer_inst.super;</code>
   </attribute>
  </package>
  <directory name=".">
@@ -671,6 +768,8 @@ $declare ${AOs::AO_ValveConf}
 $declare ${AOs::ValveConf_ctor}
 $declare ${AOs::AO_ValvePersist}
 $declare ${AOs::ValvePersist_ctor}
+$declare ${AOs::AO_ValveTransfer}
+$declare ${AOs::ValveTransfer_ctor}
 
 extern ValveVal*    global_valve_value;
 extern cmd_config_t global_config;
@@ -880,6 +979,18 @@ $declare ${AOs::ValvePersist}
 $define ${AOs::AO_ValvePersist}
 $define ${AOs::ValvePersist_ctor}
 $define ${AOs::ValvePersist}</text>
+  </file>
+  <file name="valve_transfer.c">
+   <text>#include &quot;qpc.h&quot;
+#include &quot;bsp.h&quot;
+#include &quot;at.h&quot;
+#include &quot;valve.h&quot;
+
+$declare ${AOs::ValveTransfer}
+
+$define ${AOs::AO_ValveTransfer}
+$define ${AOs::ValveTransfer_ctor}
+$define ${AOs::ValveTransfer}</text>
   </file>
  </directory>
 </model>
