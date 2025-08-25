@@ -1,28 +1,37 @@
-#include "stdio.h"
 #include "string.h"
 #include "at.h"
-#include "valve.h"
 #include "log.h"
 
-void at_init(at_t* at)
+void at_fsm_init(at_t* at)
 {
     // 初始化状态机
-    at->state       = AT_STATE_IDLE;
-    at->send_time   = 0;
-    at->retry_count = 0;
+    at->state               = AT_STATE_IDLE;
+    at->send_time           = 0;
+    at->retry_count         = 0;
     if (at->transfer_init) {
         at->transfer_init();
     }
 }
 
-void at_deinit(at_t* at)
+void at_fsm_deinit(at_t* at)
 {
     if (at->transfer_deinit) {
         at->transfer_deinit();
     }
 }
 
-void at_request_list_set(at_t* at, const at_cmd_t* at_cmd_list, uint32_t at_cmd_list_len)
+void at_fsm_copy_buffer(at_t* at, uint8_t* buffer, uint32_t buffer_size)
+{
+    if (at->current_process_buf && at->state == AT_STATE_WAITING_RESP) {
+        memcpy(at->current_process_buf, buffer, buffer_size);
+        at->current_process_len = buffer_size;
+        at->state               = AT_STATE_PROCESSING_RESP;
+    } else {
+        APP_LOG_DEBUG("Received AT unknown: %s", buffer);
+    }
+}
+
+void at_fsm_request_list_set(at_t* at, const at_cmd_t* at_cmd_list, uint32_t at_cmd_list_len)
 {
     at->at_cmd_list         = at_cmd_list; // 存储传递的at_cmd参数
     at->at_cmd_list_len     = at_cmd_list_len;
@@ -36,9 +45,9 @@ void at_request_list_set(at_t* at, const at_cmd_t* at_cmd_list, uint32_t at_cmd_
  *
  * @param at AT模块实例指针
  * @param tick 当前系统tick值
- * @return at_process_result_t 
+ * @return at_process_result_t
  */
-at_process_result_t at_request_process(at_t* at, uint32_t tick)
+at_process_result_t at_fsm_request_process(at_t* at, uint32_t tick)
 {
     // 检查AT命令列表是否有效
     if (at->at_cmd_list == NULL) {
@@ -63,7 +72,7 @@ at_process_result_t at_request_process(at_t* at, uint32_t tick)
             if (at->at_cmd_list[at->current_process_at].cmd_expr != NULL) {
                 if (at->transfer_transmit) {
                     at->transfer_transmit((const uint8_t*)at->at_cmd_list[at->current_process_at].cmd_expr,
-                                           strlen(at->at_cmd_list[at->current_process_at].cmd_expr));
+                                          strlen(at->at_cmd_list[at->current_process_at].cmd_expr));
                 }
                 // 记录发送时间
                 at->send_time = tick;
@@ -84,11 +93,6 @@ at_process_result_t at_request_process(at_t* at, uint32_t tick)
                 break;
             }
 
-            // 检查是否有接收到数据
-            if (at->current_process_len > 0) {
-                // 有数据接收，进入处理响应状态
-                at->state = AT_STATE_PROCESSING_RESP;
-            }
             break;
 
         case AT_STATE_PROCESSING_RESP:
@@ -111,9 +115,16 @@ at_process_result_t at_request_process(at_t* at, uint32_t tick)
             }
 
             // 查找匹配的AT回复
-            if (strcmp(at->at_cmd_list[at->current_process_at].resp_keyword, at->current_process_ptr) == 0) {
+            if (strstr(at->at_cmd_list[at->current_process_at].resp_keyword, at->current_process_ptr) != NULL) {
                 // 找到匹配的回复
                 APP_LOG_DEBUG("Received matching AT reply: %s", at->current_process_ptr);
+                if (at->at_cmd_list[at->current_process_at].resp_callback) {
+                    int result = at->at_cmd_list[at->current_process_at].resp_callback(at->current_process_ptr);
+                    if (result < 0) {
+                        // 处理失败
+                        at->state = AT_STATE_ERROR;
+                    }
+                }
                 // 清空缓冲区
                 at->current_process_len = 0;
                 // 移动到下一个命令

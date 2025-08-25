@@ -21,10 +21,9 @@ void rtc_init(void)
 
     RTC_EnableWakeUp(DISABLE);
     RTC_ConfigWakeUpClock(RTC_WKUPCLK_CK_SPRE_16BITS);
-    RTC_SetWakeUpCounter(1); // 1s wakeup; val=t*2-1
+    RTC_SetWakeUpCounter(9); // 1s wakeup; val=t*2-1
 
     EXTI_InitType EXTI_InitStructure;
-    NVIC_InitType NVIC_InitStructure;
     EXTI_ClrITPendBit(EXTI_LINE20);
     EXTI_InitStruct(&EXTI_InitStructure);
     EXTI_InitStructure.EXTI_Line    = EXTI_LINE20;

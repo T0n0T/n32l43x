@@ -70,6 +70,7 @@ enum AppSignals {
     VALVE_DAILY_SIG,
     VALVE_UPDATE_SIG,
     VALVE_EXIT_SIG,
+    VALVE_TRANSFER_SIG,
     VALVE_CMD_PARSE_SIG,
     VALVE_REFACTORY_SIG,
     VALVE_CONFIG_WRITE_SIG,
@@ -80,7 +81,6 @@ enum AppSignals {
     VALVE_PERSIST_SIG,
     VALVE_PERSIST_START_SIG,
     VALVE_PERSIST_PROCESS_SIG,
-    VALVE_TRANSFER_PASS_SIG,
     MAX_PUB_SIG,
 
     TIMEOUT_SIG,
@@ -190,6 +190,16 @@ extern QActive * const AO_ValvePersist;
 //${AOs::ValvePersist_ctor} ..................................................
 void ValvePersist_ctor(void);
 //$enddecl${AOs::ValvePersist_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//$declare${AOs::AO_ValveTransfer} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+//${AOs::AO_ValveTransfer} ...................................................
+extern QActive * const AO_ValveTransfer;
+//$enddecl${AOs::AO_ValveTransfer} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//$declare${AOs::ValveTransfer_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+//${AOs::ValveTransfer_ctor} .................................................
+void ValveTransfer_ctor(void);
+//$enddecl${AOs::ValveTransfer_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 extern ValveVal*    global_valve_value;
 extern cmd_config_t global_config;

@@ -10,6 +10,7 @@
     VALVE_DAILY_SIG,
     VALVE_UPDATE_SIG,
     VALVE_EXIT_SIG,
+    VALVE_TRANSFER_SIG,
     VALVE_CMD_PARSE_SIG,
     VALVE_REFACTORY_SIG,
     VALVE_CONFIG_WRITE_SIG,
@@ -20,7 +21,6 @@
     VALVE_PERSIST_SIG,
     VALVE_PERSIST_START_SIG,
     VALVE_PERSIST_PROCESS_SIG,
-    VALVE_TRANSFER_PASS_SIG,
     MAX_PUB_SIG,
 
     TIMEOUT_SIG,
@@ -233,17 +233,16 @@ QTimeEvt_disarm(&amp;me-&gt;exitEvt);</action>
        <action box="-8,-2,10,2"/>
       </tran_glyph>
      </tran>
-     <tran trig="VALVE_DAILY">
-      <action brief="read flash and publish the event with ValveVal"/>
-      <tran_glyph conn="18,24,3,-1,20">
-       <action box="0,-2,10,2"/>
-      </tran_glyph>
-     </tran>
      <tran trig="TIMEOUT">
       <action>#ifdef USE_MODBUS
 eMBPoll(); 
 #endif</action>
       <tran_glyph conn="18,26,3,-1,20">
+       <action box="0,-2,10,2"/>
+      </tran_glyph>
+     </tran>
+     <tran trig="VALVE_DAILY">
+      <tran_glyph conn="18,22,3,-1,20">
        <action box="0,-2,10,2"/>
       </tran_glyph>
      </tran>
@@ -604,87 +603,86 @@ flash_fsm_start(&amp;flash_fsm, &amp;flash_request, NULL, NULL);</entry>
   <class name="ValveTransfer" superclass="qpc::QMActive">
    <attribute name="inst" type="ValveTransfer" visibility="0x00" properties="0x01"/>
    <attribute name="timeEvt" type="QTimeEvt" visibility="0x00" properties="0x00"/>
-   <attribute name="retry" type="uint32_t" visibility="0x00" properties="0x00"/>
-   <attribute name="timeout" type="uint32_t" visibility="0x00" properties="0x00"/>
-   <attribute name="at" type="at_t" visibility="0x00" properties="0x00"/>
+   <attribute name="tick" type="uint32_t" visibility="0x00" properties="0x00"/>
    <statechart properties="0x00">
     <initial target="../1">
-     <initial_glyph conn="26,14,5,1,18,4,-2">
+     <initial_glyph conn="22,18,5,1,28,7,-2">
       <action box="0,-2,10,2"/>
      </initial_glyph>
     </initial>
     <state name="Idle">
-     <tran trig="VALVE_TRANSFER_PASS" target="../../2">
-      <tran_glyph conn="26,22,3,1,18,12,-2">
+     <entry>APP_LOG_INFO(&quot;lorawan off&quot;);</entry>
+     <tran trig="VALVE_TRANSFER">
+      <action>at_lorawan_init();
+QTimeEvt_armX(&amp;me-&gt;timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));</action>
+      <tran_glyph conn="22,26,3,-1,14">
        <action box="0,-2,10,2"/>
       </tran_glyph>
      </tran>
      <tran trig="TIMEOUT">
-      <action>me-&gt;timeout++;</action>
-      <tran_glyph conn="26,24,3,-1,10">
-       <action box="0,-2,10,2"/>
-      </tran_glyph>
-     </tran>
-     <state_glyph node="26,16,16,10"/>
-    </state>
-    <state name="Prepare">
-     <tran trig="TIMEOUT">
-      <action>me-&gt;timeout++;
-if (at_request_is_expired(me-&gt;timeout)) {
-    me-&gt;timeout = 0;
-    me-&gt;retry--;
-}
-if (me-&gt;retry) {
-    
-}</action>
-      <choice target="../../../1">
-       <guard brief="&gt;retry">me-&gt;retry == 0</guard>
-       <action>APP_LOG_ERROR(&quot;Transfer error at %s&quot;, at_request_description());</action>
-       <choice_glyph conn="20,34,4,3,-10,6">
-        <action box="-2,-12,10,2"/>
-       </choice_glyph>
-      </choice>
-      <tran_glyph conn="26,34,5,-1,-6">
-       <action box="0,-1,10,2"/>
-      </tran_glyph>
-     </tran>
-     <tran trig="VALVE_TRANSFER_PASS">
-      <action>me-&gt;timeout = 0;
-me-&gt;retry   = 3;
-</action>
-      <choice target="../../../3">
-       <guard brief="over"/>
-       <choice_glyph conn="38,38,5,1,6,10,-2">
+      <choice target="../../2">
+       <guard brief="is_ready">at_lorawan_is_ready() == true</guard>
+       <choice_glyph conn="36,28,5,1,8,6,-2">
         <action box="1,0,10,2"/>
        </choice_glyph>
       </choice>
-      <tran_glyph conn="26,38,3,-1,12">
+      <tran_glyph conn="22,28,3,-1,14">
        <action box="0,-2,10,2"/>
       </tran_glyph>
      </tran>
-     <state_glyph node="26,30,16,10"/>
-    </state>
-    <state name="Transfer">
-     <tran trig="TIMEOUT">
-      <action>me-&gt;timeout++;</action>
-      <choice target="../../../1">
-       <guard brief="&gt;retry">retry == 0</guard>
-       <action>APP_LOG_ERROR(&quot;Transfer error at %s&quot;, at_request_description());</action>
-       <choice_glyph conn="18,48,4,3,-26,8">
-        <action box="0,-28,10,2"/>
-       </choice_glyph>
-      </choice>
-      <tran_glyph conn="26,48,3,-1,-8">
-       <action box="0,-2,10,2"/>
-      </tran_glyph>
-     </tran>
-     <tran trig="VALVE_TRANSFER_PASS" target="../../1">
-      <action>APP_LOG_DEBUG(&quot;Transfer success&quot;);</action>
-      <tran_glyph conn="26,52,3,1,20,-32,-4">
-       <action box="0,-2,10,2"/>
-      </tran_glyph>
-     </tran>
-     <state_glyph node="26,44,16,10"/>
+     <state name="Prepare">
+      <entry>me-&gt;tick = 0;
+at_lorawan_config_prepare();</entry>
+      <tran trig="TIMEOUT">
+       <action>result = at_lorawan_poll(me-&gt;tick);</action>
+       <choice target="../../../3">
+        <guard brief="success">result == AT_PROCESS_COMPLETE</guard>
+        <choice_glyph conn="36,38,5,1,8,10,-2">
+         <action box="1,0,10,2"/>
+        </choice_glyph>
+       </choice>
+       <choice target="../../..">
+        <guard brief="fail">result == AT_PROCESS_ERROR</guard>
+        <choice_glyph conn="36,38,4,3,4,-14">
+         <action box="-5,2,10,2"/>
+        </choice_glyph>
+       </choice>
+       <tran_glyph conn="26,38,3,-1,10">
+        <action box="0,-2,10,2"/>
+       </tran_glyph>
+      </tran>
+      <state_glyph node="26,30,16,10">
+       <entry box="0,3,6,2"/>
+      </state_glyph>
+     </state>
+     <state name="Transfer">
+      <entry>me-&gt;tick = 0;
+at_lorawan_send_prepare(&quot;hello&quot;);</entry>
+      <tran trig="TIMEOUT">
+       <action>result = at_lorawan_poll(me-&gt;tick);</action>
+       <choice target="../../..">
+        <guard brief="fail">result == AT_PROCESS_ERROR</guard>
+        <choice_glyph conn="36,52,4,3,4,-14">
+         <action box="-5,4,10,2"/>
+        </choice_glyph>
+       </choice>
+       <choice target="../../..">
+        <guard brief="success">result == AT_PROCESS_COMPLETE</guard>
+        <choice_glyph conn="36,52,5,1,12">
+         <action box="1,0,10,2"/>
+        </choice_glyph>
+       </choice>
+       <tran_glyph conn="26,52,3,-1,10">
+        <action box="0,-2,10,2"/>
+       </tran_glyph>
+      </tran>
+      <state_glyph node="26,44,16,10">
+       <entry box="0,3,6,2"/>
+      </state_glyph>
+     </state>
+     <state_glyph node="22,20,26,41">
+      <entry box="0,3,6,2"/>
+     </state_glyph>
     </state>
     <state_diagram size="84,84"/>
    </statechart>
@@ -724,7 +722,7 @@ QTimeEvt_ctorX(&amp;me-&gt;processEvt, (QActive*)me, VALVE_PERSIST_PROCESS_SIG, 
    <code>= (QActive* const)&amp;ValvePersist_inst.super;</code>
   </attribute>
   <operation name="ValveTransfer_ctor" type="void" visibility="0x00" properties="0x00">
-   <code>ValvePersist * const me = &amp;ValveTransfer_inst;
+   <code>ValveTransfer * const me = &amp;ValveTransfer_inst;
 QMActive_ctor(&amp;me-&gt;super, Q_STATE_CAST(&amp;ValveTransfer_initial));
 QTimeEvt_ctorX(&amp;me-&gt;timeEvt, (QActive*)me, TIMEOUT_SIG, 0U);</code>
   </operation>
@@ -983,8 +981,11 @@ $define ${AOs::ValvePersist}</text>
   <file name="valve_transfer.c">
    <text>#include &quot;qpc.h&quot;
 #include &quot;bsp.h&quot;
-#include &quot;at.h&quot;
+#include &quot;at_lora.h&quot;
 #include &quot;valve.h&quot;
+#include &quot;log.h&quot;
+
+static at_process_result_t result;
 
 $declare ${AOs::ValveTransfer}
 

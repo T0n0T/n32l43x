@@ -223,16 +223,16 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
             status_ = QM_TRAN(&tatbl_);
             break;
         }
-        //${AOs::ValveHandler::SM::Idle::VALVE_DAILY}
-        case VALVE_DAILY_SIG: {
-            status_ = QM_HANDLED();
-            break;
-        }
         //${AOs::ValveHandler::SM::Idle::TIMEOUT}
         case TIMEOUT_SIG: {
             #ifdef USE_MODBUS
             eMBPoll();
             #endif
+            status_ = QM_HANDLED();
+            break;
+        }
+        //${AOs::ValveHandler::SM::Idle::VALVE_DAILY}
+        case VALVE_DAILY_SIG: {
             status_ = QM_HANDLED();
             break;
         }

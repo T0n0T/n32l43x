@@ -14,6 +14,7 @@ typedef struct at_cmd_s {
     char*    resp_keyword;
     uint32_t timeout;
     uint32_t retry;
+    int      (*resp_callback)(char* resp);
 } at_cmd_t;
 
 // AT状态机状态枚举
@@ -39,7 +40,7 @@ typedef struct at_s {
     uint32_t        current_process_at;
     char*           current_process_buf;
     char*           current_process_ptr;
-    uint32_t*       current_process_len;
+    uint32_t        current_process_len;
 
     // 状态机相关字段
     at_state_t state;       // 当前状态
@@ -51,10 +52,10 @@ typedef struct at_s {
     void (*transfer_transmit)(const uint8_t* data, uint16_t len);
 } at_t;
 
-void                at_init(at_t* at);
-void                at_deinit(at_t* at);
-void                at_request_list_set(at_t* at, const at_cmd_t* at_cmd_list, uint32_t at_cmd_list_len);
-at_process_result_t at_request_process(at_t* at, uint32_t tick);
-void                at_transfer_isr(at_t* at);
+void                at_fsm_init(at_t* at);
+void                at_fsm_deinit(at_t* at);
+void                at_fsm_copy_buffer(at_t* at, uint8_t* buffer, uint32_t buffer_size);
+void                at_fsm_request_list_set(at_t* at, const at_cmd_t* at_cmd_list, uint32_t at_cmd_list_len);
+at_process_result_t at_fsm_request_process(at_t* at, uint32_t tick);
 
 #endif /* __AT_H__ */

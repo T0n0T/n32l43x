@@ -6,7 +6,9 @@
 #include "valve.h"
 #include "log.h"
 #include "guard.h"
-
+#ifdef USE_LORAWAN
+#include "at_lora.h"
+#endif
 #ifdef DEBUG
 #include "cm_backtrace.h"
 #endif
@@ -46,6 +48,7 @@ void RTC_WKUP_IRQHandler(void)
     if (EXTI_GetITStatus(EXTI_LINE20)) {
         EXTI_ClrITPendBit(EXTI_LINE20);
         RTC_ClrIntPendingBit(RTC_INT_WUT);
+        at_lorawan_event_post();
     }
     QV_ARM_ERRATUM_838869();
 }
@@ -96,7 +99,6 @@ void QV_onIdle(void)
 {
     extern void valve_idle(void);
     valve_idle();
-    static int count = 0;
     if (!Sleep_bits && !run_is_reporting) {
         SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
         PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
@@ -174,12 +176,20 @@ void BSP_start(void)
                   Q_DIM(valveConfQueueSto),
                   (void*)0, 0U,
                   (void*)0);
-    static QEvtPtr valveValvePersistQueueSto[16];
+    static QEvtPtr valvePersistQueueSto[16];
     ValvePersist_ctor();
     QActive_start(AO_ValvePersist,
                   1U,
-                  valveValvePersistQueueSto,
-                  Q_DIM(valveValvePersistQueueSto),
+                  valvePersistQueueSto,
+                  Q_DIM(valvePersistQueueSto),
+                  (void*)0, 0U,
+                  (void*)0);
+    static QEvtPtr valveTransferQueueSto[16];
+    ValveTransfer_ctor();
+    QActive_start(AO_ValveTransfer,
+                  2U,
+                  valveTransferQueueSto,
+                  Q_DIM(valveTransferQueueSto),
                   (void*)0, 0U,
                   (void*)0);
 }
@@ -203,11 +213,11 @@ void QF_onStartup(void)
     NVIC_SetPriority(EXTI15_10_IRQn, DEF_ISR_PRI - 2);
     SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
     lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);
-    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
-        cmd_module_already_on = true;
+    // if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
+    //     cmd_module_already_on = true;
         QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
-    }
+    // }
 }
 /*..........................................................................*/
 void QF_onCleanup(void)

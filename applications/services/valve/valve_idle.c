@@ -7,7 +7,9 @@
 #ifdef DEBUG
 #include "SEGGER_SYSVIEW.h"
 #endif
-
+#ifdef USE_LORAWAN
+#include "at_lora.h"
+#endif
 static uint32_t last_status;
 
 static void valve_report(void)
@@ -55,6 +57,7 @@ void valve_idle(void)
             ucSCoilBuf[0] |= (1 << 0);
 #endif
 #ifdef USE_LORAWAN
+            at_lorawan_event_post();
 #endif
         } else if (global_valve_value->current_status == VALVE_STATUS_OFF) {
             LCD->RAM_COM[LCD_RAM1_COM0] = 0x00005000;
@@ -66,6 +69,7 @@ void valve_idle(void)
             ucSCoilBuf[0] &= ~(1 << 0);
 #endif
 #ifdef USE_LORAWAN
+            at_lorawan_event_post();
 #endif
         }
 #ifdef DEBUG

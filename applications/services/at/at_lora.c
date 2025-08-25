@@ -1,8 +1,9 @@
 #include "qpc.h"
-#include "bsp.h"
 #include "valve.h"
-#include "at.h"
+#include "bsp.h"
+#include "at_lora.h"
 #include "log.h"
+#include <string.h>
 
 #define AT_PWR_PORT         GPIOB
 #define AT_PWR_CLK          RCC_APB2_PERIPH_GPIOB
@@ -20,29 +21,6 @@
 #define USART_AT_DMA_RX_MAP DMA_REMAP_USART3_RX
 #define AT_BUF_LEN          64U
 
-typedef enum at_lora_cmd_enum {
-    AT_LORA_CMD_WAKE,
-    AT_LORA_CMD_SET_PID,
-    AT_LORA_CMD_SET_NIP,
-    AT_LORA_CMD_SET_TYP,
-    AT_LORA_CMD_SET_LFR,
-    AT_LORA_CMD_SET_LRS,
-    AT_LORA_CMD_SET_TPR,
-    AT_LORA_CMD_JOIN,
-    AT_LORA_CMD_ENUM_MAX,
-} at_lora_cmd_enum_t;
-
-static const at_cmd_t at_lora_cmd[] = {
-    {AT_CMD_NAME(AT_LORA_CMD_WAKE), "+++", "OK\r\n", 500, 3},
-    {AT_CMD_NAME(AT_LORA_CMD_SET_PID), "AT+PID=0\r\n", "OK\r\n", 500, 3},
-    // {AT_CMD_NAME(AT_LORA_CMD_SET_NIP), "AT+NIP=0\r\n", "OK\r\n", 500, 3},
-    {AT_CMD_NAME(AT_LORA_CMD_SET_TYP), "AT+TYP=2\r\n", "OK\r\n", 500, 3},
-    {AT_CMD_NAME(AT_LORA_CMD_SET_LFR), "AT+LFR=470\r\n", "OK\r\n", 500, 3},
-    {AT_CMD_NAME(AT_LORA_CMD_SET_LRS), "AT+LRS=3\r\n", "OK\r\n", 500, 3},
-    {AT_CMD_NAME(AT_LORA_CMD_SET_TPR), "AT+TPR=20\r\n", "OK\r\n", 500, 3},
-    {AT_CMD_NAME(AT_LORA_CMD_JOIN), "AT+RJN\r\n", "+JON: %d OK\r\n", 30000, 5},
-};
-
 bool                     at_module_already_on;
 static const char*       AT_START_STRING = "start\r\n";
 static uint8_t           _at_buf_rx[AT_BUF_LEN];
@@ -50,9 +28,11 @@ static uint8_t           _at_buf_tx[AT_BUF_LEN * 2];
 static uint8_t           _at_start_match_pos;
 static bool              _at_start_string_received;
 static volatile uint32_t _at_len; // Change to uint16_t for length
-static QEvt              _at_evt;
+
+static QEvt _at_evt;
 
 static at_t at_lora;
+static int  at_join_callback(char* resp);
 
 void USART_AT_IRQHandler(void)
 {
@@ -82,9 +62,7 @@ void USART_AT_IRQHandler(void)
             // Assuming command ends with '\n'
             if (_at_len > 0 && _at_buf_rx[_at_len - 1] == '\n') {
                 _at_buf_rx[_at_len] = '\0'; // Null-terminate the string
-
-                // 通过QPC事件队列发送事件
-                // QACTIVE_POST(AO_ValveTransfer, &_at_evt, 0);
+                at_fsm_copy_buffer(&at_lora, _at_buf_rx, _at_len);
             }
         }
 
@@ -178,13 +156,88 @@ static void at_transfer_layer_transmit(const uint8_t* data, uint16_t len)
     DMA_EnableChannel(USART_AT_DMA_TX, ENABLE);
 }
 
+static int at_join_callback(char* resp)
+{
+    int result;
+    if (sscanf(resp, "+JON: %d OK", &result) == 1) {
+        return 0; // Success
+    }
+    return -1; // Failure
+}
+
 void at_lorawan_init(void)
 {
     at_lora.transfer_init     = at_transfer_layer_init;
     at_lora.transfer_deinit   = at_transfer_layer_deinit;
     at_lora.transfer_transmit = at_transfer_layer_transmit;
 
-    at_lora.current_process_buf = (char*)_at_buf_rx;
-    at_lora.current_process_len = (uint32_t*)&_at_len;
-    at_init(&at_lora);
+    at_fsm_init(&at_lora);
+}
+
+void at_lorawan_deinit(void)
+{
+    at_fsm_deinit(&at_lora);
+}
+
+bool at_lorawan_is_ready(void)
+{
+    return _at_start_string_received;
+}
+
+at_process_result_t at_lorawan_poll(uint32_t tick)
+{
+    return at_fsm_request_process(&at_lora, tick);
+}
+
+void at_lorawan_config_prepare(void)
+{
+#define AT_LORA_CONFIG_CMD_MAX 7
+    static const at_cmd_t at_lora_config_cmd[AT_LORA_CONFIG_CMD_MAX] = {
+        {AT_CMD_NAME(AT_LORA_CMD_WAKE), "+++", "OK\r\n", 500, 3},
+        {AT_CMD_NAME(AT_LORA_CMD_SET_PID), "AT+PID=0\r\n", "OK\r\n", 500, 3},
+        // {AT_CMD_NAME(AT_LORA_CMD_SET_NIP), "AT+NIP=0\r\n", "OK\r\n", 500, 3},
+        {AT_CMD_NAME(AT_LORA_CMD_SET_TYP), "AT+TYP=2\r\n", "OK\r\n", 500, 3},
+        {AT_CMD_NAME(AT_LORA_CMD_SET_LFR), "AT+LFR=470\r\n", "OK\r\n", 500, 3},
+        {AT_CMD_NAME(AT_LORA_CMD_SET_LRS), "AT+LRS=3\r\n", "OK\r\n", 500, 3},
+        {AT_CMD_NAME(AT_LORA_CMD_SET_TPR), "AT+TPR=20\r\n", "OK\r\n", 500, 3},
+        {
+            AT_CMD_NAME(AT_LORA_CMD_JOIN),
+            "AT+RJN\r\n",
+            "+JON:\r\n",
+            30000,
+            5,
+            at_join_callback,
+        },
+    };
+    at_fsm_request_list_set(&at_lora,
+                            at_lora_config_cmd,
+                            sizeof(at_lora_config_cmd) / sizeof(at_lora_config_cmd[0]));
+}
+
+void at_lorawan_send_prepare(char* payload)
+{
+    static at_cmd_t send_cmd = {
+        .cmd_desc      = "SEND_ASCII",
+        .cmd_expr      = NULL, // 将在下面动态分配
+        .resp_keyword  = "OK\r\n",
+        .timeout       = 500,
+        .retry         = 3,
+        .resp_callback = NULL};
+
+    // 使用栈分配的字符数组来存储 cmd_expr
+    static char cmd_expr_buffer[256]; // 假设最大长度为 256
+    send_cmd.cmd_expr = cmd_expr_buffer;
+
+    memset(cmd_expr_buffer, 0, sizeof(cmd_expr_buffer));
+    // 构造完整的 AT 命令
+    snprintf(send_cmd.cmd_expr, sizeof(cmd_expr_buffer), "AT+TXA=%s\r\n", payload);
+
+    // 设置 FSM
+    at_fsm_request_list_set(&at_lora, &send_cmd, 1);
+}
+
+void at_lorawan_event_post(void)
+{
+    QEvt_ctor(&_at_evt, VALVE_TRANSFER_SIG);
+    QACTIVE_POST(AO_ValveTransfer, &_at_evt, 0);
 }
