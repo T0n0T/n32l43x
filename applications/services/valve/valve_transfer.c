@@ -53,6 +53,7 @@ typedef struct ValveTransfer {
 // public:
     QTimeEvt timeEvt;
     uint32_t tick;
+    bool isActive;
 } ValveTransfer;
 
 extern ValveTransfer ValveTransfer_inst;
@@ -133,7 +134,9 @@ static QState ValveTransfer_initial(ValveTransfer * const me, void const * const
 //${AOs::ValveTransfer::SM::Idle}
 static QState ValveTransfer_Idle_e(ValveTransfer * const me) {
     APP_LOG_INFO("lorawan off");
-    Q_UNUSED_PAR(me);
+    QTimeEvt_disarm(&me->timeEvt);
+    Sleep_release(TRANSFER_BIT);
+    me->isActive = false;
     return QM_ENTRY(&ValveTransfer_Idle_s);
 }
 //${AOs::ValveTransfer::SM::Idle}
@@ -142,8 +145,12 @@ static QState ValveTransfer_Idle(ValveTransfer * const me, QEvt const * const e)
     switch (e->sig) {
         //${AOs::ValveTransfer::SM::Idle::VALVE_TRANSFER}
         case VALVE_TRANSFER_SIG: {
-            at_lorawan_init();
-            QTimeEvt_armX(&me->timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));
+            if (!me->isActive) {
+                at_lorawan_init();
+                QTimeEvt_armX(&me->timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));
+                Sleep_request(TRANSFER_BIT);
+                me->isActive = true;
+            }
             status_ = QM_HANDLED();
             break;
         }

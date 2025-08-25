@@ -134,7 +134,7 @@ void BSP_init(void)
     lcd_init(); /* initialize the LCD */
     lptimer_init();
     // dump_clk();
-    // rtc_init();
+    rtc_init();
     wakeup_init(wakeup_handle);
     pvd_init(pvd_handle);
 }
@@ -154,7 +154,7 @@ void BSP_start(void)
     static QEvtPtr valveCounterQueueSto[128];
     ValveCounter_ctor();
     QActive_start(AO_ValveCounter,
-                  4U,
+                  5U,
                   valveCounterQueueSto,
                   Q_DIM(valveCounterQueueSto),
                   (void*)0, 0U,
@@ -163,9 +163,17 @@ void BSP_start(void)
     static QEvtPtr valveHandlerQueueSto[128];
     ValveHandler_ctor();
     QActive_start(AO_ValveHandler,
-                  3U,
+                  4U,
                   valveHandlerQueueSto,
                   Q_DIM(valveHandlerQueueSto),
+                  (void*)0, 0U,
+                  (void*)0);
+    ValvePersist_ctor();
+    static QEvtPtr valvePersistQueueSto[16];
+    QActive_start(AO_ValvePersist,
+                  3U,
+                  valvePersistQueueSto,
+                  Q_DIM(valvePersistQueueSto),
                   (void*)0, 0U,
                   (void*)0);
     static QEvtPtr valveConfQueueSto[16];
@@ -176,18 +184,10 @@ void BSP_start(void)
                   Q_DIM(valveConfQueueSto),
                   (void*)0, 0U,
                   (void*)0);
-    static QEvtPtr valvePersistQueueSto[16];
-    ValvePersist_ctor();
-    QActive_start(AO_ValvePersist,
-                  1U,
-                  valvePersistQueueSto,
-                  Q_DIM(valvePersistQueueSto),
-                  (void*)0, 0U,
-                  (void*)0);
     static QEvtPtr valveTransferQueueSto[16];
     ValveTransfer_ctor();
     QActive_start(AO_ValveTransfer,
-                  2U,
+                  1U,
                   valveTransferQueueSto,
                   Q_DIM(valveTransferQueueSto),
                   (void*)0, 0U,
@@ -215,8 +215,8 @@ void QF_onStartup(void)
     lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);
     // if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
     //     cmd_module_already_on = true;
-        QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
-        QACTIVE_PUBLISH(&_lock_evt, 0);
+    QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
+    QACTIVE_PUBLISH(&_lock_evt, 0);
     // }
 }
 /*..........................................................................*/

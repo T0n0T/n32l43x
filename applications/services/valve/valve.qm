@@ -30,10 +30,12 @@
   <attribute name="Sleep_bits" type="volatile uint32_t" visibility="0x00" properties="0x00"/>
   <attribute name="Sleep_slotbit" type="enum" visibility="0x04" properties="0x00">
    <code>{
-    LOCK_BIT    = 1 &lt;&lt; 0,
-    COUNTER_BIT = 1 &lt;&lt; 1,
-    HANDLER_BIT = 1 &lt;&lt; 2,
-    CONFIG_BIT  = 1 &lt;&lt; 3,
+    LOCK_BIT     = 1 &lt;&lt; 0,
+    COUNTER_BIT  = 1 &lt;&lt; 1,
+    HANDLER_BIT  = 1 &lt;&lt; 2,
+    CONFIG_BIT   = 1 &lt;&lt; 3,
+    PERSIST_BIT  = 1 &lt;&lt; 4,
+    TRANSFER_BIT = 1 &lt;&lt; 5,
 };</code>
   </attribute>
   <operation name="Sleep_request" type="void" visibility="0x00" properties="0x02">
@@ -489,6 +491,8 @@ if (evt-&gt;evtType == VALVE_CMD) {
      </initial_glyph>
     </initial>
     <state name="Idle">
+     <entry>Sleep_release(PERSIST_BIT);</entry>
+     <exit>Sleep_request(PERSIST_BIT);</exit>
      <tran trig="VALVE_PERSIST_START" target="../../3">
       <action>ValveEvt const* ve = (ValveEvt const*)e;
 if (ve-&gt;evtType == VALVE_VALUE) {
@@ -500,7 +504,10 @@ if (ve-&gt;evtType == VALVE_VALUE) {
        <action box="0,-2,19,2"/>
       </tran_glyph>
      </tran>
-     <state_glyph node="36,20,14,12"/>
+     <state_glyph node="36,20,14,12">
+      <entry box="0,3,6,2"/>
+      <exit box="0,5,6,2"/>
+     </state_glyph>
     </state>
     <state name="Complete">
      <entry>me-&gt;request.word_len--;
@@ -604,6 +611,7 @@ flash_fsm_start(&amp;flash_fsm, &amp;flash_request, NULL, NULL);</entry>
    <attribute name="inst" type="ValveTransfer" visibility="0x00" properties="0x01"/>
    <attribute name="timeEvt" type="QTimeEvt" visibility="0x00" properties="0x00"/>
    <attribute name="tick" type="uint32_t" visibility="0x00" properties="0x00"/>
+   <attribute name="isActive" type="bool" visibility="0x00" properties="0x00"/>
    <statechart properties="0x00">
     <initial target="../1">
      <initial_glyph conn="22,18,5,1,28,7,-2">
@@ -611,10 +619,17 @@ flash_fsm_start(&amp;flash_fsm, &amp;flash_request, NULL, NULL);</entry>
      </initial_glyph>
     </initial>
     <state name="Idle">
-     <entry>APP_LOG_INFO(&quot;lorawan off&quot;);</entry>
+     <entry>APP_LOG_INFO(&quot;lorawan off&quot;);
+QTimeEvt_disarm(&amp;me-&gt;timeEvt);
+Sleep_release(TRANSFER_BIT);
+me-&gt;isActive = false;</entry>
      <tran trig="VALVE_TRANSFER">
-      <action>at_lorawan_init();
-QTimeEvt_armX(&amp;me-&gt;timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));</action>
+      <action>if (!me-&gt;isActive) {
+    at_lorawan_init();
+    QTimeEvt_armX(&amp;me-&gt;timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));
+    Sleep_request(TRANSFER_BIT);
+    me-&gt;isActive = true;
+}</action>
       <tran_glyph conn="22,26,3,-1,14">
        <action box="0,-2,10,2"/>
       </tran_glyph>

@@ -64,11 +64,13 @@ extern ValvePersist ValvePersist_inst;
 // protected:
 static QState ValvePersist_initial(ValvePersist * const me, void const * const par);
 static QState ValvePersist_Idle  (ValvePersist * const me, QEvt const * const e);
+static QState ValvePersist_Idle_e(ValvePersist * const me);
+static QState ValvePersist_Idle_x(ValvePersist * const me);
 static QMState const ValvePersist_Idle_s = {
     QM_STATE_NULL, // superstate (top)
     Q_STATE_CAST(&ValvePersist_Idle),
-    Q_ACTION_NULL, // no entry action
-    Q_ACTION_NULL, // no exit action
+    Q_ACTION_CAST(&ValvePersist_Idle_e),
+    Q_ACTION_CAST(&ValvePersist_Idle_x),
     Q_ACTION_NULL  // no initial tran.
 };
 static QState ValvePersist_Complete  (ValvePersist * const me, QEvt const * const e);
@@ -128,9 +130,13 @@ ValvePersist ValvePersist_inst;
 //${AOs::ValvePersist::SM} ...................................................
 static QState ValvePersist_initial(ValvePersist * const me, void const * const par) {
     //${AOs::ValvePersist::SM::initial}
-    static QMTranActTable const tatbl_ = { // tran-action table
+    static struct {
+        QMState const *target;
+        QActionHandler act[2];
+    } const tatbl_ = { // tran-action table
         &ValvePersist_Idle_s, // target state
         {
+            Q_ACTION_CAST(&ValvePersist_Idle_e), // entry
             Q_ACTION_NULL // zero terminator
         }
     };
@@ -138,6 +144,18 @@ static QState ValvePersist_initial(ValvePersist * const me, void const * const p
 }
 
 //${AOs::ValvePersist::SM::Idle} .............................................
+//${AOs::ValvePersist::SM::Idle}
+static QState ValvePersist_Idle_e(ValvePersist * const me) {
+    Sleep_release(PERSIST_BIT);
+    Q_UNUSED_PAR(me);
+    return QM_ENTRY(&ValvePersist_Idle_s);
+}
+//${AOs::ValvePersist::SM::Idle}
+static QState ValvePersist_Idle_x(ValvePersist * const me) {
+    Sleep_request(PERSIST_BIT);
+    (void)me; // unused parameter
+    return QM_EXIT(&ValvePersist_Idle_s);
+}
 //${AOs::ValvePersist::SM::Idle}
 static QState ValvePersist_Idle(ValvePersist * const me, QEvt const * const e) {
     QState status_;
@@ -152,10 +170,11 @@ static QState ValvePersist_Idle(ValvePersist * const me, QEvt const * const e) {
             }
             static struct {
                 QMState const *target;
-                QActionHandler act[2];
+                QActionHandler act[3];
             } const tatbl_ = { // tran-action table
                 &ValvePersist_Prepare_s, // target state
                 {
+                    Q_ACTION_CAST(&ValvePersist_Idle_x), // exit
                     Q_ACTION_CAST(&ValvePersist_Prepare_e), // entry
                     Q_ACTION_NULL // zero terminator
                 }
@@ -188,9 +207,13 @@ static QState ValvePersist_Complete(ValvePersist * const me, QEvt const * const 
             //${AOs::ValvePersist::SM::Complete::VALVE_PERSIST_PR~::[remain==0]}
             if (me->request.word_len == 0) {
                 QTimeEvt_disarm(&me->processEvt);
-                static QMTranActTable const tatbl_ = { // tran-action table
+                static struct {
+                    QMState const *target;
+                    QActionHandler act[2];
+                } const tatbl_ = { // tran-action table
                     &ValvePersist_Idle_s, // target state
                     {
+                        Q_ACTION_CAST(&ValvePersist_Idle_e), // entry
                         Q_ACTION_NULL // zero terminator
                     }
                 };
@@ -279,9 +302,13 @@ static QState ValvePersist_Prepare(ValvePersist * const me, QEvt const * const e
             }
             //${AOs::ValvePersist::SM::Prepare::VALVE_PERSIST_PR~::[fail]}
             else if ((flash_fsm_get_result(&flash_fsm) != FLASH_RESULT_SUCCESS) && (flash_fsm_get_result(&flash_fsm) != FLASH_RESULT_PENDING)) {
-                static QMTranActTable const tatbl_ = { // tran-action table
+                static struct {
+                    QMState const *target;
+                    QActionHandler act[2];
+                } const tatbl_ = { // tran-action table
                     &ValvePersist_Idle_s, // target state
                     {
+                        Q_ACTION_CAST(&ValvePersist_Idle_e), // entry
                         Q_ACTION_NULL // zero terminator
                     }
                 };
@@ -333,9 +360,13 @@ static QState ValvePersist_Handle(ValvePersist * const me, QEvt const * const e)
             }
             //${AOs::ValvePersist::SM::Handle::VALVE_PERSIST_PR~::[fail]}
             else if ((flash_fsm_get_result(&flash_fsm) != FLASH_RESULT_SUCCESS) && (flash_fsm_get_result(&flash_fsm) != FLASH_RESULT_PENDING)) {
-                static QMTranActTable const tatbl_ = { // tran-action table
+                static struct {
+                    QMState const *target;
+                    QActionHandler act[2];
+                } const tatbl_ = { // tran-action table
                     &ValvePersist_Idle_s, // target state
                     {
+                        Q_ACTION_CAST(&ValvePersist_Idle_e), // entry
                         Q_ACTION_NULL // zero terminator
                     }
                 };

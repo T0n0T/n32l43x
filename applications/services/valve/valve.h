@@ -92,10 +92,12 @@ extern volatile uint32_t Sleep_bits;
 
 //${Shared::Sleep_slotbit} ...................................................
 enum Sleep_slotbit {
-    LOCK_BIT    = 1 << 0,
-    COUNTER_BIT = 1 << 1,
-    HANDLER_BIT = 1 << 2,
-    CONFIG_BIT  = 1 << 3,
+    LOCK_BIT     = 1 << 0,
+    COUNTER_BIT  = 1 << 1,
+    HANDLER_BIT  = 1 << 2,
+    CONFIG_BIT   = 1 << 3,
+    PERSIST_BIT  = 1 << 4,
+    TRANSFER_BIT = 1 << 5,
 };
 
 //${Shared::Sleep_request} ...................................................
