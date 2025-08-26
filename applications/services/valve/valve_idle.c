@@ -47,9 +47,6 @@ void valve_idle(void)
 #ifdef DEBUG
         SEGGER_SYSVIEW_MarkStart(VALVE_IDLE);
 #endif
-#ifdef USE_LORAWAN
-        at_lorawan_event_post();
-#endif
         if (global_valve_value->current_status == VALVE_STATUS_ON) {
             LCD->RAM_COM[LCD_RAM1_COM0] = 0x00000000;
             LCD->RAM_COM[LCD_RAM1_COM1] = 0x00000000;

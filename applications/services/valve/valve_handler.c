@@ -38,6 +38,7 @@
 #include "qpc.h"
 #include "bsp.h"
 #include "valve.h"
+#include "at_lora.h"
 #include "cmd.h"
 #include "spi_flash.h"
 #include "log.h"
@@ -356,6 +357,9 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
                 evt.evtType = VALVE_VALUE;
                 QACTIVE_POST(AO_ValvePersist, &evt.super, 0U);
                 last_total_ticks = global_valve_value->total_ticks;
+            #ifdef USE_LORAWAN
+                at_lorawan_event_post();
+            #endif
             }
             status_ = QM_HANDLED();
             break;
