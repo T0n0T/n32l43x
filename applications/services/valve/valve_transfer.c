@@ -41,6 +41,8 @@
 #include "valve.h"
 #include "log.h"
 
+extern ValveVal* global_valve_value;
+
 static at_process_result_t result;
 
 //$declare${AOs::ValveTransfer} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -52,6 +54,7 @@ typedef struct ValveTransfer {
 
 // public:
     QTimeEvt timeEvt;
+    QTimeEvt pollEvt;
     uint32_t tick;
     bool isActive;
 } ValveTransfer;
@@ -61,29 +64,26 @@ extern ValveTransfer ValveTransfer_inst;
 // protected:
 static QState ValveTransfer_initial(ValveTransfer * const me, void const * const par);
 static QState ValveTransfer_Idle  (ValveTransfer * const me, QEvt const * const e);
-static QState ValveTransfer_Idle_e(ValveTransfer * const me);
 static QMState const ValveTransfer_Idle_s = {
     QM_STATE_NULL, // superstate (top)
     Q_STATE_CAST(&ValveTransfer_Idle),
-    Q_ACTION_CAST(&ValveTransfer_Idle_e),
+    Q_ACTION_NULL, // no entry action
     Q_ACTION_NULL, // no exit action
     Q_ACTION_NULL  // no initial tran.
 };
 static QState ValveTransfer_Prepare  (ValveTransfer * const me, QEvt const * const e);
-static QState ValveTransfer_Prepare_e(ValveTransfer * const me);
 static QMState const ValveTransfer_Prepare_s = {
     &ValveTransfer_Idle_s, // superstate
     Q_STATE_CAST(&ValveTransfer_Prepare),
-    Q_ACTION_CAST(&ValveTransfer_Prepare_e),
+    Q_ACTION_NULL, // no entry action
     Q_ACTION_NULL, // no exit action
     Q_ACTION_NULL  // no initial tran.
 };
 static QState ValveTransfer_Transfer  (ValveTransfer * const me, QEvt const * const e);
-static QState ValveTransfer_Transfer_e(ValveTransfer * const me);
 static QMState const ValveTransfer_Transfer_s = {
     &ValveTransfer_Idle_s, // superstate
     Q_STATE_CAST(&ValveTransfer_Transfer),
-    Q_ACTION_CAST(&ValveTransfer_Transfer_e),
+    Q_ACTION_NULL, // no entry action
     Q_ACTION_NULL, // no exit action
     Q_ACTION_NULL  // no initial tran.
 };
@@ -107,6 +107,7 @@ void ValveTransfer_ctor(void) {
     ValveTransfer * const me = &ValveTransfer_inst;
     QMActive_ctor(&me->super, Q_STATE_CAST(&ValveTransfer_initial));
     QTimeEvt_ctorX(&me->timeEvt, (QActive*)me, TIMEOUT_SIG, 0U);
+    QTimeEvt_ctorX(&me->pollEvt, (QActive*)me, VALVE_TRANSFER_POLL_SIG, 0U);
 }
 //$enddef${AOs::ValveTransfer_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$define${AOs::ValveTransfer} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -117,13 +118,16 @@ ValveTransfer ValveTransfer_inst;
 //${AOs::ValveTransfer::SM} ..................................................
 static QState ValveTransfer_initial(ValveTransfer * const me, void const * const par) {
     //${AOs::ValveTransfer::SM::initial}
-    static struct {
-        QMState const *target;
-        QActionHandler act[2];
-    } const tatbl_ = { // tran-action table
+    me->isActive = false;
+    me->tick     = 0;
+    QTimeEvt_armX(&me->pollEvt, MS_TO_TICK(1), MS_TO_TICK(1));
+    #ifdef USE_MODBUS
+    eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
+    eMBEnable();
+    #endif
+    static QMTranActTable const tatbl_ = { // tran-action table
         &ValveTransfer_Idle_s, // target state
         {
-            Q_ACTION_CAST(&ValveTransfer_Idle_e), // entry
             Q_ACTION_NULL // zero terminator
         }
     };
@@ -132,24 +136,19 @@ static QState ValveTransfer_initial(ValveTransfer * const me, void const * const
 
 //${AOs::ValveTransfer::SM::Idle} ............................................
 //${AOs::ValveTransfer::SM::Idle}
-static QState ValveTransfer_Idle_e(ValveTransfer * const me) {
-    APP_LOG_INFO("lorawan off");
-    QTimeEvt_disarm(&me->timeEvt);
-    Sleep_release(TRANSFER_BIT);
-    me->isActive = false;
-    return QM_ENTRY(&ValveTransfer_Idle_s);
-}
-//${AOs::ValveTransfer::SM::Idle}
 static QState ValveTransfer_Idle(ValveTransfer * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
-        //${AOs::ValveTransfer::SM::Idle::VALVE_TRANSFER}
-        case VALVE_TRANSFER_SIG: {
+        //${AOs::ValveTransfer::SM::Idle::VALVE_TRANSFER_INIT}
+        case VALVE_TRANSFER_INIT_SIG: {
             if (!me->isActive) {
-                at_lorawan_init();
                 QTimeEvt_armX(&me->timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));
                 Sleep_request(TRANSFER_BIT);
                 me->isActive = true;
+                me->tick     = 0;
+            #ifdef USE_LORAWAN
+                at_lorawan_init();
+            #endif
             }
             status_ = QM_HANDLED();
             break;
@@ -158,13 +157,13 @@ static QState ValveTransfer_Idle(ValveTransfer * const me, QEvt const * const e)
         case TIMEOUT_SIG: {
             //${AOs::ValveTransfer::SM::Idle::TIMEOUT::[is_ready]}
             if (at_lorawan_is_ready() == true) {
-                static struct {
-                    QMState const *target;
-                    QActionHandler act[2];
-                } const tatbl_ = { // tran-action table
+                #ifdef USE_LORAWAN
+                me->tick = 0;
+                at_lorawan_config_prepare();
+                #endif
+                static QMTranActTable const tatbl_ = { // tran-action table
                     &ValveTransfer_Prepare_s, // target state
                     {
-                        Q_ACTION_CAST(&ValveTransfer_Prepare_e), // entry
                         Q_ACTION_NULL // zero terminator
                     }
                 };
@@ -173,6 +172,15 @@ static QState ValveTransfer_Idle(ValveTransfer * const me, QEvt const * const e)
             else {
                 status_ = QM_UNHANDLED();
             }
+            break;
+        }
+        //${AOs::ValveTransfer::SM::Idle::VALVE_TRANSFER_POLL}
+        case VALVE_TRANSFER_POLL_SIG: {
+            me->tick++;
+            #ifdef USE_MODBUS
+            eMBPoll();
+            #endif
+            status_ = QM_HANDLED();
             break;
         }
         default: {
@@ -185,12 +193,6 @@ static QState ValveTransfer_Idle(ValveTransfer * const me, QEvt const * const e)
 
 //${AOs::ValveTransfer::SM::Idle::Prepare} ...................................
 //${AOs::ValveTransfer::SM::Idle::Prepare}
-static QState ValveTransfer_Prepare_e(ValveTransfer * const me) {
-    me->tick = 0;
-    at_lorawan_config_prepare();
-    return QM_ENTRY(&ValveTransfer_Prepare_s);
-}
-//${AOs::ValveTransfer::SM::Idle::Prepare}
 static QState ValveTransfer_Prepare(ValveTransfer * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
@@ -199,13 +201,16 @@ static QState ValveTransfer_Prepare(ValveTransfer * const me, QEvt const * const
             result = at_lorawan_poll(me->tick);
             //${AOs::ValveTransfer::SM::Idle::Prepare::TIMEOUT::[success]}
             if (result == AT_PROCESS_COMPLETE) {
-                static struct {
-                    QMState const *target;
-                    QActionHandler act[2];
-                } const tatbl_ = { // tran-action table
+                char payload[64] = {0};
+                snprintf(payload,
+                         sizeof(payload),
+                         "%x%x",
+                         global_valve_value->current_status,
+                         global_valve_value->total_ticks);
+                at_lorawan_send_prepare(payload);
+                static QMTranActTable const tatbl_ = { // tran-action table
                     &ValveTransfer_Transfer_s, // target state
                     {
-                        Q_ACTION_CAST(&ValveTransfer_Transfer_e), // entry
                         Q_ACTION_NULL // zero terminator
                     }
                 };
@@ -213,6 +218,11 @@ static QState ValveTransfer_Prepare(ValveTransfer * const me, QEvt const * const
             }
             //${AOs::ValveTransfer::SM::Idle::Prepare::TIMEOUT::[fail]}
             else if (result == AT_PROCESS_ERROR) {
+                QTimeEvt_disarm(&me->timeEvt);
+                Sleep_release(TRANSFER_BIT);
+                me->isActive = false;
+                at_lorawan_deinit();
+                APP_LOG_ERROR("Error at transfer prepare");
                 static QMTranActTable const tatbl_ = { // tran-action table
                     &ValveTransfer_Idle_s, // target state
                     {
@@ -221,8 +231,15 @@ static QState ValveTransfer_Prepare(ValveTransfer * const me, QEvt const * const
                 };
                 status_ = QM_TRAN(&tatbl_);
             }
+            //${AOs::ValveTransfer::SM::Idle::Prepare::TIMEOUT::[else]}
             else {
-                status_ = QM_UNHANDLED();
+                static QMTranActTable const tatbl_ = { // tran-action table
+                    &ValveTransfer_Prepare_s, // target state
+                    {
+                        Q_ACTION_NULL // zero terminator
+                    }
+                };
+                status_ = QM_TRAN(&tatbl_);
             }
             break;
         }
@@ -236,12 +253,6 @@ static QState ValveTransfer_Prepare(ValveTransfer * const me, QEvt const * const
 
 //${AOs::ValveTransfer::SM::Idle::Transfer} ..................................
 //${AOs::ValveTransfer::SM::Idle::Transfer}
-static QState ValveTransfer_Transfer_e(ValveTransfer * const me) {
-    me->tick = 0;
-    at_lorawan_send_prepare("hello");
-    return QM_ENTRY(&ValveTransfer_Transfer_s);
-}
-//${AOs::ValveTransfer::SM::Idle::Transfer}
 static QState ValveTransfer_Transfer(ValveTransfer * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
@@ -250,6 +261,11 @@ static QState ValveTransfer_Transfer(ValveTransfer * const me, QEvt const * cons
             result = at_lorawan_poll(me->tick);
             //${AOs::ValveTransfer::SM::Idle::Transfer::TIMEOUT::[fail]}
             if (result == AT_PROCESS_ERROR) {
+                QTimeEvt_disarm(&me->timeEvt);
+                Sleep_release(TRANSFER_BIT);
+                me->isActive = false;
+                at_lorawan_deinit();
+                APP_LOG_ERROR("Error at transfer operation");
                 static QMTranActTable const tatbl_ = { // tran-action table
                     &ValveTransfer_Idle_s, // target state
                     {
@@ -260,6 +276,10 @@ static QState ValveTransfer_Transfer(ValveTransfer * const me, QEvt const * cons
             }
             //${AOs::ValveTransfer::SM::Idle::Transfer::TIMEOUT::[success]}
             else if (result == AT_PROCESS_COMPLETE) {
+                QTimeEvt_disarm(&me->timeEvt);
+                Sleep_release(TRANSFER_BIT);
+                me->isActive = false;
+                at_lorawan_deinit();
                 static QMTranActTable const tatbl_ = { // tran-action table
                     &ValveTransfer_Idle_s, // target state
                     {
@@ -268,8 +288,15 @@ static QState ValveTransfer_Transfer(ValveTransfer * const me, QEvt const * cons
                 };
                 status_ = QM_TRAN(&tatbl_);
             }
+            //${AOs::ValveTransfer::SM::Idle::Transfer::TIMEOUT::[else]}
             else {
-                status_ = QM_UNHANDLED();
+                static QMTranActTable const tatbl_ = { // tran-action table
+                    &ValveTransfer_Transfer_s, // target state
+                    {
+                        Q_ACTION_NULL // zero terminator
+                    }
+                };
+                status_ = QM_TRAN(&tatbl_);
             }
             break;
         }

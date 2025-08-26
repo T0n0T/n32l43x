@@ -46,6 +46,18 @@
 #define LPTIM_REPORT_MS   60000
 #define MS_TO_TICK(ms)    ((ms) * TICK_RATE / 1000)
 
+#define BLE_PWR_PORT      GPIOB
+#define BLE_PWR_CLK       RCC_APB2_PERIPH_GPIOB
+#define BLE_PWR_PIN       GPIO_PIN_6
+#define BLE_PWR_HIGH      BLE_PWR_PORT->PBSC = BLE_PWR_PIN;
+#define BLE_PWR_LOW       BLE_PWR_PORT->PBC = BLE_PWR_PIN;
+
+#define AT_PWR_PORT       GPIOB
+#define AT_PWR_CLK        RCC_APB2_PERIPH_GPIOB
+#define AT_PWR_PIN        GPIO_PIN_2
+#define AT_PWR_HIGH       AT_PWR_PORT->PBSC = AT_PWR_PIN;
+#define AT_PWR_LOW        AT_PWR_PORT->PBC = AT_PWR_PIN;
+
 extern volatile bool pvd_is_power_low;
 extern volatile bool run_is_reporting;
 extern volatile bool transfer_is_error;

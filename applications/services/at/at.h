@@ -7,6 +7,7 @@
 
 #define AT_CMD(CMD_NUM)      (&at_cmd_list[CMD_NUM])
 #define AT_CMD_NAME(CMD_NUM) (#CMD_NUM)
+#define AT_CMD_BUFFER_SIZE   128
 
 typedef struct at_cmd_s {
     char*    cmd_desc;
@@ -14,7 +15,7 @@ typedef struct at_cmd_s {
     char*    resp_keyword;
     uint32_t timeout;
     uint32_t retry;
-    int      (*resp_callback)(char* resp);
+    int (*resp_callback)(char* resp);
 } at_cmd_t;
 
 // AT状态机状态枚举

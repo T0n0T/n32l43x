@@ -5,12 +5,6 @@
 #include "log.h"
 #include <string.h>
 
-#define AT_PWR_PORT         GPIOB
-#define AT_PWR_CLK          RCC_APB2_PERIPH_GPIOB
-#define AT_PWR_PIN          GPIO_PIN_2
-#define AT_PWR_HIGH         AT_PWR_PORT->PBSC = AT_PWR_PIN;
-#define AT_PWR_LOW          AT_PWR_PORT->PBC = AT_PWR_PIN;
-
 #define AT                  LORAWAN
 #define USART_AT            USART3
 #define USART_AT_IRQn       USART3_IRQn
@@ -191,19 +185,16 @@ at_process_result_t at_lorawan_poll(uint32_t tick)
 
 void at_lorawan_config_prepare(void)
 {
-#define AT_LORA_CONFIG_CMD_MAX 7
-    static const at_cmd_t at_lora_config_cmd[AT_LORA_CONFIG_CMD_MAX] = {
+    static const at_cmd_t at_lora_config_cmd[] = {
         {AT_CMD_NAME(AT_LORA_CMD_WAKE), "+++", "OK\r\n", 500, 3},
-        {AT_CMD_NAME(AT_LORA_CMD_SET_PID), "AT+PID=0\r\n", "OK\r\n", 500, 3},
-        // {AT_CMD_NAME(AT_LORA_CMD_SET_NIP), "AT+NIP=0\r\n", "OK\r\n", 500, 3},
-        {AT_CMD_NAME(AT_LORA_CMD_SET_TYP), "AT+TYP=2\r\n", "OK\r\n", 500, 3},
-        {AT_CMD_NAME(AT_LORA_CMD_SET_LFR), "AT+LFR=470\r\n", "OK\r\n", 500, 3},
-        {AT_CMD_NAME(AT_LORA_CMD_SET_LRS), "AT+LRS=3\r\n", "OK\r\n", 500, 3},
-        {AT_CMD_NAME(AT_LORA_CMD_SET_TPR), "AT+TPR=20\r\n", "OK\r\n", 500, 3},
+        // {AT_CMD_NAME(AT_LORA_CMD_SET_MOD), "AT+MOD=1\r\n", "OK\r\n", 500, 3},
+        {AT_CMD_NAME(AT_LORA_CMD_SET_TDR), "AT+TDR=3\r\n", "OK\r\n", 500, 3},
+        {AT_CMD_NAME(AT_LORA_CMD_SET_TPW), "AT+TPW=6\r\n", "OK\r\n", 500, 3},
+        {AT_CMD_NAME(AT_LORA_CMD_SET_USC), "AT+USC=470500000\r\n", "OK\r\n", 500, 3},
         {
             AT_CMD_NAME(AT_LORA_CMD_JOIN),
             "AT+RJN\r\n",
-            "+JON:\r\n",
+            "+JON:",
             30000,
             5,
             at_join_callback,
@@ -222,15 +213,16 @@ void at_lorawan_send_prepare(char* payload)
         .resp_keyword  = "OK\r\n",
         .timeout       = 500,
         .retry         = 3,
-        .resp_callback = NULL};
+        .resp_callback = NULL,
+    };
 
     // 使用栈分配的字符数组来存储 cmd_expr
-    static char cmd_expr_buffer[256]; // 假设最大长度为 256
+    static char cmd_expr_buffer[238]; // 最大长度为 238
     send_cmd.cmd_expr = cmd_expr_buffer;
 
     memset(cmd_expr_buffer, 0, sizeof(cmd_expr_buffer));
     // 构造完整的 AT 命令
-    snprintf(send_cmd.cmd_expr, sizeof(cmd_expr_buffer), "AT+TXA=%s\r\n", payload);
+    snprintf(send_cmd.cmd_expr, sizeof(cmd_expr_buffer), "AT+TXH=21,%s\r\n", payload);
 
     // 设置 FSM
     at_fsm_request_list_set(&at_lora, &send_cmd, 1);
@@ -238,6 +230,6 @@ void at_lorawan_send_prepare(char* payload)
 
 void at_lorawan_event_post(void)
 {
-    QEvt_ctor(&_at_evt, VALVE_TRANSFER_SIG);
+    QEvt_ctor(&_at_evt, VALVE_TRANSFER_INIT_SIG);
     QACTIVE_POST(AO_ValveTransfer, &_at_evt, 0);
 }

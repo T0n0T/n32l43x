@@ -180,11 +180,6 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
         APP_LOG_INFO("Flash config is invaild, using default config");
     }
     sFLASH_DeInit();
-    #ifdef USE_MODBUS
-    eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
-    eMBEnable();
-    QTimeEvt_armX(&me->timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));
-    #endif
     static QMTranActTable const tatbl_ = { // tran-action table
         &ValveHandler_Idle_s, // target state
         {
@@ -225,9 +220,6 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
         }
         //${AOs::ValveHandler::SM::Idle::TIMEOUT}
         case TIMEOUT_SIG: {
-            #ifdef USE_MODBUS
-            eMBPoll();
-            #endif
             status_ = QM_HANDLED();
             break;
         }

@@ -2,12 +2,15 @@
 #include "at.h"
 #include "log.h"
 
+static uint8_t at_fsm_buffer[AT_CMD_BUFFER_SIZE];
+
 void at_fsm_init(at_t* at)
 {
     // 初始化状态机
     at->state               = AT_STATE_IDLE;
     at->send_time           = 0;
     at->retry_count         = 0;
+    at->current_process_buf = (char*)at_fsm_buffer;
     if (at->transfer_init) {
         at->transfer_init();
     }
@@ -24,7 +27,7 @@ void at_fsm_copy_buffer(at_t* at, uint8_t* buffer, uint32_t buffer_size)
 {
     if (at->current_process_buf && at->state == AT_STATE_WAITING_RESP) {
         memcpy(at->current_process_buf, buffer, buffer_size);
-        at->current_process_len = buffer_size;
+        at->current_process_len = buffer_size > AT_CMD_BUFFER_SIZE ? AT_CMD_BUFFER_SIZE : buffer_size;
         at->state               = AT_STATE_PROCESSING_RESP;
     } else {
         APP_LOG_DEBUG("Received AT unknown: %s", buffer);
@@ -36,7 +39,6 @@ void at_fsm_request_list_set(at_t* at, const at_cmd_t* at_cmd_list, uint32_t at_
     at->at_cmd_list         = at_cmd_list; // 存储传递的at_cmd参数
     at->at_cmd_list_len     = at_cmd_list_len;
     at->current_process_at  = 0;
-    at->current_process_buf = NULL;
     at->current_process_len = 0;
 }
 
@@ -115,7 +117,7 @@ at_process_result_t at_fsm_request_process(at_t* at, uint32_t tick)
             }
 
             // 查找匹配的AT回复
-            if (strstr(at->at_cmd_list[at->current_process_at].resp_keyword, at->current_process_ptr) != NULL) {
+            if (strstr(at->current_process_ptr, at->at_cmd_list[at->current_process_at].resp_keyword) != NULL) {
                 // 找到匹配的回复
                 APP_LOG_DEBUG("Received matching AT reply: %s", at->current_process_ptr);
                 if (at->at_cmd_list[at->current_process_at].resp_callback) {

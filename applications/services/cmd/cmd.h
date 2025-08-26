@@ -3,12 +3,6 @@
 
 #include "cmd_impl.h" // 包含cmd_impl.h
 
-#define BLE_PWR_PORT         GPIOB
-#define BLE_PWR_CLK          RCC_APB2_PERIPH_GPIOB
-#define BLE_PWR_PIN          GPIO_PIN_6
-#define BLE_PWR_HIGH         BLE_PWR_PORT->PBSC = BLE_PWR_PIN;
-#define BLE_PWR_LOW          BLE_PWR_PORT->PBC = BLE_PWR_PIN;
-
 #define USART_CMD            USART2
 #define USART_CMD_IRQn       USART2_IRQn
 #define USART_CMD_IRQHandler USART2_IRQHandler

@@ -48,7 +48,7 @@ void RTC_WKUP_IRQHandler(void)
     if (EXTI_GetITStatus(EXTI_LINE20)) {
         EXTI_ClrITPendBit(EXTI_LINE20);
         RTC_ClrIntPendingBit(RTC_INT_WUT);
-        at_lorawan_event_post();
+        // at_lorawan_event_post();
     }
     QV_ARM_ERRATUM_838869();
 }
@@ -213,11 +213,12 @@ void QF_onStartup(void)
     NVIC_SetPriority(EXTI15_10_IRQn, DEF_ISR_PRI - 2);
     SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
     lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);
-    // if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
-    //     cmd_module_already_on = true;
-    QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
-    QACTIVE_PUBLISH(&_lock_evt, 0);
-    // }
+    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
+        cmd_module_already_on = true;
+        QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
+        QACTIVE_PUBLISH(&_lock_evt, 0);
+        at_lorawan_event_post();
+    }
 }
 /*..........................................................................*/
 void QF_onCleanup(void)
