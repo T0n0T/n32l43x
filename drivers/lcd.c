@@ -34,6 +34,7 @@ void lcd_init(void)
     Init.BlinkFreq       = LCD_BLINKFREQ_DIV_8;
     Init.MuxSegment      = LCD_MUXSEGMENT_DISABLE;
 
+    LCD_DeInit();
     /* Initialize the LCD clk */
     LCD_ClockConfig(LCD_CLK_SRC_LSI);
 

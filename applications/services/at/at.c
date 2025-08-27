@@ -128,6 +128,7 @@ at_process_result_t at_fsm_request_process(at_t* at, uint32_t tick)
                     }
                 }
                 // 清空缓冲区
+                memset(at->current_process_buf, 0, at->current_process_len);
                 at->current_process_len = 0;
                 // 移动到下一个命令
                 at->current_process_at++;
@@ -137,6 +138,7 @@ at_process_result_t at_fsm_request_process(at_t* at, uint32_t tick)
                 // 如果没有找到匹配的回复，记录日志
                 APP_LOG_DEBUG("Received AT reply: %s", at->current_process_ptr);
                 // 清空缓冲区
+                memset(at->current_process_buf, 0, at->current_process_len);
                 at->current_process_len = 0;
                 // 继续等待响应
                 at->state = AT_STATE_WAITING_RESP;

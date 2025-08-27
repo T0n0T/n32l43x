@@ -12,7 +12,7 @@ static uint8_t           _cmd_buf_tx[CMD_BUF_LEN * 2];
 static uint8_t           _cmd_start_match_pos;
 static bool              _cmd_start_string_received;
 static volatile uint16_t _cmd_len; // Change to uint16_t for length
-static const command_t   commands[] = CMD_DEFINE_LIST;
+static const command_t   commands[]       = CMD_DEFINE_LIST;
 static const char*       CMD_START_STRING = "Start";
 bool                     cmd_module_already_on;
 
@@ -33,7 +33,7 @@ void USART_CMD_IRQHandler(void)
                         APP_LOG_DEBUG("Start CMD");
                         _cmd_start_string_received = true;
                         _cmd_start_match_pos       = 0; // Reset for next potential "Start" if needed
-                        break;                      // Found "Start", no need to check further in this packet
+                        break;                          // Found "Start", no need to check further in this packet
                     }
                 } else {
                     _cmd_start_match_pos = 0; // Reset if mismatch
@@ -94,7 +94,7 @@ void cmd_init(void)
     NVIC_EnableIRQ(USART_CMD_IRQn); // Enable USART2 interrupt
 
     memset(_cmd_buf_rx, 0, sizeof(_cmd_buf_rx));
-    _cmd_len               = 0;     // Initialize command buffer length
+    _cmd_len                   = 0;     // Initialize command buffer length
     _cmd_start_match_pos       = 0;     // Initialize Start string match position
     _cmd_start_string_received = false; // Initialize Start string received flag
 
@@ -112,7 +112,7 @@ void cmd_deinit(void)
 {
     BLE_PWR_LOW;
     _cmd_start_string_received = false;
-    cmd_module_already_on     = false;
+    cmd_module_already_on      = false;
     _cmd_start_match_pos       = 0;
     DMA_EnableChannel(USART_CMD_DMA_RX, DISABLE);
     DMA_DeInit(USART_CMD_DMA_RX);

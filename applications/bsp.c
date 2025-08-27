@@ -134,7 +134,7 @@ void BSP_init(void)
     lcd_init(); /* initialize the LCD */
     lptimer_init();
     // dump_clk();
-    rtc_init();
+    // rtc_init();
     wakeup_init(wakeup_handle);
     pvd_init(pvd_handle);
 }
@@ -217,7 +217,6 @@ void QF_onStartup(void)
         cmd_module_already_on = true;
         QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
-        at_lorawan_event_post();
     }
 }
 /*..........................................................................*/
