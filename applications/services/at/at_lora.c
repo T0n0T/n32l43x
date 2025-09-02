@@ -123,7 +123,7 @@ static void at_transfer_layer_deinit(void)
     DMA_DeInit(USART_AT_DMA_RX);
     DMA_DeInit(USART_AT_DMA_TX);
     NVIC_DisableIRQ(USART_AT_IRQn);
-    uart_deinit(BLE);
+    uart_deinit(AT);
 
     AT_PWR_LOW;
 }

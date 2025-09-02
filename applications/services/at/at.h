@@ -30,8 +30,8 @@ typedef enum {
 
 // AT处理结果枚举
 typedef enum {
-    AT_PROCESS_CONTINUE, // 继续处理
     AT_PROCESS_COMPLETE, // 处理完成
+    AT_PROCESS_CONTINUE, // 继续处理
     AT_PROCESS_ERROR     // 处理出错
 } at_process_result_t;
 
