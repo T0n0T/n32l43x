@@ -142,7 +142,7 @@ static QState ValveTransfer_Idle(ValveTransfer * const me, QEvt const * const e)
         //${AOs::ValveTransfer::SM::Idle::VALVE_TRANSFER_INIT}
         case VALVE_TRANSFER_INIT_SIG: {
             if (!me->isActive) {
-                QTimeEvt_armX(&me->timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));
+                QTimeEvt_armX(&me->timeEvt, MS_TO_TICK(5), MS_TO_TICK(5));
                 Sleep_request(TRANSFER_BIT);
                 me->isActive = true;
                 me->tick     = 0;

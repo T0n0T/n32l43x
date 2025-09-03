@@ -625,7 +625,7 @@ eMBEnable();
     <state name="Idle">
      <tran trig="VALVE_TRANSFER_INIT">
       <action>if (!me-&gt;isActive) {
-    QTimeEvt_armX(&amp;me-&gt;timeEvt, MS_TO_TICK(1), MS_TO_TICK(1));
+    QTimeEvt_armX(&amp;me-&gt;timeEvt, MS_TO_TICK(5), MS_TO_TICK(5));
     Sleep_request(TRANSFER_BIT);
     me-&gt;isActive = true;
     me-&gt;tick     = 0;

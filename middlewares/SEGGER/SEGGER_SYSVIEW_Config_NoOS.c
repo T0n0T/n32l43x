@@ -101,7 +101,7 @@ extern unsigned int SystemCoreClock;
 #define NOCYCCNT_BIT  (1uL << 25)                                // Cycle counter support bit
 #define CYCCNTENA_BIT (1uL << 0)                                 // Cycle counter enable bit
 
-SEGGER_SYSVIEW_TASKINFO _Q_taskInfo[4];
+SEGGER_SYSVIEW_TASKINFO _Q_taskInfo[5];
 
 static const SEGGER_SYSVIEW_DATA_REGISTER hallData = {
     .ID            = 0,
@@ -138,6 +138,10 @@ static void _cbSendSystemDesc(void)
     SEGGER_SYSVIEW_NameMarker(0x403, "VALVE_PERSIST_EARSE");
     SEGGER_SYSVIEW_NameMarker(0x404, "VALVE_PERSIST_PROGRAM");
     SEGGER_SYSVIEW_NameMarker(0x405, "VALVE_PERSIST_DONE");
+    SEGGER_SYSVIEW_NameMarker(0x406, "VALVE_AT_SEND");
+    SEGGER_SYSVIEW_NameMarker(0x407, "VALVE_AT_RESP");
+    SEGGER_SYSVIEW_NameMarker(0x408, "VALVE_TRANSFER_PREP");
+    SEGGER_SYSVIEW_NameMarker(0x409, "VALVE_TRANSFER_TRANS");
     SEGGER_SYSVIEW_RegisterData(&hallData);
     SEGGER_SYSVIEW_RegisterData(&valTick);
 }

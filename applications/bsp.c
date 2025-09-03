@@ -135,7 +135,7 @@ void BSP_init(void)
     lptimer_init();
     // dump_clk();
     // rtc_init();
-    wakeup_init(wakeup_handle);
+    // wakeup_init(wakeup_handle);
     pvd_init(pvd_handle);
 }
 
@@ -213,11 +213,11 @@ void QF_onStartup(void)
     NVIC_SetPriority(EXTI15_10_IRQn, DEF_ISR_PRI - 2);
     SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
     lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);
-    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
+    // if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
         cmd_module_already_on = true;
         QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
-    }
+    // }
 }
 /*..........................................................................*/
 void QF_onCleanup(void)

@@ -22,6 +22,7 @@ int g_cmd_id;
 int g_counter_id;
 int g_handle_id;
 int g_persist_id;
+int g_transfer_id;
 
 static void cmd_guard_handle(int task_id, void* data)
 {
@@ -43,6 +44,11 @@ static void persist_guard_handle(int task_id, void* data)
     assert_param(false);
 }
 
+static void transfer_guard_handle(int task_id, void* data)
+{
+    assert_param(false);
+}
+
 static void low_power_gpio_optimize(void)
 {
     GPIO_InitType GPIO_InitStructure;
@@ -56,12 +62,12 @@ static void low_power_gpio_optimize(void)
     GPIO_InitStructure.Pin       = BLE_PWR_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitPeripheral(BLE_PWR_PORT, &GPIO_InitStructure);
-    BLE_PWR_LOW;
+    // BLE_PWR_LOW;
 
     GPIO_InitStructure.Pin       = AT_PWR_PIN;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitPeripheral(AT_PWR_PORT, &GPIO_InitStructure);
-    AT_PWR_LOW;
+    // AT_PWR_LOW;
 }
 
 void BSP_init_ext(void)
@@ -76,26 +82,32 @@ void BSP_init_ext(void)
     assert_param(g_handle_id >= 0);
     g_persist_id = guard_register(GUARD_TYPE_DISCRETE, persist_guard_handle, NULL);
     assert_param(g_persist_id >= 0);
+    g_transfer_id = guard_register(GUARD_TYPE_DISCRETE, transfer_guard_handle, NULL);
+    assert_param(g_transfer_id >= 0);
 
     // 每个周期按 LPTIM_INTERVAL_MS 计算
     guard_discreate_set_tolerance(g_cmd_id, 1);
     guard_discreate_set_tolerance(g_handle_id, 1);
     guard_discreate_set_tolerance(g_persist_id, 2);
+    guard_discreate_set_tolerance(g_transfer_id, 2);
 #ifdef DEBUG
     SEGGER_SYSVIEW_Conf();
-    extern SEGGER_SYSVIEW_TASKINFO _Q_taskInfo[3];
+    extern SEGGER_SYSVIEW_TASKINFO _Q_taskInfo[5];
     _Q_taskInfo[0].TaskID = (uint32_t)AO_ValveCounter;
     _Q_taskInfo[0].sName  = "AO_ValveCounter";
-    _Q_taskInfo[0].Prio   = 4U;
+    _Q_taskInfo[0].Prio   = 5U;
     _Q_taskInfo[1].TaskID = (uint32_t)AO_ValveHandler;
     _Q_taskInfo[1].sName  = "AO_ValveHandler";
-    _Q_taskInfo[1].Prio   = 3U;
+    _Q_taskInfo[1].Prio   = 4U;
     _Q_taskInfo[2].TaskID = (uint32_t)AO_ValveConf;
     _Q_taskInfo[2].sName  = "AO_ValveConf";
-    _Q_taskInfo[2].Prio   = 2U;
+    _Q_taskInfo[2].Prio   = 3U;
     _Q_taskInfo[3].TaskID = (uint32_t)AO_ValvePersist;
     _Q_taskInfo[3].sName  = "AO_ValvePersist";
-    _Q_taskInfo[3].Prio   = 1U;
+    _Q_taskInfo[3].Prio   = 2U;
+    _Q_taskInfo[4].TaskID = (uint32_t)AO_ValveTransfer;
+    _Q_taskInfo[4].sName  = "AO_ValveTransfer";
+    _Q_taskInfo[4].Prio   = 1U;
 #endif
 }
 
@@ -118,6 +130,9 @@ void QF_onContextSw(QActive* prev, QActive* next)
         if (prev == AO_ValvePersist) {
             guard_discrete_unmark(g_persist_id);
         }
+        if (prev == AO_ValveTransfer) {
+            guard_discrete_unmark(g_transfer_id);
+        }
     }
     if (next) {
 #ifdef DEBUG
@@ -131,6 +146,9 @@ void QF_onContextSw(QActive* prev, QActive* next)
         }
         if (next == AO_ValvePersist) {
             guard_discrete_mark(g_persist_id);
+        }
+        if (next == AO_ValveTransfer) {
+            guard_discrete_mark(g_transfer_id);
         }
     }
 }
