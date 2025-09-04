@@ -8,7 +8,6 @@ drivers_sources = files(
     'board.c',
     'flash.c',
     'flash_noblock.c',
-    'hall.c',
     'lcd.c',
     'led.c',
     'lptimer.c',

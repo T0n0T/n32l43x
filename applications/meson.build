@@ -17,7 +17,6 @@ applications_sources = files(
   'bsp_ex.c',
   'services/at/at.c',
   'services/at/at_lora.c',
-  'services/valve/valve_counter.c',
   'services/valve/valve_handler.c',
   'services/valve/valve_conf.c',
   'services/valve/valve_idle.c',

@@ -76,8 +76,6 @@ void BSP_init_ext(void)
     guard_init();
     g_cmd_id = guard_register(GUARD_TYPE_DISCRETE, cmd_guard_handle, NULL);
     assert_param(g_cmd_id >= 0);
-    g_counter_id = guard_register(GUARD_TYPE_CONTINUOUS, counter_guard_handle, NULL);
-    assert_param(g_counter_id >= 0);
     g_handle_id = guard_register(GUARD_TYPE_DISCRETE, handle_guard_handle, NULL);
     assert_param(g_handle_id >= 0);
     g_persist_id = guard_register(GUARD_TYPE_DISCRETE, persist_guard_handle, NULL);
@@ -93,9 +91,6 @@ void BSP_init_ext(void)
 #ifdef DEBUG
     SEGGER_SYSVIEW_Conf();
     extern SEGGER_SYSVIEW_TASKINFO _Q_taskInfo[5];
-    _Q_taskInfo[0].TaskID = (uint32_t)AO_ValveCounter;
-    _Q_taskInfo[0].sName  = "AO_ValveCounter";
-    _Q_taskInfo[0].Prio   = 5U;
     _Q_taskInfo[1].TaskID = (uint32_t)AO_ValveHandler;
     _Q_taskInfo[1].sName  = "AO_ValveHandler";
     _Q_taskInfo[1].Prio   = 4U;
@@ -118,9 +113,6 @@ void QF_onContextSw(QActive* prev, QActive* next)
 #ifdef DEBUG
         SEGGER_SYSVIEW_OnTaskStopExec();
 #endif
-        if (prev == AO_ValveCounter) {
-            guard_continuous_report(g_counter_id);
-        }
         if (prev == AO_ValveConf) {
             guard_discrete_unmark(g_cmd_id);
         }

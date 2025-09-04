@@ -100,11 +100,11 @@ void QV_onIdle(void)
     extern void valve_idle(void);
     valve_idle();
     if (!Sleep_bits && !run_is_reporting) {
-        SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
-        PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
-        SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
-        SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
-        SystemCoreClockUpdate();
+        // SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
+        // PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
+        // SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
+        // SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
+        // SystemCoreClockUpdate();
     } else {
         /* NOTE: should not use SLEEPONEXIT mode, it will cause qv sheduling blocked
          */
@@ -125,7 +125,7 @@ void BSP_init(void)
 #endif
     board_init(); /* initialize the board */
     led_init();   /* initialize the LEDs */
-    hall_init();  /* initialize the Hall sensor */
+
     uart_init(CONSOLE);
     APP_LOG_RAW(" \r\n");
     APP_LOG_RAW("┌──────────────────────────────────────────────┐\r\n");
@@ -135,7 +135,7 @@ void BSP_init(void)
     lptimer_init();
     // dump_clk();
     // rtc_init();
-    // wakeup_init(wakeup_handle);
+    wakeup_init(wakeup_handle);
     pvd_init(pvd_handle);
 }
 
@@ -150,15 +150,6 @@ void BSP_start(void)
     QActive_psInit(subscrSto, Q_DIM(subscrSto));
 
     // instantiate and start AOs/threads...
-
-    static QEvtPtr valveCounterQueueSto[128];
-    ValveCounter_ctor();
-    QActive_start(AO_ValveCounter,
-                  5U,
-                  valveCounterQueueSto,
-                  Q_DIM(valveCounterQueueSto),
-                  (void*)0, 0U,
-                  (void*)0);
 
     static QEvtPtr valveHandlerQueueSto[128];
     ValveHandler_ctor();
@@ -213,11 +204,11 @@ void QF_onStartup(void)
     NVIC_SetPriority(EXTI15_10_IRQn, DEF_ISR_PRI - 2);
     SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
     lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);
-    // if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
+    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
         cmd_module_already_on = true;
         QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
-    // }
+    }
 }
 /*..........................................................................*/
 void QF_onCleanup(void)
