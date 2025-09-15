@@ -22,11 +22,11 @@ STDIO_ALIAS(stderr);
 
 static int __fputc(char ch, FILE* file)
 {
-#ifdef DEBUG
-    SEGGER_RTT_Write(0, &ch, 1);
-#else
+// #ifdef DEBUG
+//     SEGGER_RTT_Write(0, &ch, 1);
+// #else
     uart_putc(CONSOLE, ch);
-#endif
+// #endif
     return (ch);
 }
 

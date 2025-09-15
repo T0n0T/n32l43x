@@ -193,7 +193,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_UPDATE}
         case VALVE_UPDATE_SIG: {
-            global_valve_status = last_valve_status;
+            last_valve_status = global_valve_status;
             QTimeEvt_rearm(&me->persistEvt, MS_TO_TICK(2000));
             status_ = QM_HANDLED();
             break;
@@ -255,7 +255,6 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_PERSIST}
         case VALVE_PERSIST_SIG: {
             if (global_valve_status != last_valve_status) {
-                APP_LOG_INFO("valve status persist %d", global_valve_status);
             #ifdef USE_LORAWAN
                 at_lorawan_event_post();
             #endif

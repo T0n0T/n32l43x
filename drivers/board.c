@@ -450,7 +450,7 @@ void wakeup_init(wakeup_handle_func h)
     EXTI_InitStruct(&EXTI_InitStructure);
 
     /* Enable the GPIO Clock */
-    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOC, ENABLE);
+    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOC | RCC_APB2_PERIPH_AFIO, ENABLE);
 
     /*Configure the GPIO pin as input floating*/
     GPIO_InitStructure.Pin       = GPIO_PIN_13;
@@ -495,7 +495,7 @@ void lock_status_init(lock_status_handle_func h_on, lock_status_handle_func h_of
     GPIO_InitStruct(&GPIO_InitStructure);
     EXTI_InitStruct(&EXTI_InitStructure);
 
-    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOC, ENABLE);
+    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOC | RCC_APB2_PERIPH_AFIO, ENABLE);
 
     GPIO_InitStructure.Pin       = GPIO_PIN_0;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Input;
