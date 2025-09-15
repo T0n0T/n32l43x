@@ -50,15 +50,13 @@
 #define VALVE_PERSIST_DONE    0x405
 #endif
 
-#define VALVE_STATUS_OFF  0
-#define VALVE_STATUS_ON   1
+#define VALVE_STATUS_OFF      0
+#define VALVE_STATUS_ON       1
 
 #ifdef USE_MODBUS
 #include "user_mb_app.h"
 extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
 #endif
-
-#define TICKS_PER_ROTATION 6 // 每圈的跳变次数（6磁铁）
 
 //$declare${Shared} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
@@ -74,8 +72,6 @@ enum AppSignals {
     VALVE_REFACTORY_SIG,
     VALVE_CONFIG_WRITE_SIG,
     VALVE_CONFIG_READ_SIG,
-    VALVE_TUNING_START_SIG,
-    VALVE_TUNING_STOP_SIG,
     VALVE_INFO_READ_SIG,
     VALVE_PERSIST_SIG,
     VALVE_PERSIST_START_SIG,
@@ -94,11 +90,10 @@ extern volatile uint32_t Sleep_bits;
 //${Shared::Sleep_slotbit} ...................................................
 enum Sleep_slotbit {
     LOCK_BIT     = 1 << 0,
-    COUNTER_BIT  = 1 << 1,
-    HANDLER_BIT  = 1 << 2,
-    CONFIG_BIT   = 1 << 3,
-    PERSIST_BIT  = 1 << 4,
-    TRANSFER_BIT = 1 << 5,
+    HANDLER_BIT  = 1 << 1,
+    CONFIG_BIT   = 1 << 2,
+    PERSIST_BIT  = 1 << 3,
+    TRANSFER_BIT = 1 << 4,
 };
 
 //${Shared::Sleep_request} ...................................................
@@ -110,13 +105,6 @@ static inline void Sleep_request(uint32_t bit) {
 static inline void Sleep_release(uint32_t bit) {
     Sleep_bits &= ~bit;
 }
-
-//${Shared::ValveVal} ........................................................
-typedef struct {
-// public:
-    int32_t total_ticks;
-    uint32_t current_status;
-} ValveVal;
 
 //${Shared::ValveEvtType} ....................................................
 enum ValveEvtType {
@@ -138,13 +126,6 @@ typedef struct {
     enum ValveEvtType evtType;
 } ValveEvt;
 
-//${Shared::ValveValStore} ...................................................
-typedef struct {
-// public:
-    uint32_t flag;
-    ValveVal val;
-} ValveValStore;
-
 //${Shared::ValvePersistRequest} .............................................
 typedef struct {
 // public:
@@ -153,16 +134,7 @@ typedef struct {
     uint32_t write_ptr;
 } ValvePersistRequest;
 //$enddecl${Shared} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//$declare${AOs::AO_ValveCounter} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
-//${AOs::AO_ValveCounter} ....................................................
-extern QActive * const AO_ValveCounter;
-//$enddecl${AOs::AO_ValveCounter} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-//$declare${AOs::ValveCounter_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-//${AOs::ValveCounter_ctor} ..................................................
-void ValveCounter_ctor(void);
-//$enddecl${AOs::ValveCounter_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$declare${AOs::AO_ValveHandler} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 //${AOs::AO_ValveHandler} ....................................................
@@ -204,7 +176,7 @@ extern QActive * const AO_ValveTransfer;
 void ValveTransfer_ctor(void);
 //$enddecl${AOs::ValveTransfer_ctor} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-extern ValveVal*    global_valve_value;
+extern uint8_t      global_valve_status;
 extern cmd_config_t global_config;
 
 #endif // __VALVE_H__

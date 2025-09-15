@@ -29,22 +29,6 @@ int cmd_config_decode(const char* json_string, cmd_config_t* config)
         return -1; // 解析失败
     }
 
-    cJSON* tick_item = cJSON_GetObjectItemCaseSensitive(root, "tick");
-    if (cJSON_IsNumber(tick_item)) {
-        config->tick = tick_item->valueint;
-    } else {
-        cJSON_Delete(root);
-        return -1; // valve_count不存在或类型不正确
-    }
-
-    cJSON* dir_item = cJSON_GetObjectItemCaseSensitive(root, "dir");
-    if (cJSON_IsBool(dir_item)) {
-        config->dir = cJSON_IsTrue(dir_item) ? 1 : -1;
-    } else {
-        cJSON_Delete(root);
-        return -1; // valve_count不存在或类型不正确
-    }
-
     cJSON* model_item = cJSON_GetObjectItemCaseSensitive(root, "model");
     if (cJSON_IsString(model_item) && (model_item->valuestring != NULL)) {
         strncpy(config->model, model_item->valuestring, sizeof(config->model) - 1);
@@ -66,13 +50,8 @@ char* cmd_config_encode(const cmd_config_t* config)
         return NULL;
     }
 
-    cJSON_AddNumberToObject(root, "tick", config->tick);
     cJSON_AddStringToObject(root, "model", config->model);
-    if (config->dir == 1) {
-        cJSON_AddTrueToObject(root, "dir");
-    } else if (config->dir == -1) {
-        cJSON_AddFalseToObject(root, "dir");
-    }
+
     char* json_string = cJSON_Print(root);
     cJSON_Delete(root);
     return json_string; // 调用者负责释放此字符串
@@ -151,7 +130,6 @@ int cmd_config_refactory(int argc, char** argv)
 
 void cmd_valve_info_wrapper(void* msg)
 {
-    cmd_dma_transmit((uint8_t*)msg, sizeof(ValveVal));
 }
 
 int cmd_valve_info(int argc, char** argv)
@@ -170,31 +148,6 @@ int cmd_valve_info(int argc, char** argv)
     QEvt_ctor(&evt.super, VALVE_INFO_READ_SIG);
     evt.handle  = cmd_valve_info_wrapper;
     evt.msg     = (void*)(intptr_t)is_enable; // 将is_enable转换为void*传递
-    evt.evtType = VALVE_CMD;
-
-    QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
-    return 0;
-}
-
-int cmd_valve_tuning(int argc, char** argv)
-{
-    if (argc != 1) {
-        APP_LOG_ERROR("Usage: valve_tuning <0/1>");
-        return -1;
-    }
-    int is_enable = atoi(argv[0]);
-    if (is_enable != 0 && is_enable != 1) {
-        APP_LOG_ERROR("Error: Invalid argument. Use 0 or 1.");
-        return -1;
-    }
-    APP_LOG_INFO("Valve tuning command received with is_enable: %d", is_enable);
-    if (is_enable) {
-        QEvt_ctor(&evt.super, VALVE_TUNING_START_SIG);
-        evt.handle = cmd_valve_info_wrapper;
-    } else {
-        QEvt_ctor(&evt.super, VALVE_TUNING_STOP_SIG);
-    }
-
     evt.evtType = VALVE_CMD;
 
     QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);

@@ -24,7 +24,6 @@
     {"reboot", cmd_reboot, 0},                     \
     {"update", cmd_update, 0},                     \
     {"valve_info", cmd_valve_info, 1},             \
-    {"valve_tuning", cmd_valve_tuning, 1},         \
 }
 
 extern bool cmd_module_already_on;

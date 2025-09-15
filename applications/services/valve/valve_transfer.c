@@ -41,8 +41,6 @@
 #include "valve.h"
 #include "log.h"
 
-extern ValveVal* global_valve_value;
-
 static at_process_result_t result;
 
 //$declare${AOs::ValveTransfer} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -205,8 +203,7 @@ static QState ValveTransfer_Prepare(ValveTransfer * const me, QEvt const * const
                 snprintf(payload,
                          sizeof(payload),
                          "%x%x",
-                         global_valve_value->current_status,
-                         global_valve_value->total_ticks);
+                         global_valve_status);
                 at_lorawan_send_prepare(payload);
                 static QMTranActTable const tatbl_ = { // tran-action table
                     &ValveTransfer_Transfer_s, // target state

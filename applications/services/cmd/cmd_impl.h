@@ -8,8 +8,6 @@
 // 定义与JSON模板对应的结构体
 typedef struct {
     uint32_t flag;
-    int      tick;
-    int      dir;
     char     model[64]; // 假设model的长度不超过63个字符
 } cmd_config_t;
 

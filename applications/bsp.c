@@ -78,6 +78,22 @@ static void wakeup_handle(uint8_t bit)
     }
 }
 
+static void lock_on_handle(void)
+{
+    global_valve_status = VALVE_STATUS_ON;
+    APP_LOG_INFO("lock on");
+    QEvt_ctor(&_lock_evt, VALVE_UPDATE_SIG);
+    QACTIVE_POST(AO_ValveHandler, &_lock_evt, 0);
+}
+
+static void lock_off_handle(void)
+{
+    global_valve_status = VALVE_STATUS_OFF;
+    APP_LOG_INFO("lock off");
+    QEvt_ctor(&_lock_evt, VALVE_UPDATE_SIG);
+    QACTIVE_POST(AO_ValveHandler, &_lock_evt, 0);
+}
+
 static void pvd_handle(void)
 {
     pvd_is_power_low = !pvd_is_power_low;
@@ -128,15 +144,9 @@ void BSP_init(void)
 
     uart_init(CONSOLE);
     APP_LOG_RAW(" \r\n");
-    APP_LOG_RAW("┌──────────────────────────────────────────────┐\r\n");
-    APP_LOG_RAW("│   N32L43x Valve App  %s-%s    │\r\n", __DATE__, __TIME__);
-    APP_LOG_RAW("└──────────────────────────────────────────────┘\r\n");
-    lcd_init(); /* initialize the LCD */
-    lptimer_init();
+
+    
     // dump_clk();
-    // rtc_init();
-    wakeup_init(wakeup_handle);
-    pvd_init(pvd_handle);
 }
 
 void BSP_start(void)
@@ -201,13 +211,25 @@ void QF_onStartup(void)
     NVIC_SetPriority(USART2_IRQn, DEF_ISR_PRI - 1);
     NVIC_SetPriority(UART5_IRQn, DEF_ISR_PRI - 2);
     NVIC_SetPriority(TIM1_UP_IRQn, DEF_ISR_PRI - 2);
+    NVIC_SetPriority(EXTI0_IRQn, DEF_ISR_PRI - 2);
+    NVIC_SetPriority(EXTI1_IRQn, DEF_ISR_PRI - 2);
     NVIC_SetPriority(EXTI15_10_IRQn, DEF_ISR_PRI - 2);
     SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
+    // rtc_init();
+    wakeup_init(wakeup_handle);
+    lock_status_init(lock_on_handle, lock_off_handle);
+    pvd_init(pvd_handle);
+    lptimer_init();
     lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);
     if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
         cmd_module_already_on = true;
         QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
+    }
+    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_0) == RESET ||
+        GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_1) == RESET) {
+        QEvt_ctor(&_lock_evt, VALVE_UPDATE_SIG);
+        QACTIVE_POST(AO_ValveHandler, &_lock_evt, 0);
     }
 }
 /*..........................................................................*/
