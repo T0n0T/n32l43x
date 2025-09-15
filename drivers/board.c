@@ -451,7 +451,7 @@ void wakeup_init(wakeup_handle_func h)
     EXTI_InitStruct(&EXTI_InitStructure);
 
     /* Enable the GPIO Clock */
-    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOC, ENABLE);
+    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOC | RCC_APB2_PERIPH_AFIO, ENABLE);
 
     /*Configure the GPIO pin as input floating*/
     GPIO_InitStructure.Pin       = GPIO_PIN_13;
