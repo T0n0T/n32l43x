@@ -67,7 +67,7 @@ void SysTick_Handler(void)
 
 static void wakeup_handle(uint8_t bit)
 {
-    if (bit == Bit_RESET) {
+    if (bit == Bit_SET) {
         guard_sleep();
         QEvt_ctor(&_lock_evt, VALVE_LOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
@@ -116,11 +116,11 @@ void QV_onIdle(void)
     extern void valve_idle(void);
     valve_idle();
     if (!Sleep_bits && !run_is_reporting) {
-        // SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
-        // PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
-        // SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
-        // SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
-        // SystemCoreClockUpdate();
+        SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
+        PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
+        SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
+        SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
+        SystemCoreClockUpdate();
     } else {
         /* NOTE: should not use SLEEPONEXIT mode, it will cause qv sheduling blocked
          */
@@ -144,8 +144,10 @@ void BSP_init(void)
 
     uart_init(CONSOLE);
     APP_LOG_RAW(" \r\n");
-
-    
+    APP_LOG_RAW("┌──────────────────────────────────────────────┐\r\n");
+    APP_LOG_RAW("│   N32L43x Channel App  %s-%s  │\r\n", __DATE__, __TIME__);
+    APP_LOG_RAW("└──────────────────────────────────────────────┘\r\n");
+    lptimer_init();
     // dump_clk();
 }
 
@@ -221,7 +223,7 @@ void QF_onStartup(void)
     pvd_init(pvd_handle);
     lptimer_init();
     lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);
-    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
+    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == RESET) {
         cmd_module_already_on = true;
         QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);

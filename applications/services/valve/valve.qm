@@ -118,8 +118,7 @@ QTimeEvt_disarm(&amp;me-&gt;exitEvt);</action>
        </tran_glyph>
       </tran>
       <tran trig="VALVE_UPDATE">
-       <action brief="handle data write flash action and lcd refresh">last_valve_status = global_valve_status;
-QTimeEvt_rearm(&amp;me-&gt;persistEvt, MS_TO_TICK(2000));</action>
+       <action brief="handle data write flash action and lcd refresh">QTimeEvt_rearm(&amp;me-&gt;persistEvt, MS_TO_TICK(2000));</action>
        <tran_glyph conn="24,34,3,-1,14">
         <action box="0,-2,13,2"/>
        </tran_glyph>
@@ -177,6 +176,7 @@ if (ve-&gt;handle != NULL &amp;&amp; ve-&gt;msg != NULL &amp;&amp; ve-&gt;evtTyp
 #ifdef USE_LORAWAN
     at_lorawan_event_post();
 #endif
+    last_valve_status = global_valve_status;
 }</action>
        <tran_glyph conn="24,36,3,-1,14">
         <action box="0,-2,14,2"/>
