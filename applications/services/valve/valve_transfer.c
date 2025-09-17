@@ -202,7 +202,7 @@ static QState ValveTransfer_Prepare(ValveTransfer * const me, QEvt const * const
                 char payload[64] = {0};
                 snprintf(payload,
                          sizeof(payload),
-                         "%x%x",
+                         "%02x",
                          global_valve_status);
                 at_lorawan_send_prepare(payload);
                 static QMTranActTable const tatbl_ = { // tran-action table

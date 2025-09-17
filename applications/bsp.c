@@ -228,8 +228,13 @@ void QF_onStartup(void)
         QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
     }
-    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_0) == RESET ||
-        GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_1) == RESET) {
+    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_0) == RESET) {
+        global_valve_status = VALVE_STATUS_ON;
+        QEvt_ctor(&_lock_evt, VALVE_UPDATE_SIG);
+        QACTIVE_POST(AO_ValveHandler, &_lock_evt, 0);
+    }
+    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_1) == RESET) {
+        global_valve_status = VALVE_STATUS_OFF;
         QEvt_ctor(&_lock_evt, VALVE_UPDATE_SIG);
         QACTIVE_POST(AO_ValveHandler, &_lock_evt, 0);
     }

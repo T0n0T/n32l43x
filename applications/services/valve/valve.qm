@@ -458,7 +458,7 @@ eMBPoll();
         <action>char payload[64] = {0};
 snprintf(payload,
          sizeof(payload),
-         &quot;%x%x&quot;,
+         &quot;%02x&quot;,
          global_valve_status);
 at_lorawan_send_prepare(payload);</action>
         <choice_glyph conn="36,38,5,1,8,10,-2">
@@ -590,8 +590,8 @@ QTimeEvt_ctorX(&amp;me-&gt;pollEvt, (QActive*)me, VALVE_TRANSFER_POLL_SIG, 0U);<
 #define VALVE_PERSIST_DONE    0x405
 #endif
 
-#define VALVE_STATUS_OFF      0
-#define VALVE_STATUS_ON       1
+#define VALVE_STATUS_OFF      1
+#define VALVE_STATUS_ON       2
 
 #ifdef USE_MODBUS
 #include &quot;user_mb_app.h&quot;

@@ -50,8 +50,8 @@
 #define VALVE_PERSIST_DONE    0x405
 #endif
 
-#define VALVE_STATUS_OFF      0
-#define VALVE_STATUS_ON       1
+#define VALVE_STATUS_OFF      1
+#define VALVE_STATUS_ON       2
 
 #ifdef USE_MODBUS
 #include "user_mb_app.h"
