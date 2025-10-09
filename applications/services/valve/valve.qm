@@ -81,7 +81,9 @@ QActive_subscribe((QActive*)me, VALVE_UNLOCK_SIG);
 QActive_subscribe((QActive*)me, VALVE_REBOOT_SIG);
 QActive_subscribe((QActive*)me, VALVE_REFACTORY_SIG);
 QActive_subscribe((QActive*)me, VALVE_CONFIG_WRITE_SIG);
-QActive_subscribe((QActive*)me, VALVE_CONFIG_READ_SIG);</action>
+QActive_subscribe((QActive*)me, VALVE_CONFIG_READ_SIG);
+eMBMasterInit(MB_RTU, 0, 9600, MB_PAR_NONE);
+eMBMasterEnable();</action>
      <initial_glyph conn="18,12,5,1,62,7,-3">
       <action box="0,-2,10,2"/>
      </initial_glyph>
@@ -101,6 +103,7 @@ QTimeEvt_disarm(&amp;me-&gt;exitEvt);</action>
       </tran_glyph>
      </tran>
      <tran trig="TIMEOUT">
+      <action>eMBMasterPoll();</action>
       <tran_glyph conn="18,26,3,-1,20">
        <action box="0,-2,10,2"/>
       </tran_glyph>
@@ -118,7 +121,7 @@ QTimeEvt_disarm(&amp;me-&gt;exitEvt);</action>
        </tran_glyph>
       </tran>
       <tran trig="VALVE_UPDATE">
-       <action brief="handle data write flash action and lcd refresh">QTimeEvt_rearm(&amp;me-&gt;persistEvt, MS_TO_TICK(2000));</action>
+       <action brief="handle data write flash action and lcd refresh">eMBMasterReqReadHoldingRegister(0x1, 0x0, 1, -1);</action>
        <tran_glyph conn="24,34,3,-1,14">
         <action box="0,-2,13,2"/>
        </tran_glyph>
@@ -404,8 +407,8 @@ flash_fsm_start(&amp;flash_fsm, &amp;flash_request, NULL, NULL);</entry>
 me-&gt;tick     = 0;
 QTimeEvt_armX(&amp;me-&gt;pollEvt, MS_TO_TICK(1), MS_TO_TICK(1));
 #ifdef USE_MODBUS
-eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
-eMBEnable();
+//eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
+//eMBEnable();
 #endif</action>
      <initial_glyph conn="22,14,5,1,28,8,-2">
       <action box="0,-2,10,2"/>
@@ -444,7 +447,7 @@ at_lorawan_config_prepare();
      <tran trig="VALVE_TRANSFER_POLL">
       <action>me-&gt;tick++;
 #ifdef USE_MODBUS
-eMBPoll(); 
+//eMBPoll(); 
 #endif</action>
       <tran_glyph conn="22,24,3,-1,14">
        <action box="0,-2,20,2"/>

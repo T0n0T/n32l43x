@@ -128,6 +128,8 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
     QActive_subscribe((QActive*)me, VALVE_REFACTORY_SIG);
     QActive_subscribe((QActive*)me, VALVE_CONFIG_WRITE_SIG);
     QActive_subscribe((QActive*)me, VALVE_CONFIG_READ_SIG);
+    eMBMasterInit(MB_RTU, 0, 9600, MB_PAR_NONE);
+    eMBMasterEnable();
     static QMTranActTable const tatbl_ = { // tran-action table
         &ValveHandler_Idle_s, // target state
         {
@@ -163,6 +165,7 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
         }
         //${AOs::ValveHandler::SM::Idle::TIMEOUT}
         case TIMEOUT_SIG: {
+            eMBMasterPoll();
             status_ = QM_HANDLED();
             break;
         }
@@ -193,7 +196,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_UPDATE}
         case VALVE_UPDATE_SIG: {
-            QTimeEvt_rearm(&me->persistEvt, MS_TO_TICK(2000));
+            eMBMasterReqReadHoldingRegister(0x1, 0x0, 1, -1);
             status_ = QM_HANDLED();
             break;
         }

@@ -120,8 +120,8 @@ static QState ValveTransfer_initial(ValveTransfer * const me, void const * const
     me->tick     = 0;
     QTimeEvt_armX(&me->pollEvt, MS_TO_TICK(1), MS_TO_TICK(1));
     #ifdef USE_MODBUS
-    eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
-    eMBEnable();
+    //eMBInit(MB_RTU, 0x01, 1, 9600, MB_PAR_NONE);
+    //eMBEnable();
     #endif
     static QMTranActTable const tatbl_ = { // tran-action table
         &ValveTransfer_Idle_s, // target state
@@ -176,7 +176,7 @@ static QState ValveTransfer_Idle(ValveTransfer * const me, QEvt const * const e)
         case VALVE_TRANSFER_POLL_SIG: {
             me->tick++;
             #ifdef USE_MODBUS
-            eMBPoll();
+            //eMBPoll();
             #endif
             status_ = QM_HANDLED();
             break;
