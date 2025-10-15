@@ -15,10 +15,8 @@ typedef enum hall_index {
 
 typedef struct hall_struct {
     GPIO_Module* port;
-    uint32_t     exit_Line;
     uint32_t     clk;
     uint16_t     pin;
-    uint8_t      exit_irq;
     uint8_t      active_level;
 } hall_t;
 

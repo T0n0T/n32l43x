@@ -32,100 +32,68 @@ static hall_t halls[] = {
         .clk          = RCC_APB2_PERIPH_GPIOC,
         .pin          = GPIO_PIN_0,
         .active_level = Bit_RESET,
-        .exit_Line    = EXTI_LINE0,
-        .exit_irq     = EXTI0_IRQn,
     },
     {
         .port         = GPIOC,
         .clk          = RCC_APB2_PERIPH_GPIOC,
         .pin          = GPIO_PIN_1,
         .active_level = Bit_RESET,
-        .exit_Line    = EXTI_LINE1,
-        .exit_irq     = EXTI1_IRQn,
     },
     {
         .port         = GPIOC,
         .clk          = RCC_APB2_PERIPH_GPIOC,
         .pin          = GPIO_PIN_2,
         .active_level = Bit_RESET,
-        .exit_Line    = EXTI_LINE2,
-        .exit_irq     = EXTI2_IRQn,
     },
     {
         .port         = GPIOC,
         .clk          = RCC_APB2_PERIPH_GPIOC,
         .pin          = GPIO_PIN_3,
         .active_level = Bit_RESET,
-        .exit_Line    = EXTI_LINE3,
-        .exit_irq     = EXTI3_IRQn,
     },
     {
-        .port         = GPIOA,
+        .port         = GPIOC,
         .clk          = RCC_APB2_PERIPH_GPIOA,
-        .pin          = GPIO_PIN_1,
+        .pin          = GPIO_PIN_4,
         .active_level = Bit_RESET,
-        .exit_Line    = EXTI_LINE1,
-        .exit_irq     = EXTI1_IRQn,
     },
     {
-        .port         = GPIOA,
+        .port         = GPIOC,
         .clk          = RCC_APB2_PERIPH_GPIOA,
-        .pin          = GPIO_PIN_2,
+        .pin          = GPIO_PIN_5,
         .active_level = Bit_RESET,
-        .exit_Line    = EXTI_LINE2,
-        .exit_irq     = EXTI2_IRQn,
+    },
+    {
+        .port         = GPIOC,
+        .clk          = RCC_APB2_PERIPH_GPIOC,
+        .pin          = GPIO_PIN_6,
+        .active_level = Bit_RESET,
+    },
+    {
+        .port         = GPIOC,
+        .clk          = RCC_APB2_PERIPH_GPIOC,
+        .pin          = GPIO_PIN_7,
+        .active_level = Bit_RESET,
+    },
+    {
+        .port         = GPIOC,
+        .clk          = RCC_APB2_PERIPH_GPIOC,
+        .pin          = GPIO_PIN_8,
+        .active_level = Bit_RESET,
+    },
+    {
+        .port         = GPIOC,
+        .clk          = RCC_APB2_PERIPH_GPIOC,
+        .pin          = GPIO_PIN_9,
+        .active_level = Bit_RESET,
+    },
+    {
+        .port         = GPIOC,
+        .clk          = RCC_APB2_PERIPH_GPIOC,
+        .pin          = GPIO_PIN_11,
+        .active_level = Bit_RESET,
     },
 };
-
-void EXTI0_IRQHandler(void)
-{
-    if (RESET != EXTI_GetITStatus(EXTI_LINE0)) {
-        EXTI_ClrITPendBit(EXTI_LINE0);
-    }
-}
-
-void EXTI1_IRQHandler(void)
-{
-    if (RESET != EXTI_GetITStatus(EXTI_LINE1)) {
-        EXTI_ClrITPendBit(EXTI_LINE1);
-    }
-}
-
-void EXTI2_IRQHandler(void)
-{
-    if (RESET != EXTI_GetITStatus(EXTI_LINE2)) {
-        EXTI_ClrITPendBit(EXTI_LINE2);
-    }
-}
-
-void EXTI3_IRQHandler(void)
-{
-    if (RESET != EXTI_GetITStatus(EXTI_LINE3)) {
-        EXTI_ClrITPendBit(EXTI_LINE3);
-    }
-}
-
-void hall_registor_irq(hall_index_t index)
-{
-    EXTI_InitType EXTI_InitStructure;
-    NVIC_InitType NVIC_InitStructure;
-
-    GPIO_ConfigEXTILine(GET_GPIO_PORT_SOURCE(halls[index].port), GET_GPIO_PIN_SOURCE(halls[index].pin));
-
-    /*Configure key EXTI line*/
-    EXTI_InitStructure.EXTI_Line    = halls[index].exit_Line;
-    EXTI_InitStructure.EXTI_Mode    = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling; // EXTI_Trigger_Rising;
-    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-    EXTI_InitPeripheral(&EXTI_InitStructure);
-
-    /*Set key input interrupt priority*/
-    NVIC_InitStructure.NVIC_IRQChannel                   = halls[index].exit_irq;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 1;
-    NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
-    NVIC_Init(&NVIC_InitStructure);
-}
 
 void hall_init(void)
 {
