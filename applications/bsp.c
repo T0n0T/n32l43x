@@ -128,10 +128,10 @@ void QV_onIdle(void)
         // SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
         // SystemCoreClockUpdate();
         APP_LOG_INFO("EXIT!");
-        // GPIO_ResetBits(GPIOB, GPIO_PIN_9);
-        while (1) {
+        GPIO_ResetBits(GPIOB, GPIO_PIN_9);
+        // while (1) {
         
-        }
+        // }
         // PWR_EnterSTANDBYMode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM2RET);
     } else {
         /* NOTE: should not use SLEEPONEXIT mode, it will cause qv sheduling blocked
