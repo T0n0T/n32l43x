@@ -69,7 +69,7 @@ BOOL xMBMasterPortSerialInit(UCHAR ucPort, ULONG ulBaudRate,
 
     RS485_PWR_HIGH;
     uart_init(RS485);
-
+    USART_ConfigInt(USART_MODBUS, USART_INT_IDLEF, ENABLE);
     NVIC_EnableIRQ(USART_MODBUS_IRQn);
 
     return TRUE;
@@ -154,6 +154,12 @@ void UART5_IRQHandler(void)
     if (USART_GetIntStatus(USART_MODBUS, USART_INT_TXDE) != RESET) {
         /* Write one byte to the transmit data register */
         prvvUARTTxReadyISR();
+    }
+
+    if (USART_GetIntStatus(USART_MODBUS, USART_INT_IDLEF) != RESET) {
+        (void)USART_MODBUS->STS;
+        (void)USART_MODBUS->DAT;
+        pxMBMasterPortCBTimerExpired();
     }
 
     if ((USART_GetFlagStatus(USART_MODBUS, USART_FLAG_OREF) != RESET) ||

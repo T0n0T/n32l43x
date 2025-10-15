@@ -11,11 +11,14 @@
 #endif
 
 /* Use for sleep judgement */
+volatile uint32_t Wake_source;
 volatile uint32_t Sleep_bits;
 volatile bool     run_is_reporting;
 volatile bool     pvd_is_power_low;
 volatile bool     transfer_is_error;
 static QEvt       _lock_evt;
+static QEvt       _update_evt;
+static uint32_t   exiting;
 
 /* Assertion handler  ======================================================*/
 Q_NORETURN Q_onAssert(char const* module, int_t id)
@@ -62,7 +65,7 @@ void SysTick_Handler(void)
     QV_ARM_ERRATUM_838869();
 }
 
-static void wakeup_handle(uint8_t bit)
+static void wakeup_handle(uint8_t source, uint8_t bit)
 {
     if (bit == Bit_SET) {
         guard_sleep();
@@ -73,22 +76,10 @@ static void wakeup_handle(uint8_t bit)
         QACTIVE_PUBLISH(&_lock_evt, 0);
         guard_wakeup();
     }
-}
-
-static void lock_on_handle(void)
-{
-    global_valve_status = VALVE_STATUS_ON;
-    APP_LOG_INFO("lock on");
-    QEvt_ctor(&_lock_evt, VALVE_UPDATE_SIG);
-    QACTIVE_POST(AO_ValveHandler, &_lock_evt, 0);
-}
-
-static void lock_off_handle(void)
-{
-    global_valve_status = VALVE_STATUS_OFF;
-    APP_LOG_INFO("lock off");
-    QEvt_ctor(&_lock_evt, VALVE_UPDATE_SIG);
-    QACTIVE_POST(AO_ValveHandler, &_lock_evt, 0);
+    if ((source == WAKE_SRC_KEY && bit == Bit_RESET) || (source == WAKE_SRC_RFID && bit == Bit_RESET)) {
+        Wake_source |= source;
+        APP_LOG_INFO("wakeup source: %d", source);
+    }
 }
 
 static void pvd_handle(void)
@@ -104,6 +95,24 @@ static void lptimer_handle(void)
         run_is_reporting = true;
         lptime_tick      = 0;
     }
+    if (lptime_tick % (LPTIM_SENSOR_MS / LPTIM_INTERVAL_MS) == 0) {
+        QEvt_ctor(&_update_evt, VALVE_UPDATE_SIG);
+        QACTIVE_POST(AO_ValveHandler, &_update_evt, 0);
+    }
+    if ((Wake_source & WAKE_SRC_KEY) && (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == Bit_SET)) {
+        Wake_source &= ~WAKE_SRC_KEY;
+        APP_LOG_INFO("Exit from key!");
+    }
+    if ((Wake_source & WAKE_SRC_RFID) && (GPIO_ReadInputDataBit(GPIOB, GPIO_PIN_1) == Bit_RESET)) {
+        Wake_source &= ~WAKE_SRC_RFID;
+        APP_LOG_INFO("Exit from rfid!");
+    }
+    if (!Wake_source && !exiting) {
+        QEvt_ctor(&_lock_evt, VALVE_LOCK_SIG);
+        QACTIVE_PUBLISH(&_lock_evt, 0);
+        exiting = true;
+    }
+
     guard_process();
 }
 
@@ -114,10 +123,16 @@ void QV_onIdle(void)
     valve_idle();
     if (!Sleep_bits && !run_is_reporting) {
         SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
-        PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
-        SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
-        SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
-        SystemCoreClockUpdate();
+        // PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
+        // SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
+        // SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
+        // SystemCoreClockUpdate();
+        APP_LOG_INFO("EXIT!");
+        // GPIO_ResetBits(GPIOB, GPIO_PIN_9);
+        while (1) {
+        
+        }
+        // PWR_EnterSTANDBYMode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM2RET);
     } else {
         /* NOTE: should not use SLEEPONEXIT mode, it will cause qv sheduling blocked
          */
@@ -142,7 +157,7 @@ void BSP_init(void)
     uart_init(CONSOLE);
     APP_LOG_RAW(" \r\n");
     APP_LOG_RAW("┌──────────────────────────────────────────────┐\r\n");
-    APP_LOG_RAW("│   N32L43x Channel App  %s-%s  │\r\n", __DATE__, __TIME__);
+    APP_LOG_RAW("│   N32L43x AirPre App  %s-%s   │\r\n", __DATE__, __TIME__);
     APP_LOG_RAW("└──────────────────────────────────────────────┘\r\n");
     lptimer_init();
     // dump_clk();
@@ -213,28 +228,23 @@ void QF_onStartup(void)
     NVIC_SetPriority(EXTI0_IRQn, DEF_ISR_PRI - 2);
     NVIC_SetPriority(EXTI1_IRQn, DEF_ISR_PRI - 2);
     NVIC_SetPriority(EXTI15_10_IRQn, DEF_ISR_PRI - 2);
-    SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
+
     // rtc_init();
     wakeup_init(wakeup_handle);
-    lock_status_init(lock_on_handle, lock_off_handle);
+    SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
+    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == Bit_RESET) {
+        Wake_source |= WAKE_SRC_KEY;
+        APP_LOG_DEBUG("key wakeup");
+    }
+    if (GPIO_ReadInputDataBit(GPIOB, GPIO_PIN_1) == Bit_SET) {
+        Wake_source |= WAKE_SRC_RFID;
+        APP_LOG_DEBUG("rifd wakeup");
+    }
     pvd_init(pvd_handle);
     lptimer_init();
     lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);
-    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == RESET) {
-        cmd_module_already_on = true;
-        QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
-        QACTIVE_PUBLISH(&_lock_evt, 0);
-    }
-    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_0) == RESET) {
-        global_valve_status = VALVE_STATUS_ON;
-        QEvt_ctor(&_lock_evt, VALVE_UPDATE_SIG);
-        QACTIVE_POST(AO_ValveHandler, &_lock_evt, 0);
-    }
-    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_1) == RESET) {
-        global_valve_status = VALVE_STATUS_OFF;
-        QEvt_ctor(&_lock_evt, VALVE_UPDATE_SIG);
-        QACTIVE_POST(AO_ValveHandler, &_lock_evt, 0);
-    }
+    QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
+    QACTIVE_PUBLISH(&_lock_evt, 0);
 }
 /*..........................................................................*/
 void QF_onCleanup(void)

@@ -55,7 +55,7 @@
 
 #ifdef USE_MODBUS
 #include "user_mb_app.h"
-extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
+extern USHORT usMRegHoldBuf[MB_MASTER_TOTAL_SLAVE_NUM][M_REG_HOLDING_NREGS];
 #endif
 
 //$declare${Shared} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv

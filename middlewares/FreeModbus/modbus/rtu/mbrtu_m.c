@@ -74,7 +74,7 @@ static volatile UCHAR  ucMasterRTUSndBuf[MB_PDU_SIZE_MAX];
 static volatile UCHAR  ucMasterRTURcvBuf[MB_SER_PDU_SIZE_MAX];
 static volatile USHORT usMasterSendPDULength;
 
-static volatile UCHAR *pucMasterSndBufferCur;
+static volatile UCHAR* pucMasterSndBufferCur;
 static volatile USHORT usMasterSndBufferCount;
 
 static volatile USHORT usMasterRcvBufferPos;
@@ -144,7 +144,7 @@ void eMBMasterRTUStop(void)
 }
 
 eMBErrorCode
-eMBMasterRTUReceive(UCHAR *pucRcvAddress, UCHAR **pucFrame, USHORT *pusLength)
+eMBMasterRTUReceive(UCHAR* pucRcvAddress, UCHAR** pucFrame, USHORT* pusLength)
 {
     eMBErrorCode eStatus = MB_ENOERR;
 
@@ -152,7 +152,7 @@ eMBMasterRTUReceive(UCHAR *pucRcvAddress, UCHAR **pucFrame, USHORT *pusLength)
     assert_param(usMasterRcvBufferPos < MB_SER_PDU_SIZE_MAX);
 
     /* Length and CRC check */
-    if ((usMasterRcvBufferPos >= MB_SER_PDU_SIZE_MIN) && (usMBCRC16((UCHAR *)ucMasterRTURcvBuf, usMasterRcvBufferPos) == 0)) {
+    if ((usMasterRcvBufferPos >= MB_SER_PDU_SIZE_MIN) && (usMBCRC16((UCHAR*)ucMasterRTURcvBuf, usMasterRcvBufferPos) == 0)) {
         /* Save the address field. All frames are passed to the upper layed
          * and the decision if a frame is used is done there.
          */
@@ -164,7 +164,7 @@ eMBMasterRTUReceive(UCHAR *pucRcvAddress, UCHAR **pucFrame, USHORT *pusLength)
         *pusLength = (USHORT)(usMasterRcvBufferPos - MB_SER_PDU_PDU_OFF - MB_SER_PDU_SIZE_CRC);
 
         /* Return the start of the Modbus PDU to the caller. */
-        *pucFrame = (UCHAR *)&ucMasterRTURcvBuf[MB_SER_PDU_PDU_OFF];
+        *pucFrame = (UCHAR*)&ucMasterRTURcvBuf[MB_SER_PDU_PDU_OFF];
     } else {
         eStatus = MB_EIO;
     }
@@ -174,7 +174,7 @@ eMBMasterRTUReceive(UCHAR *pucRcvAddress, UCHAR **pucFrame, USHORT *pusLength)
 }
 
 eMBErrorCode
-eMBMasterRTUSend(UCHAR ucSlaveAddress, const UCHAR *pucFrame, USHORT usLength)
+eMBMasterRTUSend(UCHAR ucSlaveAddress, const UCHAR* pucFrame, USHORT usLength)
 {
     eMBErrorCode eStatus = MB_ENOERR;
     USHORT       usCRC16;
@@ -189,7 +189,7 @@ eMBMasterRTUSend(UCHAR ucSlaveAddress, const UCHAR *pucFrame, USHORT usLength)
      */
     if (eRcvState == STATE_M_RX_IDLE) {
         /* First byte before the Modbus-PDU is the slave address. */
-        pucMasterSndBufferCur  = (UCHAR *)pucFrame - 1;
+        pucMasterSndBufferCur  = (UCHAR*)pucFrame - 1;
         usMasterSndBufferCount = 1;
 
         /* Now copy the Modbus-PDU into the Modbus-Serial-Line-PDU. */
@@ -197,7 +197,7 @@ eMBMasterRTUSend(UCHAR ucSlaveAddress, const UCHAR *pucFrame, USHORT usLength)
         usMasterSndBufferCount += usLength;
 
         /* Calculate CRC16 checksum for Modbus-Serial-Line-PDU. */
-        usCRC16                                     = usMBCRC16((UCHAR *)pucMasterSndBufferCur, usMasterSndBufferCount);
+        usCRC16                                     = usMBCRC16((UCHAR*)pucMasterSndBufferCur, usMasterSndBufferCount);
         ucMasterRTUSndBuf[usMasterSndBufferCount++] = (UCHAR)(usCRC16 & 0xFF);
         ucMasterRTUSndBuf[usMasterSndBufferCount++] = (UCHAR)(usCRC16 >> 8);
 
@@ -219,7 +219,7 @@ BOOL xMBMasterRTUReceiveFSM(void)
     assert_param((eSndState == STATE_M_TX_IDLE) || (eSndState == STATE_M_TX_XFWR));
 
     /* Always read the character. */
-    (void)xMBMasterPortSerialGetByte((CHAR *)&ucByte);
+    (void)xMBMasterPortSerialGetByte((CHAR*)&ucByte);
 
     switch (eRcvState) {
             /* If we have received a character in the init state we have to
@@ -245,7 +245,7 @@ BOOL xMBMasterRTUReceiveFSM(void)
             /* In time of respond timeout,the receiver receive a frame.
              * Disable timer of respond timeout and change the transmiter state to idle.
              */
-            vMBMasterPortTimersDisable();
+            // vMBMasterPortTimersDisable();
             eSndState = STATE_M_TX_IDLE;
 
             usMasterRcvBufferPos                      = 0;
@@ -253,7 +253,7 @@ BOOL xMBMasterRTUReceiveFSM(void)
             eRcvState                                 = STATE_M_RX_RCV;
 
             /* Enable t3.5 timers. */
-            vMBMasterPortTimersT35Enable();
+            // vMBMasterPortTimersT35Enable();
             break;
 
             /* We are currently receiving a frame. Reset the timer after
@@ -267,7 +267,7 @@ BOOL xMBMasterRTUReceiveFSM(void)
             } else {
                 eRcvState = STATE_M_RX_ERROR;
             }
-            vMBMasterPortTimersT35Enable();
+            // vMBMasterPortTimersT35Enable();
             break;
     }
     return xTaskNeedSwitch;
@@ -319,15 +319,14 @@ BOOL xMBMasterRTUTransmitFSM(void)
 BOOL xMBMasterRTUTimerExpired(void)
 {
     BOOL xNeedPoll = FALSE;
-
     switch (eRcvState) {
-            /* Timer t35 expired. Startup phase is finished. */
+        /* Timer t35 expired. Startup phase is finished. */
         case STATE_M_RX_INIT:
             xNeedPoll = xMBMasterPortEventPost(EV_MASTER_READY);
             break;
 
-            /* A frame was received and t35 expired. Notify the listener that
-             * a new frame was received. */
+        /* A frame was received and t35 expired. Notify the listener that
+         * a new frame was received. */
         case STATE_M_RX_RCV:
             xNeedPoll = xMBMasterPortEventPost(EV_MASTER_FRAME_RECEIVED);
             break;
@@ -375,15 +374,15 @@ BOOL xMBMasterRTUTimerExpired(void)
 }
 
 /* Get Modbus Master send RTU's buffer address pointer.*/
-void vMBMasterGetRTUSndBuf(UCHAR **pucFrame)
+void vMBMasterGetRTUSndBuf(UCHAR** pucFrame)
 {
-    *pucFrame = (UCHAR *)ucMasterRTUSndBuf;
+    *pucFrame = (UCHAR*)ucMasterRTUSndBuf;
 }
 
 /* Get Modbus Master send PDU's buffer address pointer.*/
-void vMBMasterGetPDUSndBuf(UCHAR **pucFrame)
+void vMBMasterGetPDUSndBuf(UCHAR** pucFrame)
 {
-    *pucFrame = (UCHAR *)&ucMasterRTUSndBuf[MB_SER_PDU_PDU_OFF];
+    *pucFrame = (UCHAR*)&ucMasterRTUSndBuf[MB_SER_PDU_PDU_OFF];
 }
 
 /* Set Modbus Master send PDU's buffer length.*/

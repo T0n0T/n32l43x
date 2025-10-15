@@ -83,7 +83,20 @@ QActive_subscribe((QActive*)me, VALVE_REFACTORY_SIG);
 QActive_subscribe((QActive*)me, VALVE_CONFIG_WRITE_SIG);
 QActive_subscribe((QActive*)me, VALVE_CONFIG_READ_SIG);
 eMBMasterInit(MB_RTU, 0, 9600, MB_PAR_NONE);
-eMBMasterEnable();</action>
+eMBMasterEnable();
+QTimeEvt_armX(&amp;me-&gt;timeEvt, MS_TO_TICK(10), MS_TO_TICK(10));
+
+GPIO_InitType GPIO_InitStructure;
+GPIO_InitStruct(&amp;GPIO_InitStructure);
+RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOA | RCC_APB2_PERIPH_AFIO, ENABLE);
+
+GPIO_InitStructure.Pin       = GPIO_PIN_1;
+GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+GPIO_InitStructure.GPIO_Pull = GPIO_No_Pull;
+GPIO_InitPeripheral(GPIOA, &amp;GPIO_InitStructure);
+
+GPIO_InitStructure.Pin       = GPIO_PIN_2;
+GPIO_InitPeripheral(GPIOA, &amp;GPIO_InitStructure);</action>
      <initial_glyph conn="18,12,5,1,62,7,-3">
       <action box="0,-2,10,2"/>
      </initial_glyph>
@@ -91,12 +104,9 @@ eMBMasterEnable();</action>
     <state name="Idle">
      <tran trig="VALVE_UNLOCK" target="../3">
       <action>Sleep_request(HANDLER_BIT);
-
 QF_CRIT_ENTRY();
 sFLASH_Init();
 QF_CRIT_EXIT();
-QEvt_ctor(&amp;evt.super, VALVE_UPDATE_SIG);
-QACTIVE_POST(AO_ValveHandler, &amp;evt.super, 0U);
 QTimeEvt_disarm(&amp;me-&gt;exitEvt);</action>
       <tran_glyph conn="77,30,1,1,-6">
        <action box="-8,-2,10,2"/>
@@ -104,7 +114,7 @@ QTimeEvt_disarm(&amp;me-&gt;exitEvt);</action>
      </tran>
      <tran trig="TIMEOUT">
       <action>eMBMasterPoll();</action>
-      <tran_glyph conn="18,26,3,-1,20">
+      <tran_glyph conn="18,24,3,-1,20">
        <action box="0,-2,10,2"/>
       </tran_glyph>
      </tran>
@@ -121,7 +131,16 @@ QTimeEvt_disarm(&amp;me-&gt;exitEvt);</action>
        </tran_glyph>
       </tran>
       <tran trig="VALVE_UPDATE">
-       <action brief="handle data write flash action and lcd refresh">eMBMasterReqReadHoldingRegister(0x1, 0x0, 1, -1);</action>
+       <action brief="handle data write flash action and lcd refresh">eMBMasterReqReadHoldingRegister(APP_MODBUS_SLAVE_ID, 0x0, 1, -1);
+atmosphere_pressure = 1.6f * usMRegHoldBuf[APP_MODBUS_SLAVE_ID - 1][0] / 2000.0f;
+printf(&quot;atmosphere_pressure: %f\n&quot;, atmosphere_pressure);
+if (atmosphere_pressure) {
+    GPIO_SetBits(GPIOA, GPIO_PIN_1);
+    GPIO_ResetBits(GPIOA, GPIO_PIN_2);
+} else {
+    GPIO_SetBits(GPIOA, GPIO_PIN_2);
+    GPIO_ResetBits(GPIOA, GPIO_PIN_1);
+}</action>
        <tran_glyph conn="24,34,3,-1,14">
         <action box="0,-2,13,2"/>
        </tran_glyph>
@@ -598,7 +617,7 @@ QTimeEvt_ctorX(&amp;me-&gt;pollEvt, (QActive*)me, VALVE_TRANSFER_POLL_SIG, 0U);<
 
 #ifdef USE_MODBUS
 #include &quot;user_mb_app.h&quot;
-extern UCHAR ucSCoilBuf[S_COIL_NCOILS / 8];
+extern USHORT usMRegHoldBuf[MB_MASTER_TOTAL_SLAVE_NUM][M_REG_HOLDING_NREGS];
 #endif
 
 $declare ${Shared}
@@ -648,6 +667,7 @@ cmd_config_t        global_config = {
 };
 uint8_t          global_valve_status;
 static uint8_t   last_valve_status;
+static float     atmosphere_pressure;
 static ValveEvt  evt;
 
 static EvtHandle update_handle;

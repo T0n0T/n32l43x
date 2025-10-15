@@ -53,6 +53,7 @@ cmd_config_t        global_config = {
 };
 uint8_t          global_valve_status;
 static uint8_t   last_valve_status;
+static float     atmosphere_pressure;
 static ValveEvt  evt;
 
 static EvtHandle update_handle;
@@ -130,6 +131,19 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
     QActive_subscribe((QActive*)me, VALVE_CONFIG_READ_SIG);
     eMBMasterInit(MB_RTU, 0, 9600, MB_PAR_NONE);
     eMBMasterEnable();
+    QTimeEvt_armX(&me->timeEvt, MS_TO_TICK(10), MS_TO_TICK(10));
+
+    GPIO_InitType GPIO_InitStructure;
+    GPIO_InitStruct(&GPIO_InitStructure);
+    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOA | RCC_APB2_PERIPH_AFIO, ENABLE);
+
+    GPIO_InitStructure.Pin       = GPIO_PIN_1;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Pull = GPIO_No_Pull;
+    GPIO_InitPeripheral(GPIOA, &GPIO_InitStructure);
+
+    GPIO_InitStructure.Pin       = GPIO_PIN_2;
+    GPIO_InitPeripheral(GPIOA, &GPIO_InitStructure);
     static QMTranActTable const tatbl_ = { // tran-action table
         &ValveHandler_Idle_s, // target state
         {
@@ -147,12 +161,9 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
         //${AOs::ValveHandler::SM::Idle::VALVE_UNLOCK}
         case VALVE_UNLOCK_SIG: {
             Sleep_request(HANDLER_BIT);
-
             QF_CRIT_ENTRY();
             sFLASH_Init();
             QF_CRIT_EXIT();
-            QEvt_ctor(&evt.super, VALVE_UPDATE_SIG);
-            QACTIVE_POST(AO_ValveHandler, &evt.super, 0U);
             QTimeEvt_disarm(&me->exitEvt);
             static QMTranActTable const tatbl_ = { // tran-action table
                 &ValveHandler_Handle_s, // target state
@@ -196,7 +207,16 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_UPDATE}
         case VALVE_UPDATE_SIG: {
-            eMBMasterReqReadHoldingRegister(0x1, 0x0, 1, -1);
+            eMBMasterReqReadHoldingRegister(APP_MODBUS_SLAVE_ID, 0x0, 1, -1);
+            atmosphere_pressure = 1.6f * usMRegHoldBuf[APP_MODBUS_SLAVE_ID - 1][0] / 2000.0f;
+            printf("atmosphere_pressure: %f\n", atmosphere_pressure);
+            if (atmosphere_pressure) {
+                GPIO_SetBits(GPIOA, GPIO_PIN_1);
+                GPIO_ResetBits(GPIOA, GPIO_PIN_2);
+            } else {
+                GPIO_SetBits(GPIOA, GPIO_PIN_2);
+                GPIO_ResetBits(GPIOA, GPIO_PIN_1);
+            }
             status_ = QM_HANDLED();
             break;
         }

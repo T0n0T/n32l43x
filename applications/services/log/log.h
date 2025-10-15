@@ -18,13 +18,13 @@ typedef enum {
 #endif
 
 // Log macro
-// #ifdef DEBUG
-// #include "SEGGER_RTT.h"
-// #define APP_LOG_RAW(...) SEGGER_RTT_printf(0, __VA_ARGS__)
-// #else
+#ifdef DEBUG
+#include "SEGGER_RTT.h"
+#define APP_LOG_RAW(...) SEGGER_RTT_printf(0, __VA_ARGS__)
+#else
 #include <stdio.h>
 #define APP_LOG_RAW(...) printf(__VA_ARGS__)
-// #endif
+#endif
 
 #define APP_LOG(level, fmt, ...)                                                    \
     do {                                                                            \
