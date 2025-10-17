@@ -42,33 +42,32 @@
 
 // ======================== 传感器状态枚举 ========================
 typedef enum {
-    SENSOR_STATE_INVALID = 0,  // 非法状态
-    
-    // 单传感器触发状态 (10个)
-    SENSOR_1 = 1,    // 0x01
-    SENSOR_2 = 2,    // 0x02
-    SENSOR_3 = 3,    // 0x04
-    SENSOR_4 = 4,    // 0x08
-    SENSOR_5 = 5,    // 0x10
-    SENSOR_6 = 6,    // 0x20
-    SENSOR_7 = 7,    // 0x40
-    SENSOR_8 = 8,    // 0x80
-    SENSOR_9 = 9,    // 0x100
-    SENSOR_10 = 10,  // 0x200
-    
-    // 相邻双传感器触发状态 (10个)
-    SENSOR_1_2 = 11,   // 0x03
-    SENSOR_2_3 = 12,   // 0x06
-    SENSOR_3_4 = 13,   // 0x0C
-    SENSOR_4_5 = 14,   // 0x18
-    SENSOR_5_6 = 15,   // 0x30
-    SENSOR_6_7 = 16,   // 0x60
-    SENSOR_7_8 = 17,   // 0xC0
-    SENSOR_8_9 = 18,   // 0x180
-    SENSOR_9_10 = 19,  // 0x300
-    SENSOR_10_1 = 20   // 0x201
-} SensorState;
+    SENSOR_STATE_INVALID = 0, // 非法状态
 
+    // 单传感器触发状态 (10个)
+    SENSOR_1  = 1,  // 0x01
+    SENSOR_2  = 2,  // 0x02
+    SENSOR_3  = 3,  // 0x04
+    SENSOR_4  = 4,  // 0x08
+    SENSOR_5  = 5,  // 0x10
+    SENSOR_6  = 6,  // 0x20
+    SENSOR_7  = 7,  // 0x40
+    SENSOR_8  = 8,  // 0x80
+    SENSOR_9  = 9,  // 0x100
+    SENSOR_10 = 10, // 0x200
+
+    // 相邻双传感器触发状态 (10个)
+    SENSOR_1_2  = 11, // 0x03
+    SENSOR_2_3  = 12, // 0x06
+    SENSOR_3_4  = 13, // 0x0C
+    SENSOR_4_5  = 14, // 0x18
+    SENSOR_5_6  = 15, // 0x30
+    SENSOR_6_7  = 16, // 0x60
+    SENSOR_7_8  = 17, // 0xC0
+    SENSOR_8_9  = 18, // 0x180
+    SENSOR_9_10 = 19, // 0x300
+    SENSOR_10_1 = 20  // 0x201
+} SensorState;
 // ======================== 方向映射表 ========================
 typedef struct {
     uint8_t from; // 起始状态
@@ -76,7 +75,8 @@ typedef struct {
     int8_t  dir;  // 方向 (+1正转, -1反转)
 } TransitionRule;
 
-static ValveEvt evt;
+static ValveEvt    evt;
+static uint32_t    raw_state;
 static SensorState new_state;
 static SensorState last_state;
 #ifdef DEBUG
@@ -88,18 +88,18 @@ SEGGER_SYSVIEW_DATA_SAMPLE _val_tick;
 
 //${AOs::ValveCounter} .......................................................
 typedef struct ValveCounter {
-    // protected:
+// protected:
     QMActive super;
 
-    // public:
+// public:
     QTimeEvt timeEvt;
 } ValveCounter;
 
 extern ValveCounter ValveCounter_inst;
 
 // protected:
-static QState        ValveCounter_initial(ValveCounter* const me, void const* const par);
-static QState        ValveCounter_Wait(ValveCounter* const me, QEvt const* const e);
+static QState ValveCounter_initial(ValveCounter * const me, void const * const par);
+static QState ValveCounter_Wait  (ValveCounter * const me, QEvt const * const e);
 static QMState const ValveCounter_Wait_s = {
     QM_STATE_NULL, // superstate (top)
     Q_STATE_CAST(&ValveCounter_Wait),
@@ -107,125 +107,145 @@ static QMState const ValveCounter_Wait_s = {
     Q_ACTION_NULL, // no exit action
     Q_ACTION_NULL  // no initial tran.
 };
-static QState        ValveCounter_Work(ValveCounter* const me, QEvt const* const e);
-static QState        ValveCounter_Work_e(ValveCounter* const me);
-static QState        ValveCounter_Work_x(ValveCounter* const me);
+static QState ValveCounter_Work  (ValveCounter * const me, QEvt const * const e);
+static QState ValveCounter_Work_e(ValveCounter * const me);
+static QState ValveCounter_Work_x(ValveCounter * const me);
 static QMState const ValveCounter_Work_s = {
     QM_STATE_NULL, // superstate (top)
     Q_STATE_CAST(&ValveCounter_Work),
     Q_ACTION_CAST(&ValveCounter_Work_e),
     Q_ACTION_CAST(&ValveCounter_Work_x),
-    Q_ACTION_NULL // no initial tran.
+    Q_ACTION_NULL  // no initial tran.
 };
 //$enddecl${AOs::ValveCounter} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-// 新的方向映射表(21x21, 大大减小了数组大小)
+// 方向映射表(64x64, 未定义部分置0)
 static const int8_t rules[21][21] = {
     // 单触发+1 (顺时针)
-    [SENSOR_1][SENSOR_2] = 1,
-    [SENSOR_2][SENSOR_3] = 1,
-    [SENSOR_3][SENSOR_4] = 1,
-    [SENSOR_4][SENSOR_5] = 1,
-    [SENSOR_5][SENSOR_6] = 1,
-    [SENSOR_6][SENSOR_7] = 1,
-    [SENSOR_7][SENSOR_8] = 1,
-    [SENSOR_8][SENSOR_9] = 1,
+    [SENSOR_1][SENSOR_2]  = 1,
+    [SENSOR_2][SENSOR_3]  = 1,
+    [SENSOR_3][SENSOR_4]  = 1,
+    [SENSOR_4][SENSOR_5]  = 1,
+    [SENSOR_5][SENSOR_6]  = 1,
+    [SENSOR_6][SENSOR_7]  = 1,
+    [SENSOR_7][SENSOR_8]  = 1,
+    [SENSOR_8][SENSOR_9]  = 1,
     [SENSOR_9][SENSOR_10] = 1,
     [SENSOR_10][SENSOR_1] = 1, // 环形连接
-    
+
     // 单触发-1 (逆时针)
-    [SENSOR_2][SENSOR_1] = -1,
-    [SENSOR_3][SENSOR_2] = -1,
-    [SENSOR_4][SENSOR_3] = -1,
-    [SENSOR_5][SENSOR_4] = -1,
-    [SENSOR_6][SENSOR_5] = -1,
-    [SENSOR_7][SENSOR_6] = -1,
-    [SENSOR_8][SENSOR_7] = -1,
-    [SENSOR_9][SENSOR_8] = -1,
+    [SENSOR_2][SENSOR_1]  = -1,
+    [SENSOR_3][SENSOR_2]  = -1,
+    [SENSOR_4][SENSOR_3]  = -1,
+    [SENSOR_5][SENSOR_4]  = -1,
+    [SENSOR_6][SENSOR_5]  = -1,
+    [SENSOR_7][SENSOR_6]  = -1,
+    [SENSOR_8][SENSOR_7]  = -1,
+    [SENSOR_9][SENSOR_8]  = -1,
     [SENSOR_10][SENSOR_9] = -1,
     [SENSOR_1][SENSOR_10] = -1, // 环形连接
-    
+
     // 双触发+1 (单-->双)
-    [SENSOR_1][SENSOR_1_2] = 1,
-    [SENSOR_2][SENSOR_2_3] = 1,
-    [SENSOR_3][SENSOR_3_4] = 1,
-    [SENSOR_4][SENSOR_4_5] = 1,
-    [SENSOR_5][SENSOR_5_6] = 1,
-    [SENSOR_6][SENSOR_6_7] = 1,
-    [SENSOR_7][SENSOR_7_8] = 1,
-    [SENSOR_8][SENSOR_8_9] = 1,
-    [SENSOR_9][SENSOR_9_10] = 1,
+    [SENSOR_1][SENSOR_1_2]   = 1,
+    [SENSOR_2][SENSOR_2_3]   = 1,
+    [SENSOR_3][SENSOR_3_4]   = 1,
+    [SENSOR_4][SENSOR_4_5]   = 1,
+    [SENSOR_5][SENSOR_5_6]   = 1,
+    [SENSOR_6][SENSOR_6_7]   = 1,
+    [SENSOR_7][SENSOR_7_8]   = 1,
+    [SENSOR_8][SENSOR_8_9]   = 1,
+    [SENSOR_9][SENSOR_9_10]  = 1,
     [SENSOR_10][SENSOR_10_1] = 1,
-    
+
     // 双触发-1 (双-->单)
-    [SENSOR_1_2][SENSOR_1] = -1,
-    [SENSOR_2_3][SENSOR_2] = -1,
-    [SENSOR_3_4][SENSOR_3] = -1,
-    [SENSOR_4_5][SENSOR_4] = -1,
-    [SENSOR_5_6][SENSOR_5] = -1,
-    [SENSOR_6_7][SENSOR_6] = -1,
-    [SENSOR_7_8][SENSOR_7] = -1,
-    [SENSOR_8_9][SENSOR_8] = -1,
-    [SENSOR_9_10][SENSOR_9] = -1,
+    [SENSOR_1_2][SENSOR_1]   = -1,
+    [SENSOR_2_3][SENSOR_2]   = -1,
+    [SENSOR_3_4][SENSOR_3]   = -1,
+    [SENSOR_4_5][SENSOR_4]   = -1,
+    [SENSOR_5_6][SENSOR_5]   = -1,
+    [SENSOR_6_7][SENSOR_6]   = -1,
+    [SENSOR_7_8][SENSOR_7]   = -1,
+    [SENSOR_8_9][SENSOR_8]   = -1,
+    [SENSOR_9_10][SENSOR_9]  = -1,
     [SENSOR_10_1][SENSOR_10] = -1,
-    
+
     // 双触发+2 (双-->双)
-    [SENSOR_1_2][SENSOR_2_3] = 2,
-    [SENSOR_2_3][SENSOR_3_4] = 2,
-    [SENSOR_3_4][SENSOR_4_5] = 2,
-    [SENSOR_4_5][SENSOR_5_6] = 2,
-    [SENSOR_5_6][SENSOR_6_7] = 2,
-    [SENSOR_6_7][SENSOR_7_8] = 2,
-    [SENSOR_7_8][SENSOR_8_9] = 2,
-    [SENSOR_8_9][SENSOR_9_10] = 2,
+    [SENSOR_1_2][SENSOR_2_3]   = 2,
+    [SENSOR_2_3][SENSOR_3_4]   = 2,
+    [SENSOR_3_4][SENSOR_4_5]   = 2,
+    [SENSOR_4_5][SENSOR_5_6]   = 2,
+    [SENSOR_5_6][SENSOR_6_7]   = 2,
+    [SENSOR_6_7][SENSOR_7_8]   = 2,
+    [SENSOR_7_8][SENSOR_8_9]   = 2,
+    [SENSOR_8_9][SENSOR_9_10]  = 2,
     [SENSOR_9_10][SENSOR_10_1] = 2,
-    [SENSOR_10_1][SENSOR_1_2] = 2,
-    
+    [SENSOR_10_1][SENSOR_1_2]  = 2,
+
     // 双触发-2 (双-->双)
-    [SENSOR_2_3][SENSOR_1_2] = -2,
-    [SENSOR_3_4][SENSOR_2_3] = -2,
-    [SENSOR_4_5][SENSOR_3_4] = -2,
-    [SENSOR_5_6][SENSOR_4_5] = -2,
-    [SENSOR_6_7][SENSOR_5_6] = -2,
-    [SENSOR_7_8][SENSOR_6_7] = -2,
-    [SENSOR_8_9][SENSOR_7_8] = -2,
-    [SENSOR_9_10][SENSOR_8_9] = -2,
+    [SENSOR_2_3][SENSOR_1_2]   = -2,
+    [SENSOR_3_4][SENSOR_2_3]   = -2,
+    [SENSOR_4_5][SENSOR_3_4]   = -2,
+    [SENSOR_5_6][SENSOR_4_5]   = -2,
+    [SENSOR_6_7][SENSOR_5_6]   = -2,
+    [SENSOR_7_8][SENSOR_6_7]   = -2,
+    [SENSOR_8_9][SENSOR_7_8]   = -2,
+    [SENSOR_9_10][SENSOR_8_9]  = -2,
     [SENSOR_10_1][SENSOR_9_10] = -2,
-    [SENSOR_1_2][SENSOR_10_1] = -2,
+    [SENSOR_1_2][SENSOR_10_1]  = -2,
 };
 
 // ======================== 核心逻辑 ========================
 // 读取传感器状态并返回枚举值
 static inline SensorState read_sensor_state(void)
 {
-    uint32_t raw_state = ~(uint32_t)(GPIOC->PID & 0x3ff);
-    
+    raw_state = (~(uint32_t)(GPIOC->PID & 0x3ff)) & 0x3ff;
     switch (raw_state) {
         // 单传感器触发
-        case 0x01:   return SENSOR_1;
-        case 0x02:   return SENSOR_2;
-        case 0x04:   return SENSOR_3;
-        case 0x08:   return SENSOR_4;
-        case 0x10:   return SENSOR_5;
-        case 0x20:   return SENSOR_6;
-        case 0x40:   return SENSOR_7;
-        case 0x80:   return SENSOR_8;
-        case 0x100:  return SENSOR_9;
-        case 0x200:  return SENSOR_10;
-        
+        case 0x01:
+            return SENSOR_1;
+        case 0x02:
+            return SENSOR_2;
+        case 0x04:
+            return SENSOR_3;
+        case 0x08:
+            return SENSOR_4;
+        case 0x10:
+            return SENSOR_5;
+        case 0x20:
+            return SENSOR_6;
+        case 0x40:
+            return SENSOR_7;
+        case 0x80:
+            return SENSOR_8;
+        case 0x100:
+            return SENSOR_9;
+        case 0x200:
+            return SENSOR_10;
+
         // 相邻双传感器触发
-        case 0x03:   return SENSOR_1_2;
-        case 0x06:   return SENSOR_2_3;
-        case 0x0C:   return SENSOR_3_4;
-        case 0x18:   return SENSOR_4_5;
-        case 0x30:   return SENSOR_5_6;
-        case 0x60:   return SENSOR_6_7;
-        case 0xC0:   return SENSOR_7_8;
-        case 0x180:  return SENSOR_8_9;
-        case 0x300:  return SENSOR_9_10;
-        case 0x201:  return SENSOR_10_1;
-        
-        default:     return SENSOR_STATE_INVALID;
+        case 0x03:
+            return SENSOR_1_2;
+        case 0x06:
+            return SENSOR_2_3;
+        case 0x0C:
+            return SENSOR_3_4;
+        case 0x18:
+            return SENSOR_4_5;
+        case 0x30:
+            return SENSOR_5_6;
+        case 0x60:
+            return SENSOR_6_7;
+        case 0xC0:
+            return SENSOR_7_8;
+        case 0x180:
+            return SENSOR_8_9;
+        case 0x300:
+            return SENSOR_9_10;
+        case 0x201:
+            return SENSOR_10_1;
+
+        default:
+            return SENSOR_STATE_INVALID;
     }
 }
 
@@ -243,21 +263,20 @@ static int8_t check_direction(SensorState old, SensorState new)
 
 //$skip${QP_VERSION} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 // Check for the minimum required QP version
-#if (QP_VERSION < 730U) || (QP_VERSION != ((QP_RELEASE ^ 4294967295U) % 0x2710U))
+#if (QP_VERSION < 730U) || (QP_VERSION != ((QP_RELEASE^4294967295U)%0x2710U))
 #error qpc version 7.3.0 or higher required
 #endif
 //$endskip${QP_VERSION} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$define${AOs::AO_ValveCounter} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 //${AOs::AO_ValveCounter} ....................................................
-QActive* const AO_ValveCounter = (QActive* const)&ValveCounter_inst.super;
+QActive * const AO_ValveCounter = (QActive* const)&ValveCounter_inst.super;
 //$enddef${AOs::AO_ValveCounter} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$define${AOs::ValveCounter_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 //${AOs::ValveCounter_ctor} ..................................................
-void ValveCounter_ctor(void)
-{
-    ValveCounter* const me = &ValveCounter_inst;
+void ValveCounter_ctor(void) {
+    ValveCounter * const me = &ValveCounter_inst;
     QMActive_ctor(&me->super, Q_STATE_CAST(&ValveCounter_initial));
     QTimeEvt_ctorX(&me->timeEvt, (QActive*)me, TIMEOUT_SIG, 0U);
 }
@@ -268,44 +287,44 @@ void ValveCounter_ctor(void)
 ValveCounter ValveCounter_inst;
 
 //${AOs::ValveCounter::SM} ...................................................
-static QState ValveCounter_initial(ValveCounter* const me, void const* const par)
-{
+static QState ValveCounter_initial(ValveCounter * const me, void const * const par) {
     //${AOs::ValveCounter::SM::initial}
     QActive_subscribe((QActive*)me, VALVE_LOCK_SIG);
     QActive_subscribe((QActive*)me, VALVE_UNLOCK_SIG);
-#ifdef DEBUG
+    #ifdef DEBUG
     _hall_data.ID          = 0;
     _hall_data.pValue.pU32 = (U32*)&new_state;
     _val_tick.ID           = 1;
     _val_tick.pValue.pI32  = (I32*)&global_valve_value->total_ticks;
-#endif
-    static QMTranActTable const tatbl_ = {                      // tran-action table
-                                          &ValveCounter_Wait_s, // target state
-                                          {
-                                              Q_ACTION_NULL // zero terminator
-                                          }};
+    #endif
+    static QMTranActTable const tatbl_ = { // tran-action table
+        &ValveCounter_Wait_s, // target state
+        {
+            Q_ACTION_NULL // zero terminator
+        }
+    };
     return QM_TRAN_INIT(&tatbl_);
 }
 
 //${AOs::ValveCounter::SM::Wait} .............................................
 //${AOs::ValveCounter::SM::Wait}
-static QState ValveCounter_Wait(ValveCounter* const me, QEvt const* const e)
-{
+static QState ValveCounter_Wait(ValveCounter * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
         //${AOs::ValveCounter::SM::Wait::VALVE_UNLOCK}
         case VALVE_UNLOCK_SIG: {
             Sleep_request(COUNTER_BIT);
             static struct {
-                QMState const* target;
+                QMState const *target;
                 QActionHandler act[2];
-            } const tatbl_ = {                      // tran-action table
-                              &ValveCounter_Work_s, // target state
-                              {
-                                  Q_ACTION_CAST(&ValveCounter_Work_e), // entry
-                                  Q_ACTION_NULL                        // zero terminator
-                              }};
-            status_        = QM_TRAN(&tatbl_);
+            } const tatbl_ = { // tran-action table
+                &ValveCounter_Work_s, // target state
+                {
+                    Q_ACTION_CAST(&ValveCounter_Work_e), // entry
+                    Q_ACTION_NULL // zero terminator
+                }
+            };
+            status_ = QM_TRAN(&tatbl_);
             break;
         }
         default: {
@@ -318,43 +337,41 @@ static QState ValveCounter_Wait(ValveCounter* const me, QEvt const* const e)
 
 //${AOs::ValveCounter::SM::Work} .............................................
 //${AOs::ValveCounter::SM::Work}
-static QState ValveCounter_Work_e(ValveCounter* const me)
-{
+static QState ValveCounter_Work_e(ValveCounter * const me) {
     hall_set_ctr(ENABLE);
     QTimeEvt_armX(&me->timeEvt, 1, 1);
     return QM_ENTRY(&ValveCounter_Work_s);
 }
 //${AOs::ValveCounter::SM::Work}
-static QState ValveCounter_Work_x(ValveCounter* const me)
-{
+static QState ValveCounter_Work_x(ValveCounter * const me) {
     QTimeEvt_disarm(&me->timeEvt);
     hall_set_ctr(DISABLE);
     return QM_EXIT(&ValveCounter_Work_s);
 }
 //${AOs::ValveCounter::SM::Work}
-static QState ValveCounter_Work(ValveCounter* const me, QEvt const* const e)
-{
+static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
     QState status_;
     switch (e->sig) {
         //${AOs::ValveCounter::SM::Work::VALVE_LOCK}
         case VALVE_LOCK_SIG: {
             Sleep_release(COUNTER_BIT);
             static struct {
-                QMState const* target;
+                QMState const *target;
                 QActionHandler act[2];
-            } const tatbl_ = {                      // tran-action table
-                              &ValveCounter_Wait_s, // target state
-                              {
-                                  Q_ACTION_CAST(&ValveCounter_Work_x), // exit
-                                  Q_ACTION_NULL                        // zero terminator
-                              }};
-            status_        = QM_TRAN(&tatbl_);
+            } const tatbl_ = { // tran-action table
+                &ValveCounter_Wait_s, // target state
+                {
+                    Q_ACTION_CAST(&ValveCounter_Work_x), // exit
+                    Q_ACTION_NULL // zero terminator
+                }
+            };
+            status_ = QM_TRAN(&tatbl_);
             break;
         }
         //${AOs::ValveCounter::SM::Work::TIMEOUT}
         case TIMEOUT_SIG: {
-            new_state = read_sensor_state();
-#ifdef DEBUG
+            new_state  = read_sensor_state();
+            #ifdef DEBUG
             static bool first_load = true;
             if (new_state) {
                 SEGGER_SYSVIEW_SampleData(&_hall_data);
@@ -363,18 +380,18 @@ static QState ValveCounter_Work(ValveCounter* const me, QEvt const* const e)
                 SEGGER_SYSVIEW_SampleData(&_val_tick);
                 SEGGER_SYSVIEW_SampleData(&_hall_data);
             }
-#endif
-            if (new_state != last_state && is_valid_state(new_state)) {
+            #endif
+            if (new_state != last_state && is_valid_state(&new_state)) {
                 // 检查方向并更新旋转计数
-                if (is_valid_state(last_state)) {
-                    global_valve_value->total_ticks += check_direction(last_state, new_state);
-#ifdef DEBUG
+                if (is_valid_state(&last_state)) {
+                    global_valve_value->total_ticks += check_direction(&last_state, &new_state);
+            #ifdef DEBUG
                     SEGGER_SYSVIEW_SampleData(&_val_tick);
                     first_load = false;
-#endif
+            #endif
                     QEvt_ctor(&evt.super, VALVE_UPDATE_SIG);
                     QACTIVE_PUBLISH(&evt.super, &me->super);
-                    // QACTIVE_POST_X(AO_ValveHandler, &evt.super, 1, &me->super);
+                    //QACTIVE_POST_X(AO_ValveHandler, &evt.super, 1, &me->super);
                 }
                 last_state = new_state;
             }
