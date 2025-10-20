@@ -13,4 +13,5 @@
         "--clang-tidy"
     ],
     "clangd.path": "/opt/clangd/bin/clangd",
+    "cortex-debug.variableUseNaturalFormat": true,
 }

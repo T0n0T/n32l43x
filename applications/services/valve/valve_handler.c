@@ -56,7 +56,7 @@ ValveVal*           global_valve_value = &global_valve_store.val;
 ValvePersistRequest persist_request;
 cmd_config_t        global_config = {
            .flag  = FLAG_VAILD,
-           .tick  = 12,             // 默认旋转阈值
+           .tick  = 60,             // 默认旋转阈值
            .dir   = -1,             // 默认方向，逆时针
            .model = "default_model" // 默认模型名称
 };

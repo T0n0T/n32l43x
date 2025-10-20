@@ -53,13 +53,13 @@ static hall_t halls[] = {
     },
     {
         .port         = GPIOC,
-        .clk          = RCC_APB2_PERIPH_GPIOA,
+        .clk          = RCC_APB2_PERIPH_GPIOC,
         .pin          = GPIO_PIN_4,
         .active_level = Bit_RESET,
     },
     {
         .port         = GPIOC,
-        .clk          = RCC_APB2_PERIPH_GPIOA,
+        .clk          = RCC_APB2_PERIPH_GPIOC,
         .pin          = GPIO_PIN_5,
         .active_level = Bit_RESET,
     },
@@ -102,12 +102,12 @@ void hall_init(void)
     for (size_t i = 0; i < sizeof(halls) / sizeof(hall_t); i++) {
         RCC_EnableAPB2PeriphClk(halls[i].clk | RCC_APB2_PERIPH_AFIO, ENABLE);
         GPIO_InitStructure.Pin       = halls[i].pin;
-        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Input; // 配置为上拉输入模式
+        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Input;
         GPIO_InitPeripheral(halls[i].port, &GPIO_InitStructure);
     }
     RCC_EnableAPB2PeriphClk(GPIO_CLK_HALL_CTR, ENABLE);
     GPIO_InitStructure.Pin       = GPIO_PIN_HALL_CTR;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP; // 配置为上拉输入模式
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitPeripheral(GPIO_PORT_HALL_CTR, &GPIO_InitStructure);
 }
 

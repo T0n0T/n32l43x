@@ -381,10 +381,10 @@ static QState ValveCounter_Work(ValveCounter * const me, QEvt const * const e) {
                 SEGGER_SYSVIEW_SampleData(&_hall_data);
             }
             #endif
-            if (new_state != last_state && is_valid_state(&new_state)) {
+            if (new_state != last_state && is_valid_state(new_state)) {
                 // 检查方向并更新旋转计数
-                if (is_valid_state(&last_state)) {
-                    global_valve_value->total_ticks += check_direction(&last_state, &new_state);
+                if (is_valid_state(last_state)) {
+                    global_valve_value->total_ticks += check_direction(last_state, new_state);
             #ifdef DEBUG
                     SEGGER_SYSVIEW_SampleData(&_val_tick);
                     first_load = false;

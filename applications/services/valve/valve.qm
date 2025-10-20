@@ -124,10 +124,10 @@ if (first_load) {
     SEGGER_SYSVIEW_SampleData(&amp;_hall_data);
 }
 #endif
-if (new_state != last_state &amp;&amp; is_valid_state(&amp;new_state)) {
+if (new_state != last_state &amp;&amp; is_valid_state(new_state)) {
     // 检查方向并更新旋转计数
-    if (is_valid_state(&amp;last_state)) {
-        global_valve_value-&gt;total_ticks += check_direction(&amp;last_state, &amp;new_state);
+    if (is_valid_state(last_state)) {
+        global_valve_value-&gt;total_ticks += check_direction(last_state, new_state);
 #ifdef DEBUG
         SEGGER_SYSVIEW_SampleData(&amp;_val_tick);
         first_load = false;
@@ -1061,7 +1061,7 @@ ValveVal*           global_valve_value = &amp;global_valve_store.val;
 ValvePersistRequest persist_request;
 cmd_config_t        global_config = {
            .flag  = FLAG_VAILD,
-           .tick  = 12,             // 默认旋转阈值
+           .tick  = 60,             // 默认旋转阈值
            .dir   = -1,             // 默认方向，逆时针
            .model = &quot;default_model&quot; // 默认模型名称
 };
