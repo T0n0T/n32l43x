@@ -484,7 +484,7 @@ void wakeup_init(wakeup_handle_func h)
 
     GPIO_InitStructure.Pin       = GPIO_PIN_1;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Input;
-    GPIO_InitStructure.GPIO_Pull = GPIO_Pull_Up;
+    GPIO_InitStructure.GPIO_Pull = GPIO_No_Pull;
     GPIO_InitPeripheral(GPIOB, &GPIO_InitStructure);
     GPIO_ConfigEXTILine(GPIOB_PORT_SOURCE, GPIO_PIN_SOURCE1);
 
@@ -496,7 +496,7 @@ void wakeup_init(wakeup_handle_func h)
     /*Configure key EXTI line*/
     EXTI_InitStructure.EXTI_Line    = EXTI_LINE1;
     EXTI_InitStructure.EXTI_Mode    = EXTI_Mode_Interrupt;
-    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_InitPeripheral(&EXTI_InitStructure);
 

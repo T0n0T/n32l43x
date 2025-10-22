@@ -137,12 +137,12 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
     GPIO_InitStruct(&GPIO_InitStructure);
     RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOA | RCC_APB2_PERIPH_AFIO, ENABLE);
 
-    GPIO_InitStructure.Pin       = GPIO_PIN_1;
+    GPIO_InitStructure.Pin       = GPIO_PIN_2;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Pull = GPIO_No_Pull;
     GPIO_InitPeripheral(GPIOA, &GPIO_InitStructure);
 
-    GPIO_InitStructure.Pin       = GPIO_PIN_2;
+    GPIO_InitStructure.Pin       = GPIO_PIN_3;
     GPIO_InitPeripheral(GPIOA, &GPIO_InitStructure);
     static QMTranActTable const tatbl_ = { // tran-action table
         &ValveHandler_Idle_s, // target state
@@ -201,7 +201,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
     switch (e->sig) {
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_LOCK}
         case VALVE_LOCK_SIG: {
-            QTimeEvt_rearm(&me->exitEvt, MS_TO_TICK(2000));
+            QTimeEvt_rearm(&me->exitEvt, MS_TO_TICK(5000));
             status_ = QM_HANDLED();
             break;
         }
@@ -209,13 +209,14 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         case VALVE_UPDATE_SIG: {
             eMBMasterReqReadHoldingRegister(APP_MODBUS_SLAVE_ID, 0x0, 1, -1);
             atmosphere_pressure = 1.6f * usMRegHoldBuf[APP_MODBUS_SLAVE_ID - 1][0] / 2000.0f;
-            printf("atmosphere_pressure: %f\n", atmosphere_pressure);
-            if (atmosphere_pressure) {
-                GPIO_SetBits(GPIOA, GPIO_PIN_1);
-                GPIO_ResetBits(GPIOA, GPIO_PIN_2);
-            } else {
+            if (atmosphere_pressure > 0.15) {
                 GPIO_SetBits(GPIOA, GPIO_PIN_2);
-                GPIO_ResetBits(GPIOA, GPIO_PIN_1);
+                GPIO_ResetBits(GPIOA, GPIO_PIN_3);
+                printf("atmosphere_pressure ok\r\n");
+            } else {
+                GPIO_SetBits(GPIOA, GPIO_PIN_3);
+                GPIO_ResetBits(GPIOA, GPIO_PIN_2);
+                printf("atmosphere_pressure waiting\r\n");
             }
             status_ = QM_HANDLED();
             break;

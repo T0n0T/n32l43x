@@ -11,14 +11,14 @@
 #endif
 
 /* Use for sleep judgement */
-volatile uint32_t Wake_source;
 volatile uint32_t Sleep_bits;
 volatile bool     run_is_reporting;
 volatile bool     pvd_is_power_low;
 volatile bool     transfer_is_error;
 static QEvt       _lock_evt;
 static QEvt       _update_evt;
-static uint32_t   exiting;
+static uint32_t   exiting    = false;
+static uint32_t   exit_count = 0;
 
 /* Assertion handler  ======================================================*/
 Q_NORETURN Q_onAssert(char const* module, int_t id)
@@ -67,18 +67,18 @@ void SysTick_Handler(void)
 
 static void wakeup_handle(uint8_t source, uint8_t bit)
 {
-    if (bit == Bit_SET) {
-        guard_sleep();
-        QEvt_ctor(&_lock_evt, VALVE_LOCK_SIG);
-        QACTIVE_PUBLISH(&_lock_evt, 0);
-    } else {
-        QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
-        QACTIVE_PUBLISH(&_lock_evt, 0);
-        guard_wakeup();
+    APP_LOG_DEBUG("wakeup_handle: source = %d, bit = %d", source, bit);
+    if (source == WAKE_SRC_RFID) {
+        if (bit == Bit_SET) {
+            exit_count = 0;
+            exiting    = false;
+        }
     }
-    if ((source == WAKE_SRC_KEY && bit == Bit_RESET) || (source == WAKE_SRC_RFID && bit == Bit_RESET)) {
-        Wake_source |= source;
-        APP_LOG_INFO("wakeup source: %d", source);
+    if (source == WAKE_SRC_KEY) {
+        if (bit == Bit_RESET) {
+            exit_count = 0;
+            exiting    = false;
+        }
     }
 }
 
@@ -99,15 +99,13 @@ static void lptimer_handle(void)
         QEvt_ctor(&_update_evt, VALVE_UPDATE_SIG);
         QACTIVE_POST(AO_ValveHandler, &_update_evt, 0);
     }
-    if ((Wake_source & WAKE_SRC_KEY) && (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == Bit_SET)) {
-        Wake_source &= ~WAKE_SRC_KEY;
-        APP_LOG_INFO("Exit from key!");
+    if ((GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == Bit_SET) && GPIO_ReadInputDataBit(GPIOB, GPIO_PIN_1) == Bit_RESET) {
+        exit_count++;
+        APP_LOG_INFO("Exiting! count = %d!", exit_count);
+    } else {
+        exit_count = 0;
     }
-    if ((Wake_source & WAKE_SRC_RFID) && (GPIO_ReadInputDataBit(GPIOB, GPIO_PIN_1) == Bit_RESET)) {
-        Wake_source &= ~WAKE_SRC_RFID;
-        APP_LOG_INFO("Exit from rfid!");
-    }
-    if (!Wake_source && !exiting) {
+    if (exit_count >= (LPTIM_EXIT_THRESHOLD_MS / LPTIM_INTERVAL_MS) && !exiting) {
         QEvt_ctor(&_lock_evt, VALVE_LOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
         exiting = true;
@@ -129,9 +127,7 @@ void QV_onIdle(void)
         // SystemCoreClockUpdate();
         APP_LOG_INFO("EXIT!");
         GPIO_ResetBits(GPIOB, GPIO_PIN_9);
-        // while (1) {
-        
-        // }
+        while (1);
         // PWR_EnterSTANDBYMode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM2RET);
     } else {
         /* NOTE: should not use SLEEPONEXIT mode, it will cause qv sheduling blocked
@@ -183,14 +179,14 @@ void BSP_start(void)
                   Q_DIM(valveHandlerQueueSto),
                   (void*)0, 0U,
                   (void*)0);
-    ValvePersist_ctor();
-    static QEvtPtr valvePersistQueueSto[16];
-    QActive_start(AO_ValvePersist,
-                  3U,
-                  valvePersistQueueSto,
-                  Q_DIM(valvePersistQueueSto),
-                  (void*)0, 0U,
-                  (void*)0);
+    // ValvePersist_ctor();
+    // static QEvtPtr valvePersistQueueSto[16];
+    // QActive_start(AO_ValvePersist,
+    //               3U,
+    //               valvePersistQueueSto,
+    //               Q_DIM(valvePersistQueueSto),
+    //               (void*)0, 0U,
+    //               (void*)0);
     static QEvtPtr valveConfQueueSto[16];
     ValveConf_ctor();
     QActive_start(AO_ValveConf,
@@ -199,14 +195,14 @@ void BSP_start(void)
                   Q_DIM(valveConfQueueSto),
                   (void*)0, 0U,
                   (void*)0);
-    static QEvtPtr valveTransferQueueSto[16];
-    ValveTransfer_ctor();
-    QActive_start(AO_ValveTransfer,
-                  1U,
-                  valveTransferQueueSto,
-                  Q_DIM(valveTransferQueueSto),
-                  (void*)0, 0U,
-                  (void*)0);
+    // static QEvtPtr valveTransferQueueSto[16];
+    // ValveTransfer_ctor();
+    // QActive_start(AO_ValveTransfer,
+    //               1U,
+    //               valveTransferQueueSto,
+    //               Q_DIM(valveTransferQueueSto),
+    //               (void*)0, 0U,
+    //               (void*)0);
 }
 
 /*..........................................................................*/
@@ -232,14 +228,14 @@ void QF_onStartup(void)
     // rtc_init();
     wakeup_init(wakeup_handle);
     SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
-    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == Bit_RESET) {
-        Wake_source |= WAKE_SRC_KEY;
-        APP_LOG_DEBUG("key wakeup");
-    }
-    if (GPIO_ReadInputDataBit(GPIOB, GPIO_PIN_1) == Bit_SET) {
-        Wake_source |= WAKE_SRC_RFID;
-        APP_LOG_DEBUG("rifd wakeup");
-    }
+    // if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == Bit_RESET) {
+    //     Wake_source |= WAKE_SRC_KEY;
+    //     APP_LOG_DEBUG("key wakeup");
+    // }
+    // if (GPIO_ReadInputDataBit(GPIOB, GPIO_PIN_1) == Bit_SET) {
+    //     Wake_source |= WAKE_SRC_RFID;
+    //     APP_LOG_DEBUG("rifd wakeup");
+    // }
     pvd_init(pvd_handle);
     lptimer_init();
     lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);

@@ -90,12 +90,12 @@ GPIO_InitType GPIO_InitStructure;
 GPIO_InitStruct(&amp;GPIO_InitStructure);
 RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOA | RCC_APB2_PERIPH_AFIO, ENABLE);
 
-GPIO_InitStructure.Pin       = GPIO_PIN_1;
+GPIO_InitStructure.Pin       = GPIO_PIN_2;
 GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 GPIO_InitStructure.GPIO_Pull = GPIO_No_Pull;
 GPIO_InitPeripheral(GPIOA, &amp;GPIO_InitStructure);
 
-GPIO_InitStructure.Pin       = GPIO_PIN_2;
+GPIO_InitStructure.Pin       = GPIO_PIN_3;
 GPIO_InitPeripheral(GPIOA, &amp;GPIO_InitStructure);</action>
      <initial_glyph conn="18,12,5,1,62,7,-3">
       <action box="0,-2,10,2"/>
@@ -125,7 +125,7 @@ QTimeEvt_disarm(&amp;me-&gt;exitEvt);</action>
      </tran>
      <state name="Handle">
       <tran trig="VALVE_LOCK">
-       <action>QTimeEvt_rearm(&amp;me-&gt;exitEvt, MS_TO_TICK(2000));</action>
+       <action>QTimeEvt_rearm(&amp;me-&gt;exitEvt, MS_TO_TICK(5000));</action>
        <tran_glyph conn="24,52,3,-1,14">
         <action box="0,-2,10,2"/>
        </tran_glyph>
@@ -133,13 +133,14 @@ QTimeEvt_disarm(&amp;me-&gt;exitEvt);</action>
       <tran trig="VALVE_UPDATE">
        <action brief="handle data write flash action and lcd refresh">eMBMasterReqReadHoldingRegister(APP_MODBUS_SLAVE_ID, 0x0, 1, -1);
 atmosphere_pressure = 1.6f * usMRegHoldBuf[APP_MODBUS_SLAVE_ID - 1][0] / 2000.0f;
-printf(&quot;atmosphere_pressure: %f\n&quot;, atmosphere_pressure);
-if (atmosphere_pressure) {
-    GPIO_SetBits(GPIOA, GPIO_PIN_1);
-    GPIO_ResetBits(GPIOA, GPIO_PIN_2);
-} else {
+if (atmosphere_pressure &gt; 0.15) {
     GPIO_SetBits(GPIOA, GPIO_PIN_2);
-    GPIO_ResetBits(GPIOA, GPIO_PIN_1);
+    GPIO_ResetBits(GPIOA, GPIO_PIN_3);
+    printf(&quot;atmosphere_pressure ok\r\n&quot;);
+} else {
+    GPIO_SetBits(GPIOA, GPIO_PIN_3);
+    GPIO_ResetBits(GPIOA, GPIO_PIN_2);
+    printf(&quot;atmosphere_pressure waiting\r\n&quot;);
 }</action>
        <tran_glyph conn="24,34,3,-1,14">
         <action box="0,-2,13,2"/>
