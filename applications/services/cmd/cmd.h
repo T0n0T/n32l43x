@@ -3,6 +3,8 @@
 
 #include "cmd_impl.h" // 包含cmd_impl.h
 
+#define CMD_DEVICE_NAME      "AirPressure-CYG\0"
+
 #define USART_CMD            USART2
 #define USART_CMD_IRQn       USART2_IRQn
 #define USART_CMD_IRQHandler USART2_IRQHandler
@@ -40,6 +42,7 @@ typedef struct {
 
 void cmd_init(void);
 void cmd_deinit(void);
+void cmd_set_name(void);
 void cmd_execute(char* input);
 void cmd_dma_transmit(const uint8_t* data, uint16_t len);
 
