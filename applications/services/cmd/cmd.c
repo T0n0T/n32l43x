@@ -6,11 +6,13 @@
 #include "valve.h"
 #include "log.h"
 
+static QEvt              _cmd_evt_prepare;
 static ValveEvt          _cmd_evt;
 static uint8_t           _cmd_buf_rx[CMD_BUF_LEN];
 static uint8_t           _cmd_buf_tx[CMD_BUF_LEN * 2];
 static uint8_t           _cmd_start_match_pos;
 static bool              _cmd_start_string_received;
+static bool              _cmd_set_name;
 static volatile uint16_t _cmd_len; // Change to uint16_t for length
 static const command_t   commands[]       = CMD_DEFINE_LIST;
 static const char*       CMD_START_STRING = "Start";
@@ -32,14 +34,31 @@ void USART_CMD_IRQHandler(void)
                     if (_cmd_start_match_pos == strlen(CMD_START_STRING)) {
                         APP_LOG_DEBUG("Start CMD");
                         _cmd_start_string_received = true;
-                        _cmd_start_match_pos       = 0; // Reset for next potential "Start" if needed
-                        break;                          // Found "Start", no need to check further in this packet
+                        _cmd_start_match_pos       = 0;
+                        QEvt_ctor(&_cmd_evt_prepare, VALVE_CMD_PREPARE_SIG);
+                        QACTIVE_POST(AO_ValveConf, &_cmd_evt_prepare, 0U);
+                        break;
                     }
                 } else {
                     _cmd_start_match_pos = 0; // Reset if mismatch
                 }
             }
+        } else if (!_cmd_set_name) {
+            for (uint16_t i = 0; i < _cmd_len; i++) {
+                if (_cmd_buf_rx[i] == CMD_DEVICE_NAME[_cmd_start_match_pos]) {
+                    _cmd_start_match_pos++;
+                    if (_cmd_start_match_pos == strlen(CMD_DEVICE_NAME)) {
+                        APP_LOG_DEBUG("Set Device Name OK");
+                        _cmd_set_name              = true;
+                        _cmd_start_match_pos       = 0;
+                        break;
+            }
         } else {
+                    _cmd_start_match_pos = 0; // Reset if mismatch
+                }
+            }
+        }
+        else {
             // Process the received command
             // Assuming command ends with '\n'
             if (_cmd_len > 0 && _cmd_buf_rx[_cmd_len - 1] == '\n') {
@@ -97,6 +116,7 @@ void cmd_init(void)
     _cmd_len                   = 0;     // Initialize command buffer length
     _cmd_start_match_pos       = 0;     // Initialize Start string match position
     _cmd_start_string_received = false; // Initialize Start string received flag
+    _cmd_set_name              = false; // Initialize Device Name set flag
 
     QEvt_ctor(&_cmd_evt.super, VALVE_CMD_PARSE_SIG);
     _cmd_evt.msg     = _cmd_buf_rx; // 设置消息指针指向命令缓冲区
@@ -105,6 +125,7 @@ void cmd_init(void)
     if (RCC_GetFlagStatus(RCC_CTRLSTS_FLAG_SFTRSTF) == SET && cmd_module_already_on) {
         APP_LOG_DEBUG("System is reboot from software ...");
         _cmd_start_string_received = true;
+        _cmd_set_name              = true;
     }
 }
 
@@ -112,6 +133,7 @@ void cmd_deinit(void)
 {
     BLE_PWR_LOW;
     _cmd_start_string_received = false;
+    _cmd_set_name              = false;
     cmd_module_already_on      = false;
     _cmd_start_match_pos       = 0;
     DMA_EnableChannel(USART_CMD_DMA_RX, DISABLE);
@@ -213,4 +235,14 @@ int cmd_ping(int argc, char** argv)
 
     APP_LOG_DEBUG("Pong!");
     return 0;
+}
+
+void cmd_set_name(void)
+{
+    static char name[32];
+    snprintf(name, sizeof(name), "AT+NAME%s%c\r\n", CMD_DEVICE_NAME, '\0');
+    APP_LOG_DEBUG("Device name set to: %s", CMD_DEVICE_NAME);
+
+    // 发送设置名称命令
+    cmd_dma_transmit((const uint8_t*)name, strlen(name));
 }

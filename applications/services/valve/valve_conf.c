@@ -168,6 +168,12 @@ static QState ValveConf_Active(ValveConf * const me, QEvt const * const e) {
             status_ = QM_HANDLED();
             break;
         }
+        //${AOs::ValveConf::SM::Active::VALVE_CMD_PREPARE}
+        case VALVE_CMD_PREPARE_SIG: {
+            cmd_set_name();
+            status_ = QM_HANDLED();
+            break;
+        }
         default: {
             status_ = QM_SUPER();
             break;

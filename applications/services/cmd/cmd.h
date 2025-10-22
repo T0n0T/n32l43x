@@ -3,6 +3,8 @@
 
 #include "cmd_impl.h" // 包含cmd_impl.h
 
+#define CMD_DEVICE_NAME      "ChannelLock-CYG"
+
 #define USART_CMD            USART2
 #define USART_CMD_IRQn       USART2_IRQn
 #define USART_CMD_IRQHandler USART2_IRQHandler
@@ -24,6 +26,7 @@
     {"reboot", cmd_reboot, 0},                     \
     {"update", cmd_update, 0},                     \
     {"valve_info", cmd_valve_info, 1},             \
+    {"valve_tuning", cmd_valve_tuning, 1},         \
 }
 
 extern bool cmd_module_already_on;
@@ -40,6 +43,7 @@ typedef struct {
 
 void cmd_init(void);
 void cmd_deinit(void);
+void cmd_set_name(void);
 void cmd_execute(char* input);
 void cmd_dma_transmit(const uint8_t* data, uint16_t len);
 

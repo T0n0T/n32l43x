@@ -10,6 +10,7 @@
     VALVE_DAILY_SIG,
     VALVE_UPDATE_SIG,
     VALVE_EXIT_SIG,
+    VALVE_CMD_PREPARE_SIG,
     VALVE_CMD_PARSE_SIG,
     VALVE_REFACTORY_SIG,
     VALVE_CONFIG_WRITE_SIG,
@@ -246,6 +247,12 @@ if (evt-&gt;evtType == VALVE_CMD) {
 }</action>
       <tran_glyph conn="20,44,3,-1,13">
        <action box="0,-2,17,2"/>
+      </tran_glyph>
+     </tran>
+     <tran trig="VALVE_CMD_PREPARE">
+      <action>cmd_set_name();</action>
+      <tran_glyph conn="20,46,3,-1,13">
+       <action box="0,-2,10,2"/>
       </tran_glyph>
      </tran>
      <state_glyph node="20,34,18,19">
