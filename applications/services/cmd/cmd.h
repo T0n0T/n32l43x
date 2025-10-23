@@ -25,8 +25,6 @@
     {"ping", cmd_ping, 0},                         \
     {"reboot", cmd_reboot, 0},                     \
     {"update", cmd_update, 0},                     \
-    {"valve_info", cmd_valve_info, 1},             \
-    {"valve_tuning", cmd_valve_tuning, 1},         \
 }
 
 extern bool cmd_module_already_on;
@@ -53,7 +51,5 @@ CMD_DEFINE(config_read)
 CMD_DEFINE(ping)
 CMD_DEFINE(reboot)
 CMD_DEFINE(update)
-CMD_DEFINE(valve_info)
-CMD_DEFINE(valve_tuning)
 
 #endif // __CMD_H__
