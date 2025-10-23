@@ -49,12 +49,13 @@
 ValvePersistRequest persist_request;
 cmd_config_t        global_config = {
            .flag  = FLAG_VAILD,
-           .model = "default_model" // 默认模型名称
+           .model = "default_model", // 默认模型名称
+           .pressure = 0.15f
 };
-uint8_t          global_valve_status;
-static uint8_t   last_valve_status;
-static float     atmosphere_pressure;
-static ValveEvt  evt;
+uint8_t         global_valve_status;
+static uint8_t  last_valve_status;
+static float    atmosphere_pressure;
+static ValveEvt evt;
 
 static EvtHandle update_handle;
 
@@ -62,10 +63,10 @@ static EvtHandle update_handle;
 
 //${AOs::ValveHandler} .......................................................
 typedef struct ValveHandler {
-// protected:
+    // protected:
     QMActive super;
 
-// public:
+    // public:
     QTimeEvt timeEvt;
     QTimeEvt exitEvt;
     QTimeEvt persistEvt;
@@ -74,8 +75,8 @@ typedef struct ValveHandler {
 extern ValveHandler ValveHandler_inst;
 
 // protected:
-static QState ValveHandler_initial(ValveHandler * const me, void const * const par);
-static QState ValveHandler_Idle  (ValveHandler * const me, QEvt const * const e);
+static QState        ValveHandler_initial(ValveHandler* const me, void const* const par);
+static QState        ValveHandler_Idle(ValveHandler* const me, QEvt const* const e);
 static QMState const ValveHandler_Idle_s = {
     QM_STATE_NULL, // superstate (top)
     Q_STATE_CAST(&ValveHandler_Idle),
@@ -83,7 +84,7 @@ static QMState const ValveHandler_Idle_s = {
     Q_ACTION_NULL, // no exit action
     Q_ACTION_NULL  // no initial tran.
 };
-static QState ValveHandler_Handle  (ValveHandler * const me, QEvt const * const e);
+static QState        ValveHandler_Handle(ValveHandler* const me, QEvt const* const e);
 static QMState const ValveHandler_Handle_s = {
     &ValveHandler_Idle_s, // superstate
     Q_STATE_CAST(&ValveHandler_Handle),
@@ -95,20 +96,21 @@ static QMState const ValveHandler_Handle_s = {
 
 //$skip${QP_VERSION} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 // Check for the minimum required QP version
-#if (QP_VERSION < 730U) || (QP_VERSION != ((QP_RELEASE^4294967295U)%0x2710U))
+#if (QP_VERSION < 730U) || (QP_VERSION != ((QP_RELEASE ^ 4294967295U) % 0x2710U))
 #error qpc version 7.3.0 or higher required
 #endif
 //$endskip${QP_VERSION} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$define${AOs::AO_ValveHandler} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 //${AOs::AO_ValveHandler} ....................................................
-QActive * const AO_ValveHandler = (QActive* const)&ValveHandler_inst.super;
+QActive* const AO_ValveHandler = (QActive* const)&ValveHandler_inst.super;
 //$enddef${AOs::AO_ValveHandler} ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //$define${AOs::ValveHandler_ctor} vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 //${AOs::ValveHandler_ctor} ..................................................
-void ValveHandler_ctor(void) {
-    ValveHandler * const me = &ValveHandler_inst;
+void ValveHandler_ctor(void)
+{
+    ValveHandler* const me = &ValveHandler_inst;
     QMActive_ctor(&me->super, Q_STATE_CAST(&ValveHandler_initial));
     QTimeEvt_ctorX(&me->timeEvt, (QActive*)me, TIMEOUT_SIG, 0U);
     QTimeEvt_ctorX(&me->persistEvt, (QActive*)me, VALVE_PERSIST_SIG, 0U);
@@ -121,7 +123,8 @@ void ValveHandler_ctor(void) {
 ValveHandler ValveHandler_inst;
 
 //${AOs::ValveHandler::SM} ...................................................
-static QState ValveHandler_initial(ValveHandler * const me, void const * const par) {
+static QState ValveHandler_initial(ValveHandler* const me, void const* const par)
+{
     //${AOs::ValveHandler::SM::initial}
     QActive_subscribe((QActive*)me, VALVE_LOCK_SIG);
     QActive_subscribe((QActive*)me, VALVE_UNLOCK_SIG);
@@ -142,20 +145,20 @@ static QState ValveHandler_initial(ValveHandler * const me, void const * const p
     GPIO_InitStructure.GPIO_Pull = GPIO_No_Pull;
     GPIO_InitPeripheral(GPIOA, &GPIO_InitStructure);
 
-    GPIO_InitStructure.Pin       = GPIO_PIN_3;
+    GPIO_InitStructure.Pin = GPIO_PIN_3;
     GPIO_InitPeripheral(GPIOA, &GPIO_InitStructure);
-    static QMTranActTable const tatbl_ = { // tran-action table
-        &ValveHandler_Idle_s, // target state
-        {
-            Q_ACTION_NULL // zero terminator
-        }
-    };
+    static QMTranActTable const tatbl_ = {                      // tran-action table
+                                          &ValveHandler_Idle_s, // target state
+                                          {
+                                              Q_ACTION_NULL // zero terminator
+                                          }};
     return QM_TRAN_INIT(&tatbl_);
 }
 
 //${AOs::ValveHandler::SM::Idle} .............................................
 //${AOs::ValveHandler::SM::Idle}
-static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
+static QState ValveHandler_Idle(ValveHandler* const me, QEvt const* const e)
+{
     QState status_;
     switch (e->sig) {
         //${AOs::ValveHandler::SM::Idle::VALVE_UNLOCK}
@@ -165,13 +168,12 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
             sFLASH_Init();
             QF_CRIT_EXIT();
             QTimeEvt_disarm(&me->exitEvt);
-            static QMTranActTable const tatbl_ = { // tran-action table
-                &ValveHandler_Handle_s, // target state
-                {
-                    Q_ACTION_NULL // zero terminator
-                }
-            };
-            status_ = QM_TRAN(&tatbl_);
+            static QMTranActTable const tatbl_ = {                        // tran-action table
+                                                  &ValveHandler_Handle_s, // target state
+                                                  {
+                                                      Q_ACTION_NULL // zero terminator
+                                                  }};
+            status_                            = QM_TRAN(&tatbl_);
             break;
         }
         //${AOs::ValveHandler::SM::Idle::TIMEOUT}
@@ -196,7 +198,8 @@ static QState ValveHandler_Idle(ValveHandler * const me, QEvt const * const e) {
 
 //${AOs::ValveHandler::SM::Idle::Handle} .....................................
 //${AOs::ValveHandler::SM::Idle::Handle}
-static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e) {
+static QState ValveHandler_Handle(ValveHandler* const me, QEvt const* const e)
+{
     QState status_;
     switch (e->sig) {
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_LOCK}
@@ -209,7 +212,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         case VALVE_UPDATE_SIG: {
             eMBMasterReqReadHoldingRegister(APP_MODBUS_SLAVE_ID, 0x0, 1, -1);
             atmosphere_pressure = 1.6f * usMRegHoldBuf[APP_MODBUS_SLAVE_ID - 1][0] / 2000.0f;
-            if (atmosphere_pressure > 0.15) {
+            if (atmosphere_pressure > global_config.pressure) {
                 GPIO_SetBits(GPIOA, GPIO_PIN_2);
                 GPIO_ResetBits(GPIOA, GPIO_PIN_3);
                 printf("atmosphere_pressure ok\r\n");
@@ -218,13 +221,16 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
                 GPIO_ResetBits(GPIOA, GPIO_PIN_2);
                 printf("atmosphere_pressure waiting\r\n");
             }
+            if (update_handle != NULL) {
+                update_handle((void*)usMRegHoldBuf[APP_MODBUS_SLAVE_ID - 1][0]);
+            }
             status_ = QM_HANDLED();
             break;
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_CONFIG_WRITE}
         case VALVE_CONFIG_WRITE_SIG: {
-            ValveEvt const *ve = (ValveEvt const *)e;
-            if (ve->evtType == VALVE_CMD){
+            ValveEvt const* ve = (ValveEvt const*)e;
+            if (ve->evtType == VALVE_CMD) {
                 memcpy(&global_config, ve->msg, sizeof(cmd_config_t));
                 QF_CRIT_ENTRY();
                 sFLASH_EraseSector(CONF_ADDR_EXFLASH);
@@ -250,13 +256,12 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
             sFLASH_DeInit();
             QF_CRIT_EXIT();
             Sleep_release(HANDLER_BIT);
-            static QMTranActTable const tatbl_ = { // tran-action table
-                &ValveHandler_Idle_s, // target state
-                {
-                    Q_ACTION_NULL // zero terminator
-                }
-            };
-            status_ = QM_TRAN(&tatbl_);
+            static QMTranActTable const tatbl_ = {                      // tran-action table
+                                                  &ValveHandler_Idle_s, // target state
+                                                  {
+                                                      Q_ACTION_NULL // zero terminator
+                                                  }};
+            status_                            = QM_TRAN(&tatbl_);
             break;
         }
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_INFO_READ}
@@ -268,7 +273,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
                     update_handle = ve->handle;
                     QEvt_ctor(&evt.super, VALVE_UPDATE_SIG);
                     QACTIVE_POST(AO_ValveHandler, &evt.super, 0U);
-                }else{
+                } else {
                     update_handle = NULL;
                 }
             }
@@ -278,9 +283,9 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_PERSIST}
         case VALVE_PERSIST_SIG: {
             if (global_valve_status != last_valve_status) {
-            #ifdef USE_LORAWAN
+#ifdef USE_LORAWAN
                 at_lorawan_event_post();
-            #endif
+#endif
                 last_valve_status = global_valve_status;
             }
             status_ = QM_HANDLED();

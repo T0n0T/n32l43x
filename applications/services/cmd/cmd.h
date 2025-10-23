@@ -3,7 +3,7 @@
 
 #include "cmd_impl.h" // 包含cmd_impl.h
 
-#define CMD_DEVICE_NAME      "AirPressure-CYG\0"
+#define CMD_DEVICE_NAME      "AirPressure-CYG"
 
 #define USART_CMD            USART2
 #define USART_CMD_IRQn       USART2_IRQn
@@ -25,7 +25,7 @@
     {"ping", cmd_ping, 0},                         \
     {"reboot", cmd_reboot, 0},                     \
     {"update", cmd_update, 0},                     \
-    {"valve_info", cmd_valve_info, 1},             \
+    {"airpessure_info", cmd_airpessure_info, 1},   \
 }
 
 extern bool cmd_module_already_on;
@@ -52,7 +52,6 @@ CMD_DEFINE(config_read)
 CMD_DEFINE(ping)
 CMD_DEFINE(reboot)
 CMD_DEFINE(update)
-CMD_DEFINE(valve_info)
-CMD_DEFINE(valve_tuning)
+CMD_DEFINE(airpessure_info)
 
 #endif // __CMD_H__

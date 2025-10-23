@@ -38,6 +38,14 @@ int cmd_config_decode(const char* json_string, cmd_config_t* config)
         return -1; // model不存在或类型不正确
     }
 
+    cJSON* pressure_item = cJSON_GetObjectItemCaseSensitive(root, "pressure");
+    if (cJSON_IsNumber(pressure_item)) {
+        config->pressure = pressure_item->valuedouble;
+    } else {
+        cJSON_Delete(root);
+        return -1; // pressure不存在或类型不正确
+    }
+        
     cJSON_Delete(root);
     return 0; // 成功
 }
@@ -51,7 +59,8 @@ char* cmd_config_encode(const cmd_config_t* config)
     }
 
     cJSON_AddStringToObject(root, "model", config->model);
-
+    cJSON_AddNumberToObject(root, "pressure", config->pressure);
+        
     char* json_string = cJSON_Print(root);
     cJSON_Delete(root);
     return json_string; // 调用者负责释放此字符串
@@ -61,14 +70,16 @@ void cmd_config_read_wrapper(void* msg)
 {
     cmd_config_t* config      = (cmd_config_t*)msg;
     char*         json_string = cmd_config_encode(config);
-    APP_LOG_DEBUG("read valve config");
+    APP_LOG_DEBUG("read airpessure_info config");
     if (json_string != NULL) {
+        __disable_irq();
         for (size_t i = 0; i < strlen(json_string); i++) {
             uart_putc(BLE, json_string[i]); // 逐字符发送JSON字符串
         }
         uart_putc(BLE, '\n'); // 发送换行符
         uart_putc(BLE, '\r'); // 发送回车符
-        free(json_string);           // 释放编码后的JSON字符串
+        __enable_irq();
+        free(json_string); // 释放编码后的JSON字符串
     } else {
         APP_LOG_ERROR("Error: Failed to encode command configuration.");
     }
@@ -128,14 +139,15 @@ int cmd_config_refactory(int argc, char** argv)
     return 0;
 }
 
-void cmd_valve_info_wrapper(void* msg)
+void cmd_airpessure_info_wrapper(void* msg)
 {
+    cmd_dma_transmit((uint8_t*)msg, sizeof(uint16_t));
 }
 
-int cmd_valve_info(int argc, char** argv)
+int cmd_airpessure_info(int argc, char** argv)
 {
     if (argc != 1) {
-        APP_LOG_ERROR("Usage: valve_info <0/1>");
+        APP_LOG_ERROR("Usage: airpessure_info <0/1>");
         return -1;
     }
 
@@ -146,7 +158,7 @@ int cmd_valve_info(int argc, char** argv)
     }
     APP_LOG_INFO("Valve info command received with is_enable: %d", is_enable);
     QEvt_ctor(&evt.super, VALVE_INFO_READ_SIG);
-    evt.handle  = cmd_valve_info_wrapper;
+    evt.handle  = cmd_airpessure_info_wrapper;
     evt.msg     = (void*)(intptr_t)is_enable; // 将is_enable转换为void*传递
     evt.evtType = VALVE_CMD;
 

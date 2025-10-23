@@ -240,7 +240,7 @@ int cmd_ping(int argc, char** argv)
 void cmd_set_name(void)
 {
     static char name[32];
-    snprintf(name, sizeof(name), "AT+NAME%s\r\n", CMD_DEVICE_NAME);
+    snprintf(name, sizeof(name), "AT+NAME%s%c\r\n", CMD_DEVICE_NAME, '\0');
     APP_LOG_DEBUG("Device name set to: %s", CMD_DEVICE_NAME);
 
     // 发送设置名称命令

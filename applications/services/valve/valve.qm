@@ -671,7 +671,8 @@ $define ${AOs::ValveConf}</text>
 ValvePersistRequest persist_request;
 cmd_config_t        global_config = {
            .flag  = FLAG_VAILD,
-           .model = &quot;default_model&quot; // 默认模型名称
+           .model = &quot;default_model&quot;, // 默认模型名称
+           .pressure = 0.15f
 };
 uint8_t          global_valve_status;
 static uint8_t   last_valve_status;

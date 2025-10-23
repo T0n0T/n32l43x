@@ -9,7 +9,7 @@
 typedef struct {
     uint32_t flag;
     char     model[64]; // 假设model的长度不超过63个字符
+    double   pressure;
 } cmd_config_t;
-
 
 #endif // __CMD_IMPL_H__
