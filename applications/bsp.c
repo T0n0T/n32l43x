@@ -72,6 +72,8 @@ static void wakeup_handle(uint8_t bit)
         QEvt_ctor(&_lock_evt, VALVE_LOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
     } else {
+        SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
+        SystemCoreClockUpdate();
         QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
         guard_wakeup();
@@ -103,7 +105,6 @@ void QV_onIdle(void)
         SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;
         PWR_EnterSTOP2Mode(PWR_STOPENTRY_WFI, PWR_CTRL3_RAM1RET | PWR_CTRL3_RAM2RET);
         SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
-        SetSysClockToPLL(SystemCoreClock, SYSCLK_PLLSRC_HSE_PLLDIV2);
         SystemCoreClockUpdate();
     } else {
         /* NOTE: should not use SLEEPONEXIT mode, it will cause qv sheduling blocked

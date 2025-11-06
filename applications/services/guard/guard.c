@@ -1,4 +1,5 @@
 #include "guard.h"
+#include "bsp.h"
 #include "lptimer.h"
 #include "log.h"
 #include <string.h>
@@ -129,11 +130,23 @@ void guard_process(void)
     }
     guard_atomic_pluse(&guard_ins.current_period);
     // 喂狗
+    WDT_GUARD_FEED;
 }
 
 int guard_init(void)
 {
     // 初始化看门狗
+    GPIO_InitType GPIO_InitStructure;
+    GPIO_InitStruct(&GPIO_InitStructure);
+
+    /* Enable the GPIO Clock */
+    RCC_EnableAPB2PeriphClk(WDT_GUARD_CLK, ENABLE);
+
+    /*Configure the GPIO pin as input floating*/
+    GPIO_InitStructure.Pin       = WDT_GUARD_PIN;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Pull = GPIO_No_Pull;
+    GPIO_InitPeripheral(WDT_GUARD_PORT, &GPIO_InitStructure);
     guard_ins.is_sleep = true;
     return 0;
 }

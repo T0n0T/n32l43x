@@ -43,8 +43,13 @@
 #define DEF_ISR_PRI       5
 #define TICK_RATE         1000
 #define LPTIM_INTERVAL_MS 1000
-#define LPTIM_REPORT_MS   60000
+#define LPTIM_REPORT_MS   20000
 #define MS_TO_TICK(ms)    ((ms) * TICK_RATE / 1000)
+
+#define WDT_GUARD_PORT    GPIOB
+#define WDT_GUARD_CLK     RCC_APB2_PERIPH_GPIOB
+#define WDT_GUARD_PIN     GPIO_PIN_9
+#define WDT_GUARD_FEED    WDT_GUARD_PORT->POD ^= WDT_GUARD_PIN
 
 #define BLE_PWR_PORT      GPIOB
 #define BLE_PWR_CLK       RCC_APB2_PERIPH_GPIOB
