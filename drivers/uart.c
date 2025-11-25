@@ -3,11 +3,11 @@
 static uart_t uarts[] = {
     {
         .tx_port     = GPIOC,
-        .rx_port     = GPIOC,
+        .rx_port     = GPIOB,
         .tx_pin      = GPIO_PIN_10,
-        .rx_pin      = GPIO_PIN_11,
+        .rx_pin      = GPIO_PIN_15,
         .tx_gpio_clk = RCC_APB2_PERIPH_GPIOC,
-        .rx_gpio_clk = RCC_APB2_PERIPH_GPIOC,
+        .rx_gpio_clk = RCC_APB2_PERIPH_GPIOB,
         .tx_af       = GPIO_AF6_UART4,
         .rx_af       = GPIO_AF6_UART4,
         .handle      = UART4,
