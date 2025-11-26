@@ -21,7 +21,8 @@ static uint8_t           _at_buf_rx[AT_BUF_LEN];
 static uint8_t           _at_buf_tx[AT_BUF_LEN * 2];
 static uint8_t           _at_start_match_pos;
 static bool              _at_start_string_received;
-static volatile uint32_t _at_len; // Change to uint16_t for length
+static volatile uint32_t _at_len;              // Change to uint16_t for length
+static char              send_expr_buffer[32]; // 最大长度为 238
 
 static QEvt _at_evt;
 
@@ -188,6 +189,7 @@ void at_lorawan_config_prepare(void)
     static const at_cmd_t at_lora_config_cmd[] = {
         {AT_CMD_NAME(AT_LORA_CMD_WAKE), "+++", "OK\r\n", 500, 3},
         // {AT_CMD_NAME(AT_LORA_CMD_SET_MOD), "AT+MOD=1\r\n", "OK\r\n", 500, 3},
+        {AT_CMD_NAME(AT_LORA_SEND_HEX), "AT+CFM=1\r\n", "OK\r\n", 500, 3},
         {AT_CMD_NAME(AT_LORA_CMD_SET_TDR), "AT+TDR=3\r\n", "OK\r\n", 500, 3},
         {AT_CMD_NAME(AT_LORA_CMD_SET_TPW), "AT+TPW=6\r\n", "OK\r\n", 500, 3},
         {AT_CMD_NAME(AT_LORA_CMD_SET_USC), "AT+USC=470500000\r\n", "OK\r\n", 500, 3},
@@ -207,25 +209,15 @@ void at_lorawan_config_prepare(void)
 
 void at_lorawan_send_prepare(char* payload)
 {
-    static at_cmd_t send_cmd = {
-        .cmd_desc      = "SEND_ASCII",
-        .cmd_expr      = NULL, // 将在下面动态分配
-        .resp_keyword  = "OK\r\n",
-        .timeout       = 500,
-        .retry         = 3,
-        .resp_callback = NULL,
-    };
-
-    // 使用栈分配的字符数组来存储 cmd_expr
-    static char cmd_expr_buffer[238]; // 最大长度为 238
-    send_cmd.cmd_expr = cmd_expr_buffer;
-
-    memset(cmd_expr_buffer, 0, sizeof(cmd_expr_buffer));
+    memset(send_expr_buffer, 0, sizeof(send_expr_buffer));
     // 构造完整的 AT 命令
-    snprintf(send_cmd.cmd_expr, sizeof(cmd_expr_buffer), "AT+TXH=21,%s\r\n", payload);
+    snprintf(send_expr_buffer, sizeof(send_expr_buffer), "AT+TXH=21,%s\r\n", payload);
 
+    static at_cmd_t send_cmd[] = {
+        {AT_CMD_NAME(AT_LORA_SEND_HEX), send_expr_buffer, "+ACK\r\n", 5000, 3},
+    };
     // 设置 FSM
-    at_fsm_request_list_set(&at_lora, &send_cmd, 1);
+    at_fsm_request_list_set(&at_lora, send_cmd, sizeof(send_cmd) / sizeof(send_cmd[0]));
 }
 
 void at_lorawan_event_post(void)

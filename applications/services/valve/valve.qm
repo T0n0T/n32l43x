@@ -676,7 +676,7 @@ eMBPoll();
         <action>char payload[64] = {0};
 snprintf(payload,
          sizeof(payload),
-         &quot;%x%x&quot;,
+         &quot;0%d%02x&quot;,
          global_valve_value-&gt;current_status,
          global_valve_value-&gt;total_ticks);
 at_lorawan_send_prepare(payload);</action>

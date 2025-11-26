@@ -204,7 +204,7 @@ static QState ValveTransfer_Prepare(ValveTransfer * const me, QEvt const * const
                 char payload[64] = {0};
                 snprintf(payload,
                          sizeof(payload),
-                         "%x%x",
+                         "0%d%02x",
                          global_valve_value->current_status,
                          global_valve_value->total_ticks);
                 at_lorawan_send_prepare(payload);
