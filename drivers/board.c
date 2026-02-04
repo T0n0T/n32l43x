@@ -499,7 +499,7 @@ void lock_status_init(lock_status_handle_func h_on, lock_status_handle_func h_of
 
     GPIO_InitStructure.Pin       = GPIO_PIN_0;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Input;
-    GPIO_InitStructure.GPIO_Pull = GPIO_Pull_Up;
+    GPIO_InitStructure.GPIO_Pull = GPIO_No_Pull;
     GPIO_InitPeripheral(GPIOC, &GPIO_InitStructure);
     GPIO_ConfigEXTILine(GPIOC_PORT_SOURCE, GPIO_PIN_SOURCE0);
 

@@ -67,7 +67,7 @@ void SysTick_Handler(void)
 
 static void wakeup_handle(uint8_t bit)
 {
-    if (bit == Bit_SET) {
+    if (bit == Bit_RESET) {
         guard_sleep();
         QEvt_ctor(&_lock_evt, VALVE_LOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
@@ -93,6 +93,7 @@ static void lock_off_handle(void)
     QEvt_ctor(&_lock_evt, VALVE_UPDATE_SIG);
     QACTIVE_POST(AO_ValveHandler, &_lock_evt, 0);
 }
+
 
 static void pvd_handle(void)
 {
@@ -223,17 +224,17 @@ void QF_onStartup(void)
     pvd_init(pvd_handle);
     lptimer_init();
     lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);
-    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == RESET) {
+    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
         cmd_module_already_on = true;
         QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
     }
-    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_0) == RESET) {
+    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_0) == SET) {
         global_valve_status = VALVE_STATUS_ON;
         QEvt_ctor(&_lock_evt, VALVE_UPDATE_SIG);
         QACTIVE_POST(AO_ValveHandler, &_lock_evt, 0);
     }
-    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_1) == RESET) {
+    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_1) == SET) {
         global_valve_status = VALVE_STATUS_OFF;
         QEvt_ctor(&_lock_evt, VALVE_UPDATE_SIG);
         QACTIVE_POST(AO_ValveHandler, &_lock_evt, 0);
