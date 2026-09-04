@@ -67,7 +67,7 @@ void SysTick_Handler(void)
 
 static void wakeup_handle(uint8_t bit)
 {
-    if (bit == Bit_RESET) {
+    if (bit == Bit_SET) {
         guard_sleep();
         QEvt_ctor(&_lock_evt, VALVE_LOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
@@ -214,7 +214,7 @@ void QF_onStartup(void)
     NVIC_SetPriority(EXTI15_10_IRQn, DEF_ISR_PRI - 2);
     SysTick_Config(RCC_ClockFreq.SysclkFreq / TICK_RATE);
     lptimer_start(LPTIMER_MS_TO_TICKS(LPTIM_INTERVAL_MS), lptimer_handle);
-    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == SET) {
+    if (GPIO_ReadInputDataBit(GPIOC, GPIO_PIN_13) == RESET) {
         cmd_module_already_on = true;
         QEvt_ctor(&_lock_evt, VALVE_UNLOCK_SIG);
         QACTIVE_PUBLISH(&_lock_evt, 0);
