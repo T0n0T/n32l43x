@@ -13,6 +13,8 @@
 #define USART_CMD_DMA_RX     DMA_CH6
 #define USART_CMD_DMA_RX_MAP DMA_REMAP_USART2_RX
 #define CMD_BUF_LEN          64U
+#define CMD_TX_BUF_LEN       (CMD_BUF_LEN * 2U)
+#define CMD_TX_QUEUE_SLOTS   8U /* One slot is reserved to distinguish full/empty. */
 
 #define CMD_OK               0xcafe
 #define CMD_ERR              0xdead
@@ -46,6 +48,9 @@ void cmd_deinit(void);
 void cmd_set_name(void);
 void cmd_execute(char* input);
 void cmd_dma_transmit(const uint8_t* data, uint16_t len);
+void cmd_async_begin(void);
+void cmd_async_complete(void);
+void cmd_valve_info_reset(void);
 
 CMD_DEFINE(config_refactory)
 CMD_DEFINE(config_write)

@@ -306,7 +306,7 @@ Sleep_release(HANDLER_BIT);</action>
       </tran>
       <tran trig="VALVE_INFO_READ">
        <action>ValveEvt const* ve = (ValveEvt const*)e;
-if (ve-&gt;handle != NULL &amp;&amp; ve-&gt;msg != NULL &amp;&amp; ve-&gt;evtType == VALVE_CMD) {
+if (ve-&gt;handle != NULL &amp;&amp; ve-&gt;evtType == VALVE_CMD) {
     int is_enable = (intptr_t)ve-&gt;msg;
     if (is_enable) {
         update_handle = ve-&gt;handle;

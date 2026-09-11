@@ -313,7 +313,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
         //${AOs::ValveHandler::SM::Idle::Handle::VALVE_INFO_READ}
         case VALVE_INFO_READ_SIG: {
             ValveEvt const* ve = (ValveEvt const*)e;
-            if (ve->handle != NULL && ve->msg != NULL && ve->evtType == VALVE_CMD) {
+            if (ve->handle != NULL && ve->evtType == VALVE_CMD) {
                 int is_enable = (intptr_t)ve->msg;
                 if (is_enable) {
                     update_handle = ve->handle;

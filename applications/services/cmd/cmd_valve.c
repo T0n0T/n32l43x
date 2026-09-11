@@ -18,8 +18,28 @@ json template:
 
 */
 
-static ValveEvt     evt;    // 使用静态事件
+/* The command gate prevents this event from being reused while it is queued. */
+static ValveEvt     evt;
 static cmd_config_t config; // 使用静态配置数据
+static volatile bool valve_info_response_pending;
+
+static void cmd_valve_info_set_pending(bool pending)
+{
+    QF_CRIT_ENTRY();
+    valve_info_response_pending = pending;
+    QF_CRIT_EXIT();
+}
+
+static bool cmd_valve_info_take_pending(void)
+{
+    bool pending;
+
+    QF_CRIT_ENTRY();
+    pending = valve_info_response_pending;
+    valve_info_response_pending = false;
+    QF_CRIT_EXIT();
+    return pending;
+}
 
 // 解码函数：将JSON字符串解析到cmd_config_t结构体中
 int cmd_config_decode(const char* json_string, cmd_config_t* config)
@@ -84,15 +104,25 @@ void cmd_config_read_wrapper(void* msg)
     char*         json_string = cmd_config_encode(config);
     APP_LOG_DEBUG("read valve config");
     if (json_string != NULL) {
-        for (size_t i = 0; i < strlen(json_string); i++) {
-            uart_putc(BLE, json_string[i]); // 逐字符发送JSON字符串
+        size_t  json_len = strlen(json_string);
+        uint8_t tx_buf[CMD_TX_BUF_LEN];
+
+        if (json_len > (CMD_TX_BUF_LEN - 2U)) {
+            APP_LOG_ERROR("Encoded valve config is too long: %u.", json_len);
+            free(json_string);
+            cmd_async_complete();
+            return;
         }
-        uart_putc(BLE, '\n'); // 发送换行符
-        uart_putc(BLE, '\r'); // 发送回车符
-        free(json_string);           // 释放编码后的JSON字符串
+
+        memcpy(tx_buf, json_string, json_len);
+        tx_buf[json_len]     = '\n';
+        tx_buf[json_len + 1] = '\r';
+        cmd_dma_transmit(tx_buf, (uint16_t)(json_len + 2U));
+        free(json_string);
     } else {
         APP_LOG_ERROR("Error: Failed to encode command configuration.");
     }
+    cmd_async_complete();
 }
 
 int cmd_config_write(int argc, char** argv)
@@ -113,11 +143,13 @@ int cmd_config_write(int argc, char** argv)
         return -1;
     }
     config.flag = FLAG_VAILD;
-    QEvt_ctor(&evt.super, VALVE_CONFIG_WRITE_SIG); // 初始化事件
-    evt.msg     = &config;                         // 将静态config数据指针赋给事件的msg字段
-    evt.evtType = VALVE_CMD;                       // 设置事件类型
+    QEvt_ctor(&evt.super, VALVE_CONFIG_WRITE_SIG);
+    evt.msg     = &config;
+    evt.evtType = VALVE_CMD;
 
-    QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
+    if (!QACTIVE_POST_X(AO_ValveHandler, &evt.super, 1U, 0U)) {
+        return -1;
+    }
 
     return 0;
 }
@@ -127,11 +159,15 @@ int cmd_config_read(int argc, char** argv)
     (void)argc; // 未使用参数
     (void)argv; // 未使用参数
 
+    cmd_async_begin();
     QEvt_ctor(&evt.super, VALVE_CONFIG_READ_SIG);
     evt.handle  = cmd_config_read_wrapper;
     evt.evtType = VALVE_CMD;
 
-    QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
+    if (!QACTIVE_POST_X(AO_ValveHandler, &evt.super, 1U, 0U)) {
+        cmd_async_complete();
+        return -1;
+    }
 
     return 0;
 }
@@ -145,13 +181,35 @@ int cmd_config_refactory(int argc, char** argv)
     QEvt_ctor(&evt.super, VALVE_REFACTORY_SIG);
     evt.evtType = VALVE_CMD;
 
-    QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
+    if (!QACTIVE_POST_X(AO_ValveHandler, &evt.super, 1U, 0U)) {
+        return -1;
+    }
     return 0;
 }
 
 void cmd_valve_info_wrapper(void* msg)
 {
     cmd_dma_transmit((uint8_t*)msg, sizeof(ValveVal));
+}
+
+static void cmd_valve_info_enable_wrapper(void* msg)
+{
+    cmd_valve_info_wrapper(msg);
+    if (cmd_valve_info_take_pending()) {
+        cmd_async_complete();
+    }
+}
+
+static void cmd_valve_info_disable_wrapper(void* msg)
+{
+    (void)msg;
+    cmd_valve_info_set_pending(false);
+    cmd_async_complete();
+}
+
+void cmd_valve_info_reset(void)
+{
+    cmd_valve_info_set_pending(false);
 }
 
 int cmd_valve_info(int argc, char** argv)
@@ -167,12 +225,18 @@ int cmd_valve_info(int argc, char** argv)
         return -1;
     }
     APP_LOG_INFO("Valve info command received with is_enable: %d", is_enable);
+    cmd_async_begin();
+    cmd_valve_info_set_pending(is_enable != 0);
     QEvt_ctor(&evt.super, VALVE_INFO_READ_SIG);
-    evt.handle  = cmd_valve_info_wrapper;
-    evt.msg     = (void*)(intptr_t)is_enable; // 将is_enable转换为void*传递
+    evt.handle  = is_enable ? cmd_valve_info_enable_wrapper : cmd_valve_info_disable_wrapper;
+    evt.msg     = (void*)(intptr_t)is_enable;
     evt.evtType = VALVE_CMD;
 
-    QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
+    if (!QACTIVE_POST_X(AO_ValveHandler, &evt.super, 1U, 0U)) {
+        cmd_valve_info_set_pending(false);
+        cmd_async_complete();
+        return -1;
+    }
     return 0;
 }
 
@@ -197,7 +261,9 @@ int cmd_valve_tuning(int argc, char** argv)
 
     evt.evtType = VALVE_CMD;
 
-    QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
+    if (!QACTIVE_POST_X(AO_ValveHandler, &evt.super, 1U, 0U)) {
+        return -1;
+    }
     return 0;
 }
 
@@ -208,7 +274,9 @@ int cmd_reboot(int argc, char** argv)
     APP_LOG_INFO("System is rebooting...");
     QEvt_ctor(&evt.super, VALVE_REBOOT_SIG);
     evt.evtType = VALVE_CMD;
-    QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
+    if (!QACTIVE_POST_X(AO_ValveHandler, &evt.super, 1U, 0U)) {
+        return -1;
+    }
     return 0;
 }
 
@@ -226,6 +294,8 @@ int cmd_update(int argc, char** argv)
     APP_LOG_INFO("Go to Boot...");
     QEvt_ctor(&evt.super, VALVE_REBOOT_SIG);
     evt.evtType = VALVE_CMD;
-    QACTIVE_POST(AO_ValveHandler, &evt.super, 1U);
+    if (!QACTIVE_POST_X(AO_ValveHandler, &evt.super, 1U, 0U)) {
+        return -1;
+    }
     return 0;
 }

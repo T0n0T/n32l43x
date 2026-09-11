@@ -189,6 +189,7 @@ void at_lorawan_config_prepare(void)
     static const at_cmd_t at_lora_config_cmd[] = {
         {AT_CMD_NAME(AT_LORA_CMD_WAKE), "+++", "OK\r\n", 500, 3},
         // {AT_CMD_NAME(AT_LORA_CMD_SET_MOD), "AT+MOD=1\r\n", "OK\r\n", 500, 3},
+        {AT_CMD_NAME(AT_LORA_CMD_EUI), "AT+NID?\r\n", "OK\r\n", 500, 3},
         {AT_CMD_NAME(AT_LORA_SEND_HEX), "AT+CFM=1\r\n", "OK\r\n", 500, 3},
         {AT_CMD_NAME(AT_LORA_CMD_SET_TDR), "AT+TDR=3\r\n", "OK\r\n", 500, 3},
         {AT_CMD_NAME(AT_LORA_CMD_SET_TPW), "AT+TPW=6\r\n", "OK\r\n", 500, 3},

@@ -7,6 +7,7 @@
 
 typedef enum at_lora_cmd_enum {
     AT_LORA_CMD_WAKE,
+    AT_LORA_CMD_EUI,
     AT_LORA_CMD_SET_MOD,
     AT_LORA_CMD_SET_TDR,
     AT_LORA_CMD_SET_TPW,
