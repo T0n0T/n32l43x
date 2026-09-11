@@ -4,6 +4,7 @@
 #include "led.h"
 #include "uart.h"
 #include "bootloader.h"
+#include "bootble.h"
 
 void run_led(void)
 {
@@ -35,7 +36,25 @@ void main(void)
     bootloader_systimer_init();
     bootloader_systimer_add_task(run_led, 1000, true);
     bootloader_wdt_init();
+    bootloader_ble_init(bootloader_systimer_millis());
+    while (!bootloader_ble_is_finished()) {
+        bootloader_wdt_feed();
+        bootloader_systimer_run_tasks();
+        bootloader_ble_process(bootloader_systimer_millis());
+        __WFE();
+    }
+    if (bootloader_ble_is_ready()) {
+        BOOT_LOG_INFO("BLE ready at 115200 baud");
+    }
     if (flash_option_get() != UPDATE_FLAG_MASK && app_is_valid(APP_START_ADDR)) {
+        bootloader_ble_deinit();
+        uint32_t power_off_ms = bootloader_systimer_millis();
+        while (bootloader_systimer_millis() - power_off_ms < 100U) {
+            bootloader_wdt_feed();
+            __WFE();
+        }
+        SysTick->CTRL = 0;
+        SCB->ICSR = SCB_ICSR_PENDSTCLR_Msk;
         app_run((uint32_t)APP_START_ADDR);
     }
     BOOT_LOG_INFO("A firmware need to flash\r\n");

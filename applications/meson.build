@@ -12,6 +12,7 @@ applications_sources = files(
   'main.c',
   'stdio.c',
   'bootdfu.c',
+  'bootble.c',
   'bootloader.c',
   'bootsystim.c',
   'bootwdt.c',

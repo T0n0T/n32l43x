@@ -62,6 +62,7 @@ bool app_is_valid(uint32_t app_addr);
 
 // systimer function
 void     bootloader_systimer_init(void);
+uint32_t bootloader_systimer_millis(void);
 void     bootloader_systimer_run_tasks(void);
 int      bootloader_systimer_add_task(void (*task_func)(void), uint32_t interval_ms, bool is_periodic);
 int      bootloader_systimer_del_task(int task_index);

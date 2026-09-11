@@ -1,6 +1,7 @@
 # project out
 build
-
+.agents
+.embeddedskills
 **/JLink*
 
 

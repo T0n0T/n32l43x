@@ -9,4 +9,5 @@ drivers_sources = files(
     'flash.c',
     'led.c',
     'uart.c',
+    'uart2_dma.c',
 )

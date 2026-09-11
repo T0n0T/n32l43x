@@ -15,9 +15,11 @@ typedef struct {
 // 最多维护三个定时器任务
 #define MAX_SYSTIMER_TASKS 5
 static systimer_task_t systimer_tasks[MAX_SYSTIMER_TASKS];
+static volatile uint32_t systimer_ms;
 
 void SysTick_Handler(void)
 {
+    systimer_ms += SYSTICK_PERIOD_MS;
     for (int i = 0; i < MAX_SYSTIMER_TASKS; i++) {
         if (systimer_tasks[i].is_active) {
             systimer_tasks[i].current_count += SYSTICK_PERIOD_MS;
@@ -126,8 +128,14 @@ uint32_t bootloader_systimer_get_task_count(int task_index)
     return -1;
 }
 
+uint32_t bootloader_systimer_millis(void)
+{
+    return systimer_ms;
+}
+
 void bootloader_systimer_init(void)
 {
+    systimer_ms = 0;
     // 初始化所有任务为非激活状态
     for (int i = 0; i < MAX_SYSTIMER_TASKS; i++) {
         systimer_tasks[i].is_active  = 0;        
