@@ -42,6 +42,22 @@ static bool match_byte(uint8_t byte, const char* pattern, uint8_t* index)
     return false;
 }
 
+static const char* ble_state_name(ble_state_t s)
+{
+    switch (s) {
+        case BLE_WAIT_START:    return "WAIT_START";
+        case BLE_PROBE_115200:  return "PROBE_115200";
+        case BLE_PROBE_9600:    return "PROBE_9600";
+        case BLE_WAIT_BAUD:     return "WAIT_BAUD";
+        case BLE_WAIT_RESET:    return "WAIT_RESET";
+        case BLE_VERIFY_115200: return "VERIFY_115200";
+        case BLE_READY:         return "READY";
+        case BLE_FAILED:        return "FAILED";
+        case BLE_OFF:           return "OFF";
+    }
+    return "?";
+}
+
 static void bootloader_ble_receive(const uint8_t* data, uint16_t len, bool rx_error)
 {
     idle_received = true;
@@ -75,12 +91,15 @@ static void begin_command(ble_state_t next, const char* command, uint16_t len, u
         start_index    = 0;
     }
     __set_PRIMASK(primask);
+    BOOT_LOG_INFO("BLE [%s] send \"%s\" @%u -> %s",
+                  ble_state_name(state), command,
+                  (unsigned)uart2_dma_get_baudrate(), ble_state_name(next));
     uart2_dma_write((const uint8_t*)command, len);
 }
 
 static void bootloader_ble_fail(void)
 {
-    BOOT_LOG_WARN("BLE startup failed at step %d", state);
+    BOOT_LOG_WARN("BLE startup failed at step %d (%s)", state, ble_state_name(state));
     uart2_dma_set_baudrate(BLE_BAUDRATE);
     state = BLE_FAILED;
 }
@@ -104,6 +123,7 @@ void bootloader_ble_init(uint32_t now_ms)
     config.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitPeripheral(GPIOB, &config);
     GPIOB->PBSC = GPIO_PIN_6;
+    BOOT_LOG_INFO("BLE [WAIT_START] UART2@115200 armed, module powered, waiting Start");
 }
 
 void bootloader_ble_process(uint32_t now_ms)
@@ -114,6 +134,10 @@ void bootloader_ble_process(uint32_t now_ms)
         case BLE_PROBE_115200:
         case BLE_VERIFY_115200:
             if (start_received || (state != BLE_WAIT_START && ok_received)) {
+                BOOT_LOG_INFO("BLE [%s] %s received @%u -> READY",
+                              ble_state_name(state),
+                              start_received ? "Start" : "OK",
+                              (unsigned)uart2_dma_get_baudrate());
                 state = BLE_READY;
             } else if (state == BLE_WAIT_START && elapsed_ms >= BLE_START_TIMEOUT_MS) {
                 begin_command(BLE_PROBE_115200, "AT", 2, now_ms);
@@ -134,6 +158,7 @@ void bootloader_ble_process(uint32_t now_ms)
             break;
         case BLE_WAIT_BAUD:
             if (ok_received) {
+                BOOT_LOG_INFO("BLE [WAIT_BAUD] OK on AT+BAUD4: reset module, switch RX to 115200");
                 /* BAUD4 takes effect after RESET. Send RESET fully at 9600,
                  * then arm 115200 RX before the module's next Start. */
                 begin_command(BLE_WAIT_RESET, "AT+RESET", 8, now_ms);
@@ -144,6 +169,7 @@ void bootloader_ble_process(uint32_t now_ms)
             break;
         case BLE_WAIT_RESET:
             if (start_received) {
+                BOOT_LOG_INFO("BLE [WAIT_RESET] Start after reset @115200 -> READY");
                 state = BLE_READY;
             } else if (elapsed_ms >= BLE_RESET_TIMEOUT_MS) {
                 begin_command(BLE_VERIFY_115200, "AT", 2, now_ms);
