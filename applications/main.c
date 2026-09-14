@@ -39,7 +39,6 @@ void main(void)
     bootloader_ble_init(bootloader_systimer_millis());
     while (!bootloader_ble_is_finished()) {
         bootloader_wdt_feed();
-        bootloader_systimer_run_tasks();
         bootloader_ble_process(bootloader_systimer_millis());
         __WFE();
     }
