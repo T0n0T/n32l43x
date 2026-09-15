@@ -321,6 +321,7 @@ static QState ValveHandler_Handle(ValveHandler * const me, QEvt const * const e)
                     QACTIVE_POST(AO_ValveHandler, &evt.super, 0U);
                 }else{
                     update_handle = NULL;
+                    ve->handle(NULL);
                 }
             }
             status_ = QM_HANDLED();
