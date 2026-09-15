@@ -25,6 +25,7 @@
             "executable": "${workspaceRoot}/build/n32l43x.elf",
             "device": "N32L436RB",
             "interface": "swd",
+            "ipAddress": "192.168.1.111",
             "svdFile": "${workspaceRoot}/tools/svd/N32L436.svd",
             "runToEntryPoint": "Reset_Handler",
         },

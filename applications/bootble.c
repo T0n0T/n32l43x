@@ -104,6 +104,17 @@ static void bootloader_ble_fail(void)
     state = BLE_FAILED;
 }
 
+void bootloader_ble_power_on(void)
+{
+    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOB, ENABLE);
+    GPIO_InitType config;
+    GPIO_InitStruct(&config);
+    config.Pin       = GPIO_PIN_6;
+    config.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitPeripheral(GPIOB, &config);
+    GPIOB->PBSC = GPIO_PIN_6;
+}
+
 void bootloader_ble_init(uint32_t now_ms)
 {
     state            = BLE_WAIT_START;
@@ -116,13 +127,7 @@ void bootloader_ble_init(uint32_t now_ms)
 
     /* Arm RX before powering the module so its first Start can be captured. */
     uart2_dma_init(BLE_BAUDRATE, bootloader_ble_receive);
-    RCC_EnableAPB2PeriphClk(RCC_APB2_PERIPH_GPIOB, ENABLE);
-    GPIO_InitType config;
-    GPIO_InitStruct(&config);
-    config.Pin       = GPIO_PIN_6;
-    config.GPIO_Mode = GPIO_Mode_Out_PP;
-    GPIO_InitPeripheral(GPIOB, &config);
-    GPIOB->PBSC = GPIO_PIN_6;
+    bootloader_ble_power_on();
     BOOT_LOG_INFO("BLE [WAIT_START] UART2@115200 armed, module powered, waiting Start");
 }
 

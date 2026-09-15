@@ -1,4 +1,5 @@
 #include "bootloader.h"
+#include "bootble.h"
 #include "uart2_dma.h"
 
 // Cortex-M4 内联汇编实现的 memcpy
@@ -94,6 +95,7 @@ char* strncpy(char* dest, const char* src, size_t n)
 #define ACK_PATTERN      0x12345678 // 示例ACK模式
 #define ACK_TIMEOUT_MS   1000       // ACK超时时间（毫秒）
 #define MAX_RETRY_COUNT  5          // 最大重试次数
+#define BLE_BAUDRATE     115200U
 
 #define DFU_PAGE_LEN     2048
 #define DFU_PREAMBLE     {0xAA, 0x55, 0xAA, 0x55}
@@ -365,9 +367,6 @@ void bootloader_dfu_process(void)
 
 void bootloader_dfu_init(void)
 {
-    if (flash_option_get() == UPDATE_FLAG_MASK) {
-        flash_erase_option();
-    }
     dfu_updater.state           = DFU_STATE_IDLE;
     dfu_updater.flash_base_addr = APP_START_ADDR;
     dfu_updater.public_key      = public_key;
@@ -375,6 +374,16 @@ void bootloader_dfu_init(void)
     dfu_reset_task_index        = -1;
     dfu_ack_timeout_task_index  = -1;
     dfu_ack_retry_count         = 0; // 初始化重试次数
-    uart2_dma_set_rx_handler(bootloader_dfu_receive);
+    /* On an update reset no BLE handshake is needed. Arm the DFU receiver
+     * before the host sends its preamble, then power the module. */
+    if (uart2_dma_get_baudrate() == 0U) {
+        uart2_dma_init(BLE_BAUDRATE, bootloader_dfu_receive);
+        bootloader_ble_power_on();
+    } else {
+        uart2_dma_set_rx_handler(bootloader_dfu_receive);
+    }
+    if (flash_option_get() == UPDATE_FLAG_MASK) {
+        flash_erase_option();
+    }
     bootloader_systimer_add_task(bootloader_dfu_process, 5, true);
 }

@@ -8,7 +8,7 @@
 
 void run_led(void)
 {
-    led_toggle(LED_3);
+    led_toggle(LED_1);
 }
 
 void assert_failed(const uint8_t* expr, const uint8_t* file, uint32_t line)
@@ -36,16 +36,19 @@ void main(void)
     bootloader_systimer_init();
     bootloader_systimer_add_task(run_led, 1000, true);
     bootloader_wdt_init();
-    bootloader_ble_init(bootloader_systimer_millis());
-    while (!bootloader_ble_is_finished()) {
-        bootloader_wdt_feed();
-        bootloader_ble_process(bootloader_systimer_millis());
-        __WFE();
+    bool const update_requested = flash_option_get() == UPDATE_FLAG_MASK;
+    if (!update_requested) {
+        bootloader_ble_init(bootloader_systimer_millis());
+        while (!bootloader_ble_is_finished()) {
+            bootloader_wdt_feed();
+            bootloader_ble_process(bootloader_systimer_millis());
+            __WFE();
+        }
+        if (bootloader_ble_is_ready()) {
+            BOOT_LOG_INFO("BLE ready at 115200 baud");
+        }
     }
-    if (bootloader_ble_is_ready()) {
-        BOOT_LOG_INFO("BLE ready at 115200 baud");
-    }
-    if (flash_option_get() != UPDATE_FLAG_MASK && app_is_valid(APP_START_ADDR)) {
+    if (!update_requested && app_is_valid(APP_START_ADDR)) {
         bootloader_ble_deinit();
         uint32_t power_off_ms = bootloader_systimer_millis();
         while (bootloader_systimer_millis() - power_off_ms < 100U) {

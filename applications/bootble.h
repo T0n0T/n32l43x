@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 void bootloader_ble_init(uint32_t now_ms);
+void bootloader_ble_power_on(void);
 /* Power off before APP handoff so APP can receive its own startup banner. */
 void bootloader_ble_deinit(void);
 void bootloader_ble_process(uint32_t now_ms);
